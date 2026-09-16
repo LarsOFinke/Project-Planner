@@ -155,8 +155,10 @@ class ProjectPlannerRoot(BoxLayout):
 
     def _update_scale(self, _widget: BoxLayout, width: float) -> None:
         self.browser.width = min(width * 0.34, max(dp(170), width * 0.24))
-        tab_space = max(500, width - self.browser.width - dp(42))
-        self.tabs.tab_width = tab_space / len(self._tab_headers)
+        tab_space = max(0, width - self.browser.width - dp(42))
+        self.tabs.tab_width = max(
+            dp(96), tab_space / len(self._tab_headers)
+        )
 
     def _show_project(self, project_id: str) -> None:
         self.overview.show_project(project_id)

@@ -83,6 +83,16 @@ def style_spinner(spinner: Spinner) -> Spinner:
     return spinner
 
 
+def _fit_label_height(label: Label, minimum_height: float) -> None:
+    def fit_width(widget: Label, width: float) -> None:
+        widget.text_size = (width, None)
+
+    def fit_height(widget: Label, texture_size: tuple[float, float]) -> None:
+        widget.height = max(minimum_height, texture_size[1])
+
+    label.bind(width=fit_width, texture_size=fit_height)
+
+
 def title_label(text: str) -> Label:
     label = Label(
         text=text,
@@ -94,7 +104,7 @@ def title_label(text: str) -> Label:
         size_hint_y=None,
         height=dp(38),
     )
-    label.bind(size=lambda widget, size: setattr(widget, "text_size", size))
+    _fit_label_height(label, dp(38))
     return label
 
 
@@ -108,7 +118,7 @@ def caption_label(text: str) -> Label:
         size_hint_y=None,
         height=dp(26),
     )
-    label.bind(size=lambda widget, size: setattr(widget, "text_size", size))
+    _fit_label_height(label, dp(26))
     return label
 
 

@@ -26,6 +26,8 @@ Last refreshed: 2026-09-17
 - movable, rotatable, scalable rectangle/ellipse/line/arrow objects;
 - imported PNG/JPEG/GIF/BMP/WebP images copied into per-project managed storage;
 - shared categorized-toolbox component;
+- content-sized text and image dialogs with responsive bounds and keyboard submission;
+- wrapping title/caption primitives and density-aware, horizontally scrollable planning tabs;
 - workspace toolboxes: Shapes, Media, Transform, Manage;
 - diagram toolboxes: Nodes, Relations, Manage;
 - local artifact autosave with JSON payloads.

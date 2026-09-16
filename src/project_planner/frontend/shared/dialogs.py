@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from pathlib import Path
 
+from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -35,18 +36,23 @@ def open_text_dialog(
             height=dp(48),
         )
     )
-    submit = style_button(
-        Button(text="Save", size_hint_y=None, height=dp(46)), "primary"
-    )
+    actions = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
+    cancel = style_button(Button(text="Cancel"), "secondary")
+    submit = style_button(Button(text="Save"), "primary")
+    actions.add_widget(cancel)
+    actions.add_widget(submit)
     content.add_widget(value)
-    content.add_widget(submit)
+    content.add_widget(actions)
     popup = Popup(
         title=title,
         title_color=PEARL_GREY,
+        title_size="18sp",
         separator_color=GOLD,
         background_color=NAVY_800,
         content=content,
-        size_hint=(0.52, 0.32),
+        size_hint=(None, None),
+        width=min(Window.width * 0.86, dp(560)),
+        height=min(Window.height * 0.9, dp(190)),
     )
 
     def accept(*_: object) -> None:
@@ -56,8 +62,11 @@ def open_text_dialog(
         on_submit(value.text.strip())
         popup.dismiss()
 
+    cancel.bind(on_release=lambda *_: popup.dismiss())
     submit.bind(on_release=accept)
+    value.bind(on_text_validate=accept)
     popup.open()
+    value.focus = True
 
 
 def open_image_dialog(on_submit: Callable[[str], None]) -> None:
@@ -91,10 +100,13 @@ def open_image_dialog(on_submit: Callable[[str], None]) -> None:
     popup = Popup(
         title="Insert image",
         title_color=PEARL_GREY,
+        title_size="18sp",
         separator_color=GOLD,
         background_color=NAVY_800,
         content=content,
-        size_hint=(0.86, 0.86),
+        size_hint=(None, None),
+        width=min(Window.width * 0.9, dp(1000)),
+        height=min(Window.height * 0.9, dp(720)),
     )
 
     def accept(*_: object) -> None:

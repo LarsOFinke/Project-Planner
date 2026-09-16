@@ -45,7 +45,7 @@ class ProjectBrowser(BoxLayout):
         self._list = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
         self._list.bind(minimum_height=self._list.setter("height"))
         self._build_header()
-        scroll = ScrollView()
+        scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
         scroll.add_widget(self._list)
         self.add_widget(scroll)
         self.refresh()

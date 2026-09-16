@@ -38,14 +38,10 @@ class DiagramPanel(BoxLayout):
         self._artifact: Artifact | None = None
         self._dirty = False
         paint_background(self, NAVY_900)
-        heading = BoxLayout(size_hint_y=None, height=dp(64), spacing=dp(8))
-        heading_text = BoxLayout(orientation="vertical")
-        heading_text.add_widget(title_label("Diagram"))
-        heading_text.add_widget(
+        self.add_widget(title_label("Diagram"))
+        self.add_widget(
             caption_label("Select two nodes to connect them. Drag nodes to reorganize.")
         )
-        heading.add_widget(heading_text)
-        self.add_widget(heading)
         toolbox = DiagramToolbox(
             add_node=self._add_node,
             rename_node=self._rename,

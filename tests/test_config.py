@@ -2,10 +2,16 @@ from pathlib import Path
 
 import pytest
 
+from project_planner.core.configuration import settings_loader
 from project_planner.core.configuration.settings_loader import (
     load_settings,
     save_ui_scale,
 )
+
+
+@pytest.fixture(autouse=True)
+def isolate_user_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(settings_loader, "_USER_CONFIG", tmp_path / "user.cfg")
 
 
 def test_cfg_values_can_be_overridden_by_environment(monkeypatch, tmp_path: Path) -> None:

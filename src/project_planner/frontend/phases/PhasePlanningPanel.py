@@ -51,7 +51,7 @@ class PhasePlanningPanel(BoxLayout):
         controls.add_widget(reset)
         self._rows = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
         self._rows.bind(minimum_height=self._rows.setter("height"))
-        scroll = ScrollView()
+        scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
         scroll.add_widget(self._rows)
         self.add_widget(controls)
         self.add_widget(scroll)
@@ -83,13 +83,13 @@ class PhasePlanningPanel(BoxLayout):
                 Button(text=f"{phase.position + 1:02}.  {phase.name}"), "quiet"
             )
             up = style_button(
-                Button(text="↑", size_hint_x=None, width=dp(46)), "secondary"
+                Button(text="Up", size_hint_x=None, width=dp(46)), "secondary"
             )
             down = style_button(
-                Button(text="↓", size_hint_x=None, width=dp(46)), "secondary"
+                Button(text="Down", size_hint_x=None, width=dp(52)), "secondary"
             )
             remove = style_button(
-                Button(text="×", size_hint_x=None, width=dp(46)), "danger"
+                Button(text="Del", size_hint_x=None, width=dp(46)), "danger"
             )
             edit.bind(on_release=partial(self._edit, phase.id, phase.name))
             up.bind(on_release=partial(self._move, phase.id, -1))

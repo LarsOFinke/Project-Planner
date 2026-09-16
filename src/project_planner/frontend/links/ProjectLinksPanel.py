@@ -55,7 +55,7 @@ class ProjectLinksPanel(BoxLayout):
         controls.add_widget(add)
         self._rows = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
         self._rows.bind(minimum_height=self._rows.setter("height"))
-        scroll = ScrollView()
+        scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
         scroll.add_widget(self._rows)
         self.add_widget(controls)
         self.add_widget(scroll)
@@ -89,22 +89,27 @@ class ProjectLinksPanel(BoxLayout):
             )
         for resolved in links:
             link = resolved.link
-            direction = "→" if resolved.outgoing else "←"
+            direction = "OUT" if resolved.outgoing else "IN"
             other_title = (
                 resolved.other_project.title
                 if resolved.other_project is not None
                 else "Missing project"
             )
             row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(5))
-            row.add_widget(
-                Label(
-                    text=(
-                        f"{direction}  {link.relation}  ·  "
-                        f"{other_title}"
-                    ),
-                    color=SLATE_200,
+            relationship = Label(
+                text=f"{direction}  ·  {link.relation}  ·  {other_title}",
+                color=SLATE_200,
+                halign="left",
+                valign="middle",
+                shorten=True,
+                shorten_from="right",
+            )
+            relationship.bind(
+                size=lambda widget, size: setattr(
+                    widget, "text_size", (size[0] - dp(8), size[1])
                 )
             )
+            row.add_widget(relationship)
             remove = style_button(
                 Button(text="Remove", size_hint_x=None, width=dp(96)), "danger"
             )
