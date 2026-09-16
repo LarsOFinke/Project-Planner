@@ -4,7 +4,7 @@
 
 Maintain a local-first Kivy desktop project planner with hierarchical projects, metadata,
 phase planning, linked projects, diagrams, and a visual workspace. Optimize for KISS, SOLID,
-readability at 200% scale, and preservation of local data.
+readability across the automatic laptop/Full-HD scale profiles, and preservation of local data.
 
 ## First five minutes
 
@@ -28,7 +28,8 @@ supported interpreter.
 - New persisted editor data must remain backward-compatible and include a version number.
 - Imported files belong in the configured data directory, never inside the source tree.
 - Destructive UI actions use red and should not silently delete managed source assets.
-- At 200% UI scale, group actions into toolboxes or scrollable/stacked layouts.
+- At the 200% laptop profile, group dense actions into toolboxes or scrollable/stacked layouts;
+  also validate the 100% Full-HD profile.
 
 ## Standard workflow
 

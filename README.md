@@ -13,7 +13,7 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 - modular Kivy desktop UI with project browser and tabbed planning levels
 - persistent node/edge diagram editor with draggable nodes
 - persistent freehand workspace with local autosave, movable/rotatable/scalable shapes and images
-- categorized diagram and workspace toolboxes that keep dense actions readable at 200% scaling
+- categorized diagram and workspace toolboxes that keep dense actions readable across scale profiles
 
 The core is deliberately independent from Kivy and SQLite details. Application workflows own
 cross-feature operations, query services provide UI-ready read models, and versioned codecs keep
@@ -34,6 +34,20 @@ Do not recreate the environment with `python3 -m venv .venv` on a machine whose 
 is 3.14; that command ignores `.python-version` and puts the incompatible interpreter back.
 Use `make setup` whenever the environment needs to be rebuilt.
 
+If the target system only provides Python 3.14 or newer, install `uv` in an isolated environment
+with `pipx`. This was verified on the development system:
+
+```bash
+pipx install uv
+make setup
+```
+
+If `uv` is not immediately available, run `pipx ensurepath`, start a new shell, and retry.
+`make setup` asks `uv` for Python 3.13, creates the project `.venv` with that interpreter,
+installs the application, and runs the test suite. Do not manually create `.venv` with the newer
+system `python3`. See the [official uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
+for alternative platforms and installation methods.
+
 By default the database is created at `~/.project_planner/project_planner.sqlite3`.
 Configuration is read in this order: packaged defaults, `./project_planner.cfg`,
 `~/.config/project_planner/config.cfg`, then environment variables. Copy
@@ -41,7 +55,9 @@ Configuration is read in this order: packaged defaults, `./project_planner.cfg`,
 settings. Available environment overrides are `PROJECT_PLANNER_DB`,
 `PROJECT_PLANNER_WINDOW_WIDTH`, `PROJECT_PLANNER_WINDOW_HEIGHT`, and
 `PROJECT_PLANNER_AUTOSAVE_SECONDS`. UI density can be adjusted with
-`PROJECT_PLANNER_UI_SCALE`; the high-readability default is `2.00`.
+`PROJECT_PLANNER_UI_SCALE`. The default `auto` profile uses 200% for the 1280×800 laptop window
+and 100% for windows of 1920×1080 or larger. Set a numeric value from `0.75` through `2.00` to
+override automatic scaling.
 Imported workspace images are copied below `~/.project_planner/data` by default. Override
 that location with `PROJECT_PLANNER_DATA_DIR` or `[storage] data_directory` in the `.cfg`.
 PNG, JPEG, GIF, BMP, and WebP imports are supported; deleting a canvas object does not delete

@@ -19,7 +19,7 @@ fi
 
 if [[ -z "$compatible_python" ]]; then
     echo "No Kivy-compatible Python was found." >&2
-    echo "Install Python 3.13 or uv, then run this script again." >&2
+    echo "Install Python 3.13 or run 'pipx install uv', then try again." >&2
     exit 1
 fi
 

@@ -1,6 +1,6 @@
 # Project cache
 
-Last refreshed: 2026-09-16
+Last refreshed: 2026-09-17
 
 ## Hot context
 
@@ -8,11 +8,11 @@ Last refreshed: 2026-09-16
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `bash .agents/scripts/check-all.sh`.
-- Current suite: 17 tests.
+- Current suite: 19 tests.
 - Entry point: `project_planner.frontend.main:main`.
 - Database: SQLite, default `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
-- UI scale: default `2.00`.
+- UI scale: default `auto`; 1280×800 resolves to `2.00`, 1920×1080+ resolves to `1.00`.
 - Class modules: exact PascalCase class filenames; non-class helper modules remain snake_case.
 
 ## Implemented workflows
@@ -62,6 +62,8 @@ Important overrides:
 - `PROJECT_PLANNER_AUTOSAVE_SECONDS`
 - `PROJECT_PLANNER_UI_SCALE`
 
+`PROJECT_PLANNER_UI_SCALE` accepts `auto` or a numeric value from `0.75` through `2.00`.
+
 ## High-value paths
 
 - Composition: `src/project_planner/core/bootstrap/container_builder.py`
@@ -81,6 +83,8 @@ Important overrides:
 
 - System `python3` is 3.14.4. Running `python3 -m venv .venv` recreates an incompatible venv.
   Use `make setup`; it locates Python 3.11–3.13 and replaces incompatible environments.
+- On newer-Python target systems, install the managed interpreter bootstrap with
+  `pipx install uv`; `make setup` then installs/finds Python 3.13 through `uv`.
 - Missing `xclip`/`xsel` produces a scary but non-fatal Kivy Cutbuffer warning. SDL2 clipboard
   remains available. Distinguish that warning from the traceback that terminates the app.
 - Kivy schedules some layout work after `build()`. Always exercise the event loop for UI work.

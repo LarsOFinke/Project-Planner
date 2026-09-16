@@ -24,3 +24,17 @@ def test_cfg_values_can_be_overridden_by_environment(monkeypatch, tmp_path: Path
     assert settings.autosave_seconds == 30
     assert settings.ui_scale == 1.45
     assert settings.data_directory == tmp_path / "assets"
+
+
+def test_auto_scale_keeps_laptop_profile_readable(tmp_path: Path) -> None:
+    config = tmp_path / "laptop.cfg"
+    config.write_text("[window]\nwidth = 1280\nheight = 800\n", encoding="utf-8")
+
+    assert load_settings(config).ui_scale == 2.0
+
+
+def test_auto_scale_uses_native_density_for_full_hd(tmp_path: Path) -> None:
+    config = tmp_path / "full-hd.cfg"
+    config.write_text("[window]\nwidth = 1920\nheight = 1080\n", encoding="utf-8")
+
+    assert load_settings(config).ui_scale == 1.0

@@ -19,8 +19,14 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
     parser.read([str(path) for path in candidates if path.is_file()])
 
     database = os.environ.get("PROJECT_PLANNER_DB", parser["database"]["path"])
-    width = os.environ.get("PROJECT_PLANNER_WINDOW_WIDTH", parser["window"]["width"])
-    height = os.environ.get("PROJECT_PLANNER_WINDOW_HEIGHT", parser["window"]["height"])
+    width = _positive_int(
+        os.environ.get("PROJECT_PLANNER_WINDOW_WIDTH", parser["window"]["width"]),
+        "window width",
+    )
+    height = _positive_int(
+        os.environ.get("PROJECT_PLANNER_WINDOW_HEIGHT", parser["window"]["height"]),
+        "window height",
+    )
     autosave = os.environ.get(
         "PROJECT_PLANNER_AUTOSAVE_SECONDS", parser["editor"]["autosave_seconds"]
     )
@@ -30,10 +36,10 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
     )
     return Settings(
         database_path=Path(database).expanduser(),
-        window_width=_positive_int(width, "window width"),
-        window_height=_positive_int(height, "window height"),
+        window_width=width,
+        window_height=height,
         autosave_seconds=_positive_int(autosave, "autosave interval"),
-        ui_scale=_ui_scale(ui_scale),
+        ui_scale=_ui_scale(ui_scale, width, height),
         data_directory=Path(data_directory).expanduser(),
     )
 
@@ -48,7 +54,9 @@ def _positive_int(value: str, label: str) -> int:
     return parsed
 
 
-def _ui_scale(value: str) -> float:
+def _ui_scale(value: str, width: int, height: int) -> float:
+    if value.strip().lower() == "auto":
+        return 1.0 if width >= 1920 and height >= 1080 else 2.0
     try:
         parsed = float(value)
     except ValueError as error:
