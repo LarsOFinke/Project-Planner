@@ -8,11 +8,12 @@ Last refreshed: 2026-09-16
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `bash .agents/scripts/check-all.sh`.
-- Current suite: 10 tests.
+- Current suite: 17 tests.
 - Entry point: `project_planner.frontend.main:main`.
 - Database: SQLite, default `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
 - UI scale: default `2.00`.
+- Class modules: exact PascalCase class filenames; non-class helper modules remain snake_case.
 
 ## Implemented workflows
 
@@ -24,8 +25,15 @@ Last refreshed: 2026-09-16
 - freehand workspace;
 - movable, rotatable, scalable rectangle/ellipse/line/arrow objects;
 - imported PNG/JPEG/GIF/BMP/WebP images copied into per-project managed storage;
+- shared categorized-toolbox component;
 - workspace toolboxes: Shapes, Media, Transform, Manage;
+- diagram toolboxes: Nodes, Relations, Manage;
 - local artifact autosave with JSON payloads.
+- project workflow orchestration for project/phase lifecycle operations;
+- query projections for project trees, parent choices, and duplicate-title-safe selectors;
+- resolved link projections with incoming/outgoing direction;
+- typed diagram/workspace documents with version-aware codecs;
+- narrow service injection into feature panels.
 
 ## Persistence facts
 
@@ -34,6 +42,7 @@ Last refreshed: 2026-09-16
 - Diagram JSON version: `1`.
 - Workspace JSON version: `3`.
 - Workspace JSON stores strokes, shapes, images, position, size, and rotation.
+- Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
 - Deleting an image object does not delete its managed source file.
 - Image location: `<data_directory>/projects/<project-id>/images/<uuid>.<ext>`.
 
@@ -56,11 +65,13 @@ Important overrides:
 ## High-value paths
 
 - Composition: `src/project_planner/core/bootstrap/container_builder.py`
+- Workflows/queries: `src/project_planner/core/application/projects/`
+- Artifact documents/codecs: `src/project_planner/core/application/artifacts/`
 - Settings: `src/project_planner/core/configuration/`
 - Models: `src/project_planner/core/domain/`
 - Use cases: `src/project_planner/core/application/`
 - SQLite adapters: `src/project_planner/core/infrastructure/`
-- UI shell: `src/project_planner/frontend/shell/project_planner_root.py`
+- UI shell: `src/project_planner/frontend/shell/ProjectPlannerRoot.py`
 - Theme: `src/project_planner/frontend/shared/theme.py`
 - Workspace: `src/project_planner/frontend/workspace/`
 - Diagram: `src/project_planner/frontend/diagram/`

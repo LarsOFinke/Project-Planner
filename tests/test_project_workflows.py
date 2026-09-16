@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from project_planner.core.bootstrap.application_container import ApplicationContainer
+from project_planner.core.bootstrap.ApplicationContainer import ApplicationContainer
 from project_planner.core.bootstrap.container_builder import build_container
-from project_planner.core.configuration.settings import Settings
-from project_planner.core.domain.artifacts.artifact_kind import ArtifactKind
-from project_planner.core.domain.projects.planning_method import PlanningMethod
-from project_planner.core.domain.projects.project_status import ProjectStatus
+from project_planner.core.configuration.Settings import Settings
+from project_planner.core.domain.artifacts.ArtifactKind import ArtifactKind
+from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
+from project_planner.core.domain.projects.ProjectStatus import ProjectStatus
 
 
 @pytest.fixture

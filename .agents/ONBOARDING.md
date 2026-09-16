@@ -20,7 +20,8 @@ supported interpreter.
 
 ## Development contract
 
-- One source class per file; `tests/test_structure.py` enforces this.
+- One source class per file; its PascalCase filename must match the class name exactly.
+  `tests/test_structure.py` enforces both rules.
 - Domain and application code must not import Kivy.
 - UI code consumes services through `ApplicationContainer`.
 - Configuration belongs in `default.cfg`, the example cfg, and `Settings`/loader together.

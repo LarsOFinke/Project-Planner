@@ -14,6 +14,18 @@ def test_every_source_file_contains_at_most_one_class() -> None:
     assert not violations, "More than one class in: " + "; ".join(violations)
 
 
+def test_class_module_filename_matches_class_name() -> None:
+    source_root = Path("src/project_planner")
+    violations: list[str] = []
+    for path in source_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        classes = [node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]
+        if len(classes) == 1 and path.stem != classes[0]:
+            violations.append(f"{path}: expected {classes[0]}.py")
+
+    assert not violations, "Class module filename mismatch: " + "; ".join(violations)
+
+
 def test_frontend_does_not_overwrite_kivy_parent_property() -> None:
     frontend_root = Path("src/project_planner/frontend")
     violations: list[str] = []

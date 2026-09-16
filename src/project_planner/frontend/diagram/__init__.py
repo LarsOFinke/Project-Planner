@@ -1,3 +1,3 @@
-from project_planner.frontend.diagram.diagram_panel import DiagramPanel
+from project_planner.frontend.diagram.DiagramPanel import DiagramPanel
 
 __all__ = ["DiagramPanel"]

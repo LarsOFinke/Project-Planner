@@ -1,3 +1,3 @@
-from project_planner.core.domain.links.project_link import ProjectLink
+from project_planner.core.domain.links.ProjectLink import ProjectLink
 
 __all__ = ["ProjectLink"]

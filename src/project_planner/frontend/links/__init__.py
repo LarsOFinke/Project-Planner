@@ -1,3 +1,3 @@
-from project_planner.frontend.links.project_links_panel import ProjectLinksPanel
+from project_planner.frontend.links.ProjectLinksPanel import ProjectLinksPanel
 
 __all__ = ["ProjectLinksPanel"]

@@ -42,7 +42,7 @@ at both 1280×800 and 960×620 where practical.
 
 ### Workspace object appears outside the canvas
 
-Check local-to-canvas coordinate conversion and `_sync_background` in `freehand_canvas.py`.
+Check local-to-canvas coordinate conversion and `_sync_background` in `FreehandCanvas.py`.
 The canvas uses `StencilView` to clip children to its bounds.
 
 ### Imported image disappears after restart

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from project_planner.core.application.assets.image_asset_service import ImageAssetService
+from project_planner.core.application.assets.ImageAssetService import ImageAssetService
 
 
 def test_imports_image_into_project_data_directory(tmp_path: Path) -> None:

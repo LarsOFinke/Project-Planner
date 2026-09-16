@@ -1,0 +1,16 @@
+from dataclasses import dataclass
+
+from project_planner.core.application.artifacts.documents.WorkspaceImage import (
+    WorkspaceImage,
+)
+from project_planner.core.application.artifacts.documents.WorkspaceShape import (
+    WorkspaceShape,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceDocument:
+    strokes: tuple[tuple[float, ...], ...] = ()
+    shapes: tuple[WorkspaceShape, ...] = ()
+    images: tuple[WorkspaceImage, ...] = ()
+    version: int = 3

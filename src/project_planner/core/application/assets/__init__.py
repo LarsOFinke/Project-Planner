@@ -1,3 +1,3 @@
-from project_planner.core.application.assets.image_asset_service import ImageAssetService
+from project_planner.core.application.assets.ImageAssetService import ImageAssetService
 
 __all__ = ["ImageAssetService"]

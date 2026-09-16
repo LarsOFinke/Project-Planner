@@ -28,3 +28,24 @@ only the object reference, not the managed file, to reduce accidental data loss.
 
 The default UI scale is 200%. Navigation widths use physical available space, and dense action
 sets use named toolboxes rather than a clipped toolbar.
+
+## AD-007 — Class-module naming
+
+Every Python module that defines a source class uses the exact PascalCase class name as its
+filename. Modules without a class retain conventional descriptive snake_case names.
+
+## AD-008 — Application workflows and read projections
+
+Feature panels receive narrow service dependencies. Cross-module operations live in application
+workflow services, while UI-oriented joins and hierarchy shaping use framework-independent read
+models. The complete application container is visible only to the frontend composition root.
+
+## AD-009 — Typed artifact boundaries
+
+Diagram and workspace JSON is decoded into typed, versioned documents before reaching Kivy
+canvases. Codecs own validation and compatibility; widgets own rendering and interaction.
+
+## AD-010 — Categorized editor toolboxes
+
+Editors with several commands use the shared categorized-toolbox control so actions remain
+discoverable and unclipped at 200% scaling. Small two-action areas remain direct controls.

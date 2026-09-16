@@ -1,3 +1,3 @@
-from project_planner.core.domain.phases.phase import Phase
+from project_planner.core.domain.phases.Phase import Phase
 
 __all__ = ["Phase"]

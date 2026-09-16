@@ -1,3 +1,3 @@
-from project_planner.frontend.phases.phase_planning_panel import PhasePlanningPanel
+from project_planner.frontend.phases.PhasePlanningPanel import PhasePlanningPanel
 
 __all__ = ["PhasePlanningPanel"]

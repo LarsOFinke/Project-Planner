@@ -1,13 +1,13 @@
-from project_planner.core.infrastructure.repositories.sqlite_artifact_repository import (
+from project_planner.core.infrastructure.repositories.SQLiteArtifactRepository import (
     SQLiteArtifactRepository,
 )
-from project_planner.core.infrastructure.repositories.sqlite_phase_repository import (
+from project_planner.core.infrastructure.repositories.SQLitePhaseRepository import (
     SQLitePhaseRepository,
 )
-from project_planner.core.infrastructure.repositories.sqlite_project_link_repository import (
+from project_planner.core.infrastructure.repositories.SQLiteProjectLinkRepository import (
     SQLiteProjectLinkRepository,
 )
-from project_planner.core.infrastructure.repositories.sqlite_project_repository import (
+from project_planner.core.infrastructure.repositories.SQLiteProjectRepository import (
     SQLiteProjectRepository,
 )
 

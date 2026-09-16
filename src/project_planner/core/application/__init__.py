@@ -1,8 +1,8 @@
-from project_planner.core.application.artifacts.artifact_service import ArtifactService
-from project_planner.core.application.assets.image_asset_service import ImageAssetService
-from project_planner.core.application.links.project_link_service import ProjectLinkService
-from project_planner.core.application.phases.phase_service import PhaseService
-from project_planner.core.application.projects.project_service import ProjectService
+from project_planner.core.application.artifacts.ArtifactService import ArtifactService
+from project_planner.core.application.assets.ImageAssetService import ImageAssetService
+from project_planner.core.application.links.ProjectLinkService import ProjectLinkService
+from project_planner.core.application.phases.PhaseService import PhaseService
+from project_planner.core.application.projects.ProjectService import ProjectService
 
 __all__ = [
     "ArtifactService",

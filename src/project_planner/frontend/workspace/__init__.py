@@ -1,3 +1,3 @@
-from project_planner.frontend.workspace.workspace_panel import WorkspacePanel
+from project_planner.frontend.workspace.WorkspacePanel import WorkspacePanel
 
 __all__ = ["WorkspacePanel"]

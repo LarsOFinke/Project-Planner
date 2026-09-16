@@ -13,9 +13,11 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 - modular Kivy desktop UI with project browser and tabbed planning levels
 - persistent node/edge diagram editor with draggable nodes
 - persistent freehand workspace with local autosave, movable/rotatable/scalable shapes and images
+- categorized diagram and workspace toolboxes that keep dense actions readable at 200% scaling
 
-The core is deliberately independent from Kivy and SQLite details. This keeps the business
-rules testable and lets visual editors evolve without becoming coupled to project metadata.
+The core is deliberately independent from Kivy and SQLite details. Application workflows own
+cross-feature operations, query services provide UI-ready read models, and versioned codecs keep
+artifact JSON outside Kivy canvases. Feature panels receive only the services they use.
 
 ## Run locally
 
@@ -59,10 +61,11 @@ frontend/ -> core/application/ -> core/ports/ <- core/infrastructure/
                     core/domain/
 ```
 
-- each class has its own file
+- each class has its own matching PascalCase file
 - related classes are grouped by feature subpackage
 - `project_planner/core/domain`: entities and value types
-- `project_planner/core/application`: use cases and planning strategies
+- `project_planner/core/application`: use cases, workflow orchestration, query projections,
+  planning strategies, and artifact codecs
 - `project_planner/core/ports`: narrow repository contracts
 - `project_planner/core/infrastructure`: SQLite database and repository adapters
 - `project_planner/core/configuration`: `.cfg` and environment configuration

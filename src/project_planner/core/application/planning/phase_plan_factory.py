@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 
-from project_planner.core.application.planning.empty_phase_plan import EmptyPhasePlan
-from project_planner.core.application.planning.named_phase_plan import NamedPhasePlan
-from project_planner.core.application.planning.phase_plan_strategy import PhasePlanStrategy
-from project_planner.core.domain.phases.phase import Phase
-from project_planner.core.domain.projects.planning_method import PlanningMethod
+from project_planner.core.application.planning.EmptyPhasePlan import EmptyPhasePlan
+from project_planner.core.application.planning.NamedPhasePlan import NamedPhasePlan
+from project_planner.core.application.planning.PhasePlanStrategy import PhasePlanStrategy
+from project_planner.core.domain.phases.Phase import Phase
+from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
 
 _STRATEGIES: dict[PlanningMethod, PhasePlanStrategy] = {
     PlanningMethod.WATERFALL: NamedPhasePlan(

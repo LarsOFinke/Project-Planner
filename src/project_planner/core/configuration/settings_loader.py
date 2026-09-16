@@ -3,7 +3,7 @@ from configparser import ConfigParser
 from importlib.resources import files
 from pathlib import Path
 
-from project_planner.core.configuration.settings import Settings
+from project_planner.core.configuration.Settings import Settings
 
 
 def load_settings(config_path: str | Path | None = None) -> Settings:

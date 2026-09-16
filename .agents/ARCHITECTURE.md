@@ -13,7 +13,16 @@ frontend -> application services -> repository ports <- SQLite adapters
 
 `src/project_planner/core/application/`
 : Use cases grouped by feature. Planning strategies live under `planning`; managed image import
-  is handled by `assets/image_asset_service.py`.
+  is handled by `assets/ImageAssetService.py`.
+
+`src/project_planner/core/application/projects/`
+: Project CRUD is separated from workflow orchestration and read projections. The workflow
+  service coordinates projects with phase templates; the query service produces overview,
+  choice, and flattened-tree models for the frontend.
+
+`src/project_planner/core/application/artifacts/`
+: Artifact persistence remains generic. Diagram and workspace codecs own JSON validation,
+  version compatibility, and typed document conversion.
 
 `src/project_planner/core/ports/`
 : Repository protocols. Application logic depends on these boundaries rather than SQLite.
@@ -42,13 +51,18 @@ frontend -> application services -> repository ports <- SQLite adapters
 : Freehand canvas, draggable shape/image objects, transforms, toolboxes, and version-3 JSON.
 
 `shared/`
-: Theme tokens and dialog helpers. White is intentionally replaced by pearl grey. Gold means
-  primary/selected; red means destructive/blocked.
+: Theme tokens, dialog helpers, and the reusable categorized-toolbox control. White is
+  intentionally replaced by pearl grey. Gold means primary/selected; red means
+  destructive/blocked.
 
 ## Dependency rules
 
 - `core` never imports `frontend` or Kivy.
 - Domain entities never import application, infrastructure, or UI modules.
 - Frontend does not execute SQL or copy assets directly; it calls container services.
+- Feature panels receive only the services they use; only the frontend composition root sees the
+  complete `ApplicationContainer`.
+- Kivy canvases render typed documents and do not parse persisted JSON structures.
 - Repository adapters share `SQLiteDatabase`, but each adapter has one responsibility.
-- Each source file contains at most one class.
+- Each source file contains at most one class, and class modules use the exact PascalCase class
+  name as their filename.

@@ -1,3 +1,3 @@
-from project_planner.core.infrastructure.database.sqlite_database import SQLiteDatabase
+from project_planner.core.infrastructure.database.SQLiteDatabase import SQLiteDatabase
 
 __all__ = ["SQLiteDatabase"]
