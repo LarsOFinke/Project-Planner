@@ -61,7 +61,7 @@ class WorkspacePanel(BoxLayout):
         self.add_widget(toolbox)
         self.add_widget(self.canvas_editor)
         self.disabled = True
-        Clock.schedule_interval(
+        self._autosave_event = Clock.schedule_interval(
             self._autosave, autosave_seconds
         )
 
@@ -115,3 +115,7 @@ class WorkspacePanel(BoxLayout):
 
     def _autosave(self, _elapsed: float) -> None:
         self._save()
+
+    def dispose(self) -> None:
+        self._save()
+        self._autosave_event.cancel()

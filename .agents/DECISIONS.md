@@ -50,8 +50,8 @@ canvases. Codecs own validation and compatibility; widgets own rendering and int
 Editors with several commands use the shared categorized-toolbox control so actions remain
 discoverable and unclipped at 200% scaling. Small two-action areas remain direct controls.
 
-## AD-011 — Resolution-aware UI scale
+## AD-011 — User-controlled persistent UI scale
 
-The default `auto` scale preserves the proven 200% experience for the 1280×800 laptop profile
-and uses 100% for 1920×1080 or larger windows. Explicit cfg/environment values remain available
-for unusual DPI and accessibility needs.
+A top-right dropdown exposes 5%–500% in 5% steps. A change rebuilds the Kivy view at the new
+density, preserves project selection, cancels replaced autosave callbacks, and persists to the
+user cfg. Numeric environment configuration remains authoritative.

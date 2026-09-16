@@ -1,6 +1,11 @@
 from pathlib import Path
 
-from project_planner.core.configuration.settings_loader import load_settings
+import pytest
+
+from project_planner.core.configuration.settings_loader import (
+    load_settings,
+    save_ui_scale,
+)
 
 
 def test_cfg_values_can_be_overridden_by_environment(monkeypatch, tmp_path: Path) -> None:
@@ -38,3 +43,22 @@ def test_auto_scale_uses_native_density_for_full_hd(tmp_path: Path) -> None:
     config.write_text("[window]\nwidth = 1920\nheight = 1080\n", encoding="utf-8")
 
     assert load_settings(config).ui_scale == 1.0
+
+
+def test_ui_scale_preference_supports_five_to_five_hundred_percent(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "preferences.cfg"
+
+    save_ui_scale(0.05, config)
+    assert load_settings(config).ui_scale == 0.05
+    save_ui_scale(5.0, config)
+    assert load_settings(config).ui_scale == 5.0
+
+
+@pytest.mark.parametrize("ui_scale", [0.04, 5.01])
+def test_ui_scale_preference_rejects_values_outside_dropdown_range(
+    tmp_path: Path, ui_scale: float
+) -> None:
+    with pytest.raises(ValueError, match="between 0.05 and 5.0"):
+        save_ui_scale(ui_scale, tmp_path / "preferences.cfg")

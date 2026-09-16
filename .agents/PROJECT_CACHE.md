@@ -8,11 +8,11 @@ Last refreshed: 2026-09-17
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `bash .agents/scripts/check-all.sh`.
-- Current suite: 19 tests.
+- Current suite: 22 tests.
 - Entry point: `project_planner.frontend.main:main`.
 - Database: SQLite, default `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
-- UI scale: default `auto`; 1280×800 resolves to `2.00`, 1920×1080+ resolves to `1.00`.
+- UI scale: persistent top-right dropdown from 5%–500%; cfg/env accepts `auto` or `0.05`–`5.00`.
 - Class modules: exact PascalCase class filenames; non-class helper modules remain snake_case.
 
 ## Implemented workflows
@@ -62,7 +62,8 @@ Important overrides:
 - `PROJECT_PLANNER_AUTOSAVE_SECONDS`
 - `PROJECT_PLANNER_UI_SCALE`
 
-`PROJECT_PLANNER_UI_SCALE` accepts `auto` or a numeric value from `0.75` through `2.00`.
+`PROJECT_PLANNER_UI_SCALE` accepts `auto` or a numeric value from `0.05` through `5.00`.
+Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environment overrides win.
 
 ## High-value paths
 

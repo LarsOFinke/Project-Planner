@@ -5,6 +5,8 @@ from pathlib import Path
 
 from project_planner.core.configuration.Settings import Settings
 
+_USER_CONFIG = Path.home() / ".config" / "project_planner" / "config.cfg"
+
 
 def load_settings(config_path: str | Path | None = None) -> Settings:
     parser = ConfigParser()
@@ -12,7 +14,7 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
     parser.read_string(default.read_text(encoding="utf-8"))
     candidates = [
         Path.cwd() / "project_planner.cfg",
-        Path.home() / ".config" / "project_planner" / "config.cfg",
+        _USER_CONFIG,
     ]
     if config_path is not None:
         candidates.append(Path(config_path))
@@ -61,6 +63,20 @@ def _ui_scale(value: str, width: int, height: int) -> float:
         parsed = float(value)
     except ValueError as error:
         raise ValueError(f"Invalid UI scale: {value!r}") from error
-    if not 0.75 <= parsed <= 2.0:
-        raise ValueError("UI scale must be between 0.75 and 2.0")
+    if not 0.05 <= parsed <= 5.0:
+        raise ValueError("UI scale must be between 0.05 and 5.0")
     return parsed
+
+
+def save_ui_scale(ui_scale: float, config_path: str | Path | None = None) -> None:
+    validated = _ui_scale(str(ui_scale), 1, 1)
+    path = Path(config_path).expanduser() if config_path is not None else _USER_CONFIG
+    parser = ConfigParser()
+    if path.is_file():
+        parser.read(path)
+    if not parser.has_section("ui"):
+        parser.add_section("ui")
+    parser["ui"]["scale"] = f"{validated:.2f}"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as config_file:
+        parser.write(config_file)

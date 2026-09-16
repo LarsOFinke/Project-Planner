@@ -1,6 +1,9 @@
+from collections.abc import Callable
+
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
+from kivy.uix.spinner import Spinner
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 
 from project_planner.core.bootstrap.ApplicationContainer import ApplicationContainer
@@ -18,15 +21,22 @@ from project_planner.frontend.shared.theme import (
     SLATE_200,
     SLATE_700,
     paint_background,
+    style_spinner,
 )
 from project_planner.frontend.workspace.WorkspacePanel import WorkspacePanel
 
 
 class ProjectPlannerRoot(BoxLayout):
     def __init__(
-        self, container: ApplicationContainer, **kwargs: object
+        self,
+        container: ApplicationContainer,
+        ui_scale: float,
+        on_scale_change: Callable[[float], None],
+        **kwargs: object,
     ) -> None:
         super().__init__(orientation="vertical", spacing=0, **kwargs)
+        self._on_scale_change = on_scale_change
+        self._ui_scale = ui_scale
         paint_background(self, NAVY_950)
         self._build_header()
         body = BoxLayout(spacing=dp(12), padding=[dp(14), dp(12), dp(14), dp(14)])
@@ -107,17 +117,22 @@ class ProjectPlannerRoot(BoxLayout):
         identity.children[0].bind(
             size=lambda widget, size: setattr(widget, "text_size", size)
         )
-        local = Label(
-            text="LOCAL MODE",
-            color=GOLD,
-            bold=True,
-            font_size="12sp",
-            size_hint_x=None,
-            width=dp(110),
+        scale = style_spinner(
+            Spinner(
+                text=f"Scale {round(self._ui_scale * 100)}%",
+                values=[f"Scale {percent}%" for percent in range(5, 501, 5)],
+                size_hint_x=None,
+                width=dp(132),
+            )
         )
+        scale.bind(text=self._change_scale)
         header.add_widget(identity)
-        header.add_widget(local)
+        header.add_widget(scale)
         self.add_widget(header)
+
+    def _change_scale(self, _spinner: Spinner, value: str) -> None:
+        percent = int(value.removeprefix("Scale ").removesuffix("%"))
+        self._on_scale_change(percent / 100)
 
     def _add_tab(
         self, tabs: TabbedPanel, title: str, content: BoxLayout
@@ -155,3 +170,7 @@ class ProjectPlannerRoot(BoxLayout):
         self.browser.refresh()
         self.phases.show_project(project_id)
         self.links.show_project(project_id)
+
+    def dispose(self) -> None:
+        self.diagram.dispose()
+        self.workspace.dispose()

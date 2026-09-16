@@ -55,9 +55,12 @@ Configuration is read in this order: packaged defaults, `./project_planner.cfg`,
 settings. Available environment overrides are `PROJECT_PLANNER_DB`,
 `PROJECT_PLANNER_WINDOW_WIDTH`, `PROJECT_PLANNER_WINDOW_HEIGHT`, and
 `PROJECT_PLANNER_AUTOSAVE_SECONDS`. UI density can be adjusted with
-`PROJECT_PLANNER_UI_SCALE`. The default `auto` profile uses 200% for the 1280×800 laptop window
-and 100% for windows of 1920×1080 or larger. Set a numeric value from `0.75` through `2.00` to
-override automatic scaling.
+`PROJECT_PLANNER_UI_SCALE`. The top-right scale dropdown provides 5%–500% in 5% steps, applies
+changes immediately, and saves the choice to `~/.config/project_planner/config.cfg`. The initial
+`auto` profile uses the configured window dimensions as a fallback: 200% for 1280×800 and 100%
+for 1920×1080 or larger. Set a numeric cfg/environment value from `0.05` through `5.00` to
+override it; an environment override remains authoritative over the saved dropdown preference.
+The selected project remains open when the scale changes.
 Imported workspace images are copied below `~/.project_planner/data` by default. Override
 that location with `PROJECT_PLANNER_DATA_DIR` or `[storage] data_directory` in the `.cfg`.
 PNG, JPEG, GIF, BMP, and WebP imports are supported; deleting a canvas object does not delete

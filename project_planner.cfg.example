@@ -14,7 +14,7 @@ autosave_seconds = 20
 [ui]
 # Environment override: PROJECT_PLANNER_UI_SCALE
 # auto uses 1.00 at 1920x1080 or larger and 2.00 for the 1280x800 laptop profile.
-# A numeric value from 0.75 through 2.00 overrides automatic scaling.
+# A numeric value from 0.05 through 5.00 overrides automatic scaling.
 scale = auto
 
 [storage]
