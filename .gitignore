@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.sqlite3
+project_planner.cfg
+.coverage
+.pytest_cache/
+.venv/
+.venv-*/
+dist/
+build/
+*.egg-info/

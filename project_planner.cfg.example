@@ -1,0 +1,21 @@
+[database]
+# Environment override: PROJECT_PLANNER_DB
+path = ~/.project_planner/project_planner.sqlite3
+
+[window]
+# Environment overrides: PROJECT_PLANNER_WINDOW_WIDTH / PROJECT_PLANNER_WINDOW_HEIGHT
+width = 1280
+height = 800
+
+[editor]
+# Environment override: PROJECT_PLANNER_AUTOSAVE_SECONDS
+autosave_seconds = 20
+
+[ui]
+# Environment override: PROJECT_PLANNER_UI_SCALE
+# 1.00 is compact; the prototype defaults to 2.00 for high readability.
+scale = 2.00
+
+[storage]
+# Environment override: PROJECT_PLANNER_DATA_DIR
+data_directory = ~/.project_planner/data

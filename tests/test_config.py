@@ -1,0 +1,26 @@
+from pathlib import Path
+
+from project_planner.core.configuration.settings_loader import load_settings
+
+
+def test_cfg_values_can_be_overridden_by_environment(monkeypatch, tmp_path: Path) -> None:
+    config = tmp_path / "test.cfg"
+    config.write_text(
+        "[database]\npath = from-cfg.sqlite3\n"
+        "[window]\nwidth = 900\nheight = 600\n"
+        "[editor]\nautosave_seconds = 30\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PROJECT_PLANNER_DB", str(tmp_path / "from-env.sqlite3"))
+    monkeypatch.setenv("PROJECT_PLANNER_WINDOW_WIDTH", "1440")
+    monkeypatch.setenv("PROJECT_PLANNER_UI_SCALE", "1.45")
+    monkeypatch.setenv("PROJECT_PLANNER_DATA_DIR", str(tmp_path / "assets"))
+
+    settings = load_settings(config)
+
+    assert settings.database_path == tmp_path / "from-env.sqlite3"
+    assert settings.window_width == 1440
+    assert settings.window_height == 600
+    assert settings.autosave_seconds == 30
+    assert settings.ui_scale == 1.45
+    assert settings.data_directory == tmp_path / "assets"
