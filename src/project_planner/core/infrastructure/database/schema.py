@@ -1,3 +1,7 @@
+import sqlite3
+
+from project_planner.core.domain.shared.clock import utc_now
+
 SCHEMA = """
 PRAGMA foreign_keys = ON;
 
@@ -20,7 +24,10 @@ CREATE TABLE IF NOT EXISTS phases (
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'planned',
     position INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
     UNIQUE(project_id, position)
 );
 
@@ -46,3 +53,24 @@ CREATE TABLE IF NOT EXISTS artifacts (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_artifacts_project_kind
 ON artifacts(project_id, kind);
 """
+
+
+def migrate_schema(connection: sqlite3.Connection) -> None:
+    phase_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(phases)").fetchall()
+    }
+    additions = {
+        "status": "TEXT NOT NULL DEFAULT 'planned'",
+        "created_at": "TEXT NOT NULL DEFAULT ''",
+        "updated_at": "TEXT NOT NULL DEFAULT ''",
+    }
+    for name, declaration in additions.items():
+        if name not in phase_columns:
+            connection.execute(f"ALTER TABLE phases ADD COLUMN {name} {declaration}")
+    timestamp = utc_now().isoformat()
+    connection.execute(
+        "UPDATE phases SET created_at = ? WHERE created_at = ''", (timestamp,)
+    )
+    connection.execute(
+        "UPDATE phases SET updated_at = created_at WHERE updated_at = ''"
+    )

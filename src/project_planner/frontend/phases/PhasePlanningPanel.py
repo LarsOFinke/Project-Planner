@@ -10,9 +10,12 @@ from project_planner.core.application.phases.PhaseService import PhaseService
 from project_planner.core.application.projects.ProjectWorkflowService import (
     ProjectWorkflowService,
 )
-from project_planner.frontend.shared.dialogs import open_text_dialog
+from project_planner.core.domain.phases.Phase import Phase
+from project_planner.core.domain.phases.PhaseStatus import PhaseStatus
+from project_planner.frontend.phases.PhaseEditorPopup import PhaseEditorPopup
 from project_planner.frontend.shared.theme import (
     NAVY_900,
+    RED,
     SLATE_400,
     caption_label,
     paint_background,
@@ -78,10 +81,26 @@ class PhasePlanningPanel(BoxLayout):
             )
             return
         for phase in phases:
-            row = BoxLayout(size_hint_y=None, height=dp(52), spacing=dp(6))
+            row = BoxLayout(size_hint_y=None, height=dp(64), spacing=dp(6))
+            summary = phase.description.strip() or "No description"
             edit = style_button(
-                Button(text=f"{phase.position + 1:02}.  {phase.name}"), "quiet"
+                Button(
+                    text=(
+                        f"{phase.position + 1:02}.  {phase.name}\n"
+                        f"{phase.status.value.title()}  ·  {summary}"
+                    ),
+                    halign="left",
+                    valign="middle",
+                ),
+                "quiet",
             )
+            edit.bind(
+                size=lambda widget, size: setattr(
+                    widget, "text_size", (size[0] - dp(18), size[1])
+                )
+            )
+            if phase.status is PhaseStatus.BLOCKED:
+                edit.color = RED
             up = style_button(
                 Button(text="Up", size_hint_x=None, width=dp(46)), "secondary"
             )
@@ -91,7 +110,7 @@ class PhasePlanningPanel(BoxLayout):
             remove = style_button(
                 Button(text="Del", size_hint_x=None, width=dp(46)), "danger"
             )
-            edit.bind(on_release=partial(self._edit, phase.id, phase.name))
+            edit.bind(on_release=partial(self._edit, phase))
             up.bind(on_release=partial(self._move, phase.id, -1))
             down.bind(on_release=partial(self._move, phase.id, 1))
             remove.bind(on_release=partial(self._remove, phase.id))
@@ -104,23 +123,31 @@ class PhasePlanningPanel(BoxLayout):
     def _add(self, *_: object) -> None:
         if self._project_id is None:
             return
-        open_text_dialog("New phase", "Phase name", self._add_named)
+        PhaseEditorPopup(None, self._add_phase).open()
 
-    def _add_named(self, name: str) -> None:
+    def _add_phase(
+        self, name: str, description: str, status: PhaseStatus
+    ) -> None:
         if self._project_id is not None:
-            self._phases.add(self._project_id, name)
+            self._phases.add(self._project_id, name, description, status)
             self.refresh()
 
-    def _edit(self, phase_id: str, current_name: str, *_: object) -> None:
+    def _edit(self, phase: Phase, *_: object) -> None:
         if self._project_id is None:
             return
 
-        def submit(name: str) -> None:
+        def submit(name: str, description: str, status: PhaseStatus) -> None:
             if self._project_id is not None:
-                self._phases.update(phase_id, self._project_id, name, "")
+                self._phases.update(
+                    phase.id,
+                    self._project_id,
+                    name,
+                    description,
+                    status,
+                )
                 self.refresh()
 
-        open_text_dialog("Rename phase", "Phase name", submit, current_name)
+        PhaseEditorPopup(phase, submit).open()
 
     def _move(self, phase_id: str, offset: int, *_: object) -> None:
         if self._project_id is not None:

@@ -8,6 +8,15 @@ from project_planner.core.application.artifacts.codecs.DiagramDocumentCodec impo
 from project_planner.core.application.artifacts.codecs.WorkspaceDocumentCodec import (
     WorkspaceDocumentCodec,
 )
+from project_planner.core.application.artifacts.documents.WorkspaceDocument import (
+    WorkspaceDocument,
+)
+from project_planner.core.application.artifacts.documents.WorkspaceShape import (
+    WorkspaceShape,
+)
+from project_planner.core.application.artifacts.documents.WorkspaceStroke import (
+    WorkspaceStroke,
+)
 
 
 def test_diagram_codec_validates_nodes_edges_and_future_versions() -> None:
@@ -58,8 +67,26 @@ def test_workspace_codec_migrates_legacy_data_and_filters_missing_images(
     )
 
     assert document.version == 1
+    assert document.strokes[0].points == (1.0, 2.0, 3.0, 4.0)
+    assert document.strokes[0].color == "#D5DAE2"
     assert len(document.shapes) == 1
+    assert document.shapes[0].color == "#D5DAE2"
     assert [entry.element_id for entry in document.images] == ["kept"]
-    assert codec.encode(document)["version"] == 3
+    assert codec.encode(document)["version"] == 4
     with pytest.raises(ValueError, match="Unsupported workspace"):
-        codec.decode({"version": 4})
+        codec.decode({"version": 5})
+
+
+def test_workspace_codec_round_trips_stroke_and_shape_colors() -> None:
+    codec = WorkspaceDocumentCodec()
+    document = WorkspaceDocument(
+        strokes=(WorkspaceStroke((1, 2, 3, 4), "#C84B4B"),),
+        shapes=(
+            WorkspaceShape("shape", "ellipse", 10, 20, 100, 80, 15, "#4C78A8"),
+        ),
+    )
+
+    restored = codec.decode(codec.encode(document))
+
+    assert restored.strokes[0].color == "#C84B4B"
+    assert restored.shapes[0].color == "#4C78A8"

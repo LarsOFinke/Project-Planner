@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 
@@ -38,6 +38,8 @@ class CategorizedToolbox(BoxLayout):
         categories = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(5))
         for name in self._groups:
             button = style_button(Button(text=name), "quiet")
+            if len(self._groups) > 4:
+                button.font_size = sp(12)
             button.bind(on_release=partial(self.show_group, name))
             self._category_buttons[name] = button
             categories.add_widget(button)
@@ -54,5 +56,7 @@ class CategorizedToolbox(BoxLayout):
             style_button(button, "selected" if category == name else "quiet")
         for label, callback, variant in self._groups[name]:
             button = style_button(Button(text=label), variant)
+            if len(self._groups[name]) > 4:
+                button.font_size = sp(12)
             button.bind(on_release=callback)
             self._actions.add_widget(button)

@@ -15,21 +15,27 @@ from project_planner.core.application.artifacts.documents.WorkspaceImage import 
 from project_planner.core.application.artifacts.documents.WorkspaceShape import (
     WorkspaceShape,
 )
-from project_planner.frontend.shared.theme import NAVY_700, SLATE_200
+from project_planner.core.application.artifacts.documents.WorkspaceStroke import (
+    WorkspaceStroke,
+)
+from project_planner.frontend.shared.theme import NAVY_700, hex_color
 from project_planner.frontend.workspace.DraggableImage import DraggableImage
 from project_planner.frontend.workspace.ShapeWidget import ShapeWidget
 
 
 class FreehandCanvas(StencilView, FloatLayout):
+    DEFAULT_COLOR = "#D5DAE2"
+
     def __init__(
         self, on_change: Callable[[], None], **kwargs: object
     ) -> None:
         super().__init__(**kwargs)
         self._on_change = on_change
-        self._strokes: list[list[float]] = []
+        self._strokes: list[tuple[list[float], str]] = []
         self._stroke_instructions: list[object] = []
         self._elements: dict[str, ShapeWidget | DraggableImage] = {}
         self._selected_id: str | None = None
+        self._current_color = self.DEFAULT_COLOR
         self._last_canvas_pos = self.pos
         with self.canvas.before:
             Color(*NAVY_700)
@@ -54,6 +60,7 @@ class FreehandCanvas(StencilView, FloatLayout):
         pos: tuple[float, float] | None = None,
         size: tuple[float, float] | None = None,
         rotation: float = 0,
+        color: str | None = None,
         notify: bool = True,
     ) -> str:
         if kind not in {"rectangle", "ellipse", "line", "arrow"}:
@@ -66,6 +73,7 @@ class FreehandCanvas(StencilView, FloatLayout):
             self._select,
             self._on_change,
             rotation_degrees=rotation,
+            color_hex=color or self._current_color,
             pos=pos or default_position,
         )
         if size is not None:
@@ -127,6 +135,15 @@ class FreehandCanvas(StencilView, FloatLayout):
         if self._selected_id is not None:
             self._elements[self._selected_id].scale_by(factor)
 
+    def set_color(self, color: str) -> None:
+        hex_color(color)
+        self._current_color = color.upper()
+        if self._selected_id is None:
+            return
+        selected = self._elements[self._selected_id]
+        if isinstance(selected, ShapeWidget):
+            selected.set_color(self._current_color)
+
     def _select(self, element_id: str) -> None:
         self._selected_id = element_id
         for current_id, element in self._elements.items():
@@ -139,9 +156,9 @@ class FreehandCanvas(StencilView, FloatLayout):
             return True
         self._select_none()
         points = [touch.x, touch.y]
-        self._strokes.append(points)
+        self._strokes.append((points, self._current_color))
         with self.canvas:
-            color = Color(*SLATE_200)
+            color = Color(*hex_color(self._current_color))
             line = Line(points=points, width=2)
         self._stroke_instructions.extend((color, line))
         touch.ud["planner_line"] = line
@@ -186,12 +203,12 @@ class FreehandCanvas(StencilView, FloatLayout):
         self._load_images(document.images)
         self._select_none()
 
-    def _load_strokes(self, strokes: tuple[tuple[float, ...], ...]) -> None:
-        for raw_stroke in strokes:
-            points = list(raw_stroke)
-            self._strokes.append(points)
+    def _load_strokes(self, strokes: tuple[WorkspaceStroke, ...]) -> None:
+        for stroke in strokes:
+            points = list(stroke.points)
+            self._strokes.append((points, stroke.color))
             with self.canvas:
-                color = Color(*SLATE_200)
+                color = Color(*hex_color(stroke.color))
                 line = Line(points=points, width=2)
             self._stroke_instructions.extend((color, line))
 
@@ -203,6 +220,7 @@ class FreehandCanvas(StencilView, FloatLayout):
                 pos=(self.x + shape.x, self.y + shape.y),
                 size=(shape.width, shape.height),
                 rotation=shape.rotation,
+                color=shape.color,
                 notify=False,
             )
 
@@ -231,6 +249,7 @@ class FreehandCanvas(StencilView, FloatLayout):
                         element.width,
                         element.height,
                         element.rotation_degrees,
+                        element.color_hex,
                     )
                 )
             else:
@@ -246,7 +265,10 @@ class FreehandCanvas(StencilView, FloatLayout):
                     )
                 )
         return WorkspaceDocument(
-            strokes=tuple(tuple(stroke) for stroke in self._strokes),
+            strokes=tuple(
+                WorkspaceStroke(tuple(points), color)
+                for points, color in self._strokes
+            ),
             shapes=tuple(shapes),
             images=tuple(images),
         )

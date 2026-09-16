@@ -10,11 +10,15 @@ from project_planner.core.application.artifacts.documents.WorkspaceImage import 
 from project_planner.core.application.artifacts.documents.WorkspaceShape import (
     WorkspaceShape,
 )
+from project_planner.core.application.artifacts.documents.WorkspaceStroke import (
+    WorkspaceStroke,
+)
 
 
 class WorkspaceDocumentCodec:
-    CURRENT_VERSION = 3
+    CURRENT_VERSION = 4
     SHAPE_KINDS = {"rectangle", "ellipse", "line", "arrow"}
+    DEFAULT_COLOR = "#D5DAE2"
 
     def decode(self, data: object) -> WorkspaceDocument:
         if not isinstance(data, dict):
@@ -30,20 +34,31 @@ class WorkspaceDocumentCodec:
     def encode(self, document: WorkspaceDocument) -> dict[str, object]:
         return {
             "version": self.CURRENT_VERSION,
-            "strokes": [list(stroke) for stroke in document.strokes],
+            "strokes": [
+                {"points": list(stroke.points), "color": stroke.color}
+                for stroke in document.strokes
+            ],
             "shapes": [self._element_data(shape, kind=shape.kind) for shape in document.shapes],
             "images": [self._element_data(image, source=image.source) for image in document.images],
         }
 
-    def _decode_strokes(self, value: object) -> tuple[tuple[float, ...], ...]:
+    def _decode_strokes(self, value: object) -> tuple[WorkspaceStroke, ...]:
         if not isinstance(value, list):
             return ()
-        strokes: list[tuple[float, ...]] = []
+        strokes: list[WorkspaceStroke] = []
         for entry in value:
-            if not isinstance(entry, list) or len(entry) < 4:
+            points = entry.get("points") if isinstance(entry, dict) else entry
+            if not isinstance(points, list) or len(points) < 4:
                 continue
             try:
-                strokes.append(tuple(float(point) for point in entry))
+                strokes.append(
+                    WorkspaceStroke(
+                        tuple(float(point) for point in points),
+                        self._color(
+                            entry.get("color") if isinstance(entry, dict) else None
+                        ),
+                    )
+                )
             except (TypeError, ValueError):
                 continue
         return tuple(strokes)
@@ -68,6 +83,7 @@ class WorkspaceDocumentCodec:
                         width=float(entry.get("width", 130)),
                         height=float(entry.get("height", 86)),
                         rotation=float(entry.get("rotation", 0)),
+                        color=self._color(entry.get("color")),
                     )
                 )
             except (TypeError, ValueError):
@@ -102,7 +118,7 @@ class WorkspaceDocumentCodec:
 
     @staticmethod
     def _element_data(element: object, **specific: object) -> dict[str, object]:
-        return {
+        data = {
             "id": element.element_id,
             "x": element.x,
             "y": element.y,
@@ -111,6 +127,20 @@ class WorkspaceDocumentCodec:
             "rotation": element.rotation,
             **specific,
         }
+        color = getattr(element, "color", None)
+        if color is not None:
+            data["color"] = color
+        return data
+
+    def _color(self, value: object) -> str:
+        color = str(value or self.DEFAULT_COLOR).upper()
+        if len(color) != 7 or color[0] != "#":
+            return self.DEFAULT_COLOR
+        try:
+            int(color[1:], 16)
+        except ValueError:
+            return self.DEFAULT_COLOR
+        return color
 
     def _version(self, value: object) -> int:
         try:

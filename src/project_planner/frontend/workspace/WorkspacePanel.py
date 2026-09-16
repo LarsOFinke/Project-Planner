@@ -53,6 +53,7 @@ class WorkspacePanel(BoxLayout):
             choose_image=self._choose_image,
             rotate=self._rotate,
             scale=self._scale,
+            set_color=self._set_color,
             delete_selected=self._delete_selected,
             clear_all=self._clear,
             save=self._save,
@@ -98,6 +99,9 @@ class WorkspacePanel(BoxLayout):
 
     def _scale(self, factor: float) -> None:
         self.canvas_editor.scale_selected(factor)
+
+    def _set_color(self, color: str) -> None:
+        self.canvas_editor.set_color(color)
 
     def _clear(self, *_: object) -> None:
         self.canvas_editor.clear_drawing()

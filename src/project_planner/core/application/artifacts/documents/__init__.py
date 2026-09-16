@@ -11,6 +11,9 @@ from project_planner.core.application.artifacts.documents.WorkspaceImage import 
 from project_planner.core.application.artifacts.documents.WorkspaceShape import (
     WorkspaceShape,
 )
+from project_planner.core.application.artifacts.documents.WorkspaceStroke import (
+    WorkspaceStroke,
+)
 
 __all__ = [
     "DiagramDocument",
@@ -18,4 +21,5 @@ __all__ = [
     "WorkspaceDocument",
     "WorkspaceImage",
     "WorkspaceShape",
+    "WorkspaceStroke",
 ]

@@ -6,11 +6,14 @@ from project_planner.core.application.artifacts.documents.WorkspaceImage import 
 from project_planner.core.application.artifacts.documents.WorkspaceShape import (
     WorkspaceShape,
 )
+from project_planner.core.application.artifacts.documents.WorkspaceStroke import (
+    WorkspaceStroke,
+)
 
 
 @dataclass(frozen=True, slots=True)
 class WorkspaceDocument:
-    strokes: tuple[tuple[float, ...], ...] = ()
+    strokes: tuple[WorkspaceStroke, ...] = ()
     shapes: tuple[WorkspaceShape, ...] = ()
     images: tuple[WorkspaceImage, ...] = ()
-    version: int = 3
+    version: int = 4

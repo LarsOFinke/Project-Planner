@@ -8,7 +8,7 @@ Last refreshed: 2026-09-17
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `bash .agents/scripts/check-all.sh`.
-- Current suite: 22 tests.
+- Current suite: 25 tests.
 - Entry point: `project_planner.frontend.main:main`.
 - Database: SQLite, default `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
@@ -19,7 +19,7 @@ Last refreshed: 2026-09-17
 
 - hierarchical project browser with project status;
 - overview metadata, timestamps, parent project, and planning method;
-- editable Waterfall, Agile, and Custom phases;
+- editable Waterfall, Agile, and Custom phase objects with descriptions, statuses, and timestamps;
 - project links and backlinks;
 - draggable node/edge diagram editor;
 - freehand workspace;
@@ -28,7 +28,7 @@ Last refreshed: 2026-09-17
 - shared categorized-toolbox component;
 - content-sized text and image dialogs with responsive bounds and keyboard submission;
 - wrapping title/caption primitives and density-aware, horizontally scrollable planning tabs;
-- workspace toolboxes: Shapes, Media, Transform, Manage;
+- workspace toolboxes: Shapes, Media, Colors, Transform, Manage;
 - diagram toolboxes: Nodes, Relations, Manage;
 - local artifact autosave with JSON payloads.
 - project workflow orchestration for project/phase lifecycle operations;
@@ -42,8 +42,10 @@ Last refreshed: 2026-09-17
 - Relational schema: `core/infrastructure/database/schema.py`.
 - Projects, phases, links, and artifacts cascade from project deletion as defined by SQLite.
 - Diagram JSON version: `1`.
-- Workspace JSON version: `3`.
-- Workspace JSON stores strokes, shapes, images, position, size, and rotation.
+- Workspace JSON version: `4`.
+- Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation.
+- Phase rows persist description, status, created timestamp, and updated timestamp; startup migrates
+  older phase tables in place with `planned` status and preserved rows.
 - Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
 - Deleting an image object does not delete its managed source file.
 - Image location: `<data_directory>/projects/<project-id>/images/<uuid>.<ext>`.

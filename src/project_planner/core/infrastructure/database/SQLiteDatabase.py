@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from project_planner.core.infrastructure.database.schema import SCHEMA
+from project_planner.core.infrastructure.database.schema import SCHEMA, migrate_schema
 
 
 class SQLiteDatabase:
@@ -16,6 +16,7 @@ class SQLiteDatabase:
             self._memory_connection = self._new_connection()
         with self.connection() as connection:
             connection.executescript(SCHEMA)
+            migrate_schema(connection)
 
     def _new_connection(self) -> sqlite3.Connection:
         connection = sqlite3.connect(str(self.path))

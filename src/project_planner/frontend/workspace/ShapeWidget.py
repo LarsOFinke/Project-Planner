@@ -4,7 +4,7 @@ from kivy.graphics import Color, Ellipse, Line, PopMatrix, PushMatrix, Rectangle
 from kivy.metrics import dp
 from kivy.uix.widget import Widget
 
-from project_planner.frontend.shared.theme import GOLD, NAVY_700, SLATE_200
+from project_planner.frontend.shared.theme import GOLD, hex_color
 
 
 class ShapeWidget(Widget):
@@ -15,33 +15,49 @@ class ShapeWidget(Widget):
         on_select: Callable[[str], None],
         on_change: Callable[[], None],
         rotation_degrees: float = 0,
+        color_hex: str = "#D5DAE2",
         **kwargs: object,
     ) -> None:
         super().__init__(size_hint=(None, None), size=(dp(130), dp(86)), **kwargs)
         self.element_id = element_id
         self.kind = kind
         self.rotation_degrees = rotation_degrees
+        self.color_hex = color_hex
+        self._base_color = hex_color(color_hex)
+        self._selected = False
         self._on_select = on_select
         self._on_change = on_change
         self._drag_offset = (0.0, 0.0)
         with self.canvas:
             PushMatrix()
             self._rotation = Rotate(angle=rotation_degrees, origin=self.center)
-            self._fill_color = Color(*NAVY_700)
+            self._fill_color = Color(*self._shape_fill())
             self._fill = (
                 Ellipse(pos=self.pos, size=self.size)
                 if kind == "ellipse"
                 else Rectangle(pos=self.pos, size=self.size)
             )
-            self._line_color = Color(*SLATE_200)
+            self._line_color = Color(*self._base_color)
             self._outline = Line(width=2)
             PopMatrix()
         self.bind(pos=self._update_graphics, size=self._update_graphics)
         self._update_graphics()
 
     def set_selected(self, selected: bool) -> None:
-        self._line_color.rgba = GOLD if selected else SLATE_200
+        self._selected = selected
+        self._line_color.rgba = GOLD if selected else self._base_color
         self._outline.width = 3 if selected else 2
+
+    def set_color(self, color_hex: str) -> None:
+        self.color_hex = color_hex
+        self._base_color = hex_color(color_hex)
+        self._fill_color.rgba = self._shape_fill()
+        self._line_color.rgba = GOLD if self._selected else self._base_color
+        self._on_change()
+
+    def _shape_fill(self) -> tuple[float, float, float, float]:
+        red, green, blue, _alpha = self._base_color
+        return red, green, blue, 0.24
 
     def rotate_by(self, degrees: float) -> None:
         self.rotation_degrees = (self.rotation_degrees + degrees) % 360

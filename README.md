@@ -8,11 +8,12 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 - file-browser-style project hierarchy
 - project status, description, planning method, and timestamps
 - editable project links and backlinks
-- editable Waterfall, Agile, and Custom phase plans
+- editable Waterfall, Agile, and Custom phase objects with descriptions, statuses, and timestamps
 - local SQLite persistence
 - modular Kivy desktop UI with project browser and tabbed planning levels
 - persistent node/edge diagram editor with draggable nodes
-- persistent freehand workspace with local autosave, movable/rotatable/scalable shapes and images
+- persistent freehand workspace with selectable stroke/shape colors, local autosave, and movable,
+  rotatable, scalable shapes and images
 - categorized diagram and workspace toolboxes that keep dense actions readable across scale profiles
 
 The core is deliberately independent from Kivy and SQLite details. Application workflows own

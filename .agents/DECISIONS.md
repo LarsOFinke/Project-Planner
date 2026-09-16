@@ -55,3 +55,15 @@ discoverable and unclipped at 200% scaling. Small two-action areas remain direct
 A top-right dropdown exposes 5%–500% in 5% steps. A change rebuilds the Kivy view at the new
 density, preserves project selection, cancels replaced autosave callbacks, and persists to the
 user cfg. Numeric environment configuration remains authoritative.
+
+## AD-012 — First-class phase metadata
+
+Phases persist their own description, lifecycle status, creation time, and update time. SQLite
+startup performs additive migration for existing phase tables so older project plans remain
+available without a manual conversion step.
+
+## AD-013 — Persisted workspace colors
+
+Workspace document version 4 stores colors with strokes and shapes. The codec assigns the former
+pearl-grey default when reading version 1–3 documents, preserving their appearance while allowing
+new and selected objects to use the workspace palette.
