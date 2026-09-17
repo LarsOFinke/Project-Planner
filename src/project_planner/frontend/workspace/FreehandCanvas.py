@@ -25,7 +25,7 @@ from project_planner.frontend.workspace.WorkspaceMode import WorkspaceMode
 
 
 class FreehandCanvas(StencilView, FloatLayout):
-    DEFAULT_COLOR = "#D5DAE2"
+    DEFAULT_COLOR = "#D7DDE5"
 
     def __init__(self, on_change: Callable[[], None], **kwargs: object) -> None:
         super().__init__(**kwargs)

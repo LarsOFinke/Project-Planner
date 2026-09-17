@@ -5,7 +5,6 @@ from functools import partial
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 
 from project_planner.core.application.custom.SectionService import SectionService
@@ -16,13 +15,14 @@ from project_planner.core.application.projects.ProjectWorkflowService import (
 from project_planner.core.domain.custom.SectionType import SectionType
 from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
 from project_planner.frontend.projects.NewProjectPopup import NewProjectPopup
+from project_planner.frontend.projects.ProjectTreeRow import ProjectTreeRow
 from project_planner.frontend.shared.theme import (
-    GOLD,
+    BORDER,
     NAVY_800,
-    RED,
-    SLATE_400,
     caption_label,
+    empty_state_label,
     paint_background,
+    section_label,
     style_button,
 )
 
@@ -49,8 +49,8 @@ class ProjectBrowser(BoxLayout):
         self._on_select = on_select
         self._on_exit = on_exit
         self.selected_id: str | None = None
-        paint_background(self, NAVY_800, 8)
-        self._list = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
+        paint_background(self, NAVY_800, 10, BORDER)
+        self._list = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
         self._list.bind(minimum_height=self._list.setter("height"))
         self._build_header()
         scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
@@ -64,19 +64,8 @@ class ProjectBrowser(BoxLayout):
         self.refresh()
 
     def _build_header(self) -> None:
-        self.add_widget(
-            Label(
-                text="PROJECTS",
-                color=GOLD,
-                bold=True,
-                font_size="13sp",
-                size_hint_y=None,
-                height=dp(28),
-                halign="left",
-            )
-        )
-        self.children[0].bind(size=lambda widget, size: setattr(widget, "text_size", size))
-        self.add_widget(caption_label("Organize work from portfolio to task."))
+        self.add_widget(section_label("Project directory"))
+        self.add_widget(caption_label("Projects and child projects in one hierarchy."))
         controls = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(7))
         new_root = style_button(Button(text="+ Project"), "primary")
         new_child = style_button(Button(text="+ Child"), "secondary")
@@ -126,47 +115,23 @@ class ProjectBrowser(BoxLayout):
         items = self._queries.list_tree()
 
         if not items:
-            empty = Label(
-                text="No projects yet\nCreate one to begin planning.",
-                color=SLATE_400,
-                font_size="13sp",
-                halign="center",
-                size_hint_y=None,
-                height=dp(90),
+            self._list.add_widget(
+                empty_state_label("No projects yet\nCreate a project to begin planning.", 92)
             )
-            empty.bind(size=lambda widget, size: setattr(widget, "text_size", size))
-            self._list.add_widget(empty)
             return
 
         for item in items:
             project = item.project
-            prefix = "    " * item.depth
             selected = project.id == self.selected_id
-            marker = ">" if selected else " "
-            button = Button(
-                text=(
-                    f"{prefix}{marker}  {project.title}\n{prefix}    {project.status.value.title()}"
-                ),
-                size_hint_y=None,
-                height=dp(54),
-                halign="left",
-                valign="middle",
+            self._list.add_widget(
+                ProjectTreeRow(
+                    project.title,
+                    project.status.value,
+                    item.depth,
+                    selected,
+                    partial(self.select, project.id),
+                )
             )
-            style_button(button, "selected" if selected else "quiet")
-            button.color = (
-                RED
-                if project.status.value == "blocked" and not selected
-                else (GOLD if not selected else button.color)
-            )
-            button.font_size = "13sp"
-            button.bind(
-                size=lambda widget, size: setattr(widget, "text_size", (size[0] - dp(16), size[1]))
-            )
-            button.bind(on_release=partial(self._select_event, project.id))
-            self._list.add_widget(button)
-
-    def _select_event(self, project_id: str, *_: object) -> None:
-        self.select(project_id)
 
     def select(self, project_id: str) -> None:
         self.selected_id = project_id

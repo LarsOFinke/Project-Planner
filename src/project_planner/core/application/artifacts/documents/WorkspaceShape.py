@@ -10,4 +10,4 @@ class WorkspaceShape:
     width: float
     height: float
     rotation: float = 0.0
-    color: str = "#D5DAE2"
+    color: str = "#D7DDE5"

@@ -15,7 +15,7 @@ class ShapeWidget(Widget):
         on_select: Callable[[str], None],
         on_change: Callable[[], None],
         rotation_degrees: float = 0,
-        color_hex: str = "#D5DAE2",
+        color_hex: str = "#D7DDE5",
         **kwargs: object,
     ) -> None:
         super().__init__(size_hint=(None, None), size=(dp(130), dp(86)), **kwargs)

@@ -1,6 +1,4 @@
-from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
 
 from project_planner.core.application.agile.AgilePlanningService import AgilePlanningService
 from project_planner.core.application.custom.SectionService import SectionService
@@ -15,7 +13,7 @@ from project_planner.frontend.planning.custom.CustomPlanningPanel import CustomP
 from project_planner.frontend.planning.waterfall.WaterfallPlanningPanel import (
     WaterfallPlanningPanel,
 )
-from project_planner.frontend.shared.theme import NAVY_900, SLATE_400, paint_background
+from project_planner.frontend.shared.theme import NAVY_900, empty_state_label, paint_background
 
 
 class PlanningPanel(BoxLayout):
@@ -70,4 +68,4 @@ class PlanningPanel(BoxLayout):
 
     def _show_empty(self, message: str) -> None:
         self.clear_widgets()
-        self.add_widget(Label(text=message, color=SLATE_400, size_hint_y=None, height=dp(80)))
+        self.add_widget(empty_state_label(message, 96))

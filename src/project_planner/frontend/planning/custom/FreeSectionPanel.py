@@ -72,7 +72,7 @@ class FreeSectionPanel(BoxLayout):
             down = style_button(Button(text="Down", size_hint_x=None, width=dp(58)), "secondary")
             up.bind(on_release=partial(self._move, item.id, -1))
             down.bind(on_release=partial(self._move, item.id, 1))
-            remove = style_button(Button(text="Del", size_hint_x=None, width=dp(54)), "danger")
+            remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
             remove.bind(on_release=partial(self._remove, item.id))
             row.add_widget(edit)
             row.add_widget(up)

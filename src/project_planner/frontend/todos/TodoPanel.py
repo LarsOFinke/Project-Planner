@@ -12,9 +12,10 @@ from project_planner.core.domain.todos.TodoModule import TodoModule
 from project_planner.core.domain.todos.TodoStatus import TodoStatus
 from project_planner.frontend.shared.theme import (
     NAVY_900,
-    SLATE_400,
     caption_label,
+    empty_state_label,
     paint_background,
+    section_label,
     style_button,
     title_label,
 )
@@ -42,11 +43,12 @@ class TodoPanel(BoxLayout):
         add = style_button(Button(text="+ Add to-do", size_hint_x=None, width=dp(140)), "primary")
         add.bind(on_release=self._add)
         controls.add_widget(add)
+        self.add_widget(controls)
+        self.add_widget(section_label("Items"))
         self._rows = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
         self._rows.bind(minimum_height=self._rows.setter("height"))
         scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
         scroll.add_widget(self._rows)
-        self.add_widget(controls)
         self.add_widget(scroll)
         self.disabled = True
 
@@ -71,14 +73,7 @@ class TodoPanel(BoxLayout):
             return
         todos = self._todos.list_for_context(self._project_id, self._module, self._phase_id)
         if not todos:
-            self._rows.add_widget(
-                Label(
-                    text="No to-dos in this view.",
-                    color=SLATE_400,
-                    size_hint_y=None,
-                    height=dp(70),
-                )
-            )
+            self._rows.add_widget(empty_state_label("No to-dos in this view."))
             return
         for todo in todos:
             self._add_row(todo)

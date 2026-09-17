@@ -19,6 +19,8 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 - SQLAlchemy persistence with SQLite as the local default and ordered Alembic migrations
 - recoverable UI errors with a local diagnostics log and Admin health view
 - modular Kivy desktop UI with project browser and tabbed planning levels
+- shared low-glare visual system with structural tree indentation, rounded controls, and clear
+  section hierarchy
 - persistent node/edge diagram editor with draggable nodes
 - persistent freehand workspace with explicit Select/Draw modes, selectable stroke/shape colors,
   local autosave, and movable, rotatable, scalable shapes and images

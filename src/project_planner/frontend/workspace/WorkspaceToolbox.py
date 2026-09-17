@@ -5,6 +5,7 @@ from project_planner.frontend.shared.theme import (
     NAVY_950,
     PEARL_GREY,
     hex_color,
+    set_button_background,
     style_button,
 )
 from project_planner.frontend.workspace.WorkspaceMode import WorkspaceMode
@@ -26,14 +27,14 @@ class WorkspaceToolbox(CategorizedToolbox):
     ) -> None:
         self._set_color = set_color
         self._set_mode = set_mode
-        self._selected_color = "#D5DAE2"
+        self._selected_color = "#D7DDE5"
         self._selected_mode = WorkspaceMode.SELECT
         self._palette_colors = {
-            "Pearl": "#D5DAE2",
-            "Gold": "#D4A72C",
-            "Red": "#C84B4B",
-            "Blue": "#4C78A8",
-            "Green": "#4E9A6A",
+            "Pearl": "#D7DDE5",
+            "Gold": "#C9A55C",
+            "Red": "#CE6A6A",
+            "Blue": "#648DB8",
+            "Green": "#69A987",
         }
         super().__init__(
             groups={
@@ -96,7 +97,7 @@ class WorkspaceToolbox(CategorizedToolbox):
             color = self._palette_colors[button.text]
             red, green, blue, _alpha = hex_color(color)
             opacity = 1.0 if color == self._selected_color else 0.62
-            button.background_color = (red, green, blue, opacity)
+            set_button_background(button, (red, green, blue, opacity))
             button.color = NAVY_950 if button.text in {"Pearl", "Gold"} else PEARL_GREY
 
     def _choose_color(self, color: str) -> None:

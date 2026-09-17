@@ -74,9 +74,9 @@ def test_workspace_codec_migrates_legacy_data_and_filters_missing_images(
 
     assert document.version == 1
     assert document.strokes[0].points == (1.0, 2.0, 3.0, 4.0)
-    assert document.strokes[0].color == "#D5DAE2"
+    assert document.strokes[0].color == "#D7DDE5"
     assert len(document.shapes) == 1
-    assert document.shapes[0].color == "#D5DAE2"
+    assert document.shapes[0].color == "#D7DDE5"
     assert [entry.element_id for entry in document.images] == ["kept"]
     assert codec.encode(document)["version"] == 4
     with pytest.raises(ValueError, match="Unsupported workspace"):

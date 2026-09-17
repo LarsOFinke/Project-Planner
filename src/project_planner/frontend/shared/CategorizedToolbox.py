@@ -6,6 +6,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 
 from project_planner.frontend.shared.theme import (
+    BORDER,
     NAVY_800,
     paint_background,
     style_button,
@@ -24,18 +25,18 @@ class CategorizedToolbox(BoxLayout):
     ) -> None:
         super().__init__(
             orientation="vertical",
-            spacing=dp(5),
+            spacing=dp(6),
             size_hint_y=None,
-            height=dp(92),
-            padding=dp(5),
+            height=dp(102),
+            padding=dp(7),
             **kwargs,
         )
         if not groups:
             raise ValueError("A toolbox requires at least one group")
         self._groups = {name: tuple(actions) for name, actions in groups.items()}
-        paint_background(self, NAVY_800, 6)
+        paint_background(self, NAVY_800, 8, BORDER)
         self._category_buttons: dict[str, Button] = {}
-        categories = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(5))
+        categories = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(6))
         for name in self._groups:
             button = style_button(Button(text=name), "quiet")
             if len(self._groups) > 4:

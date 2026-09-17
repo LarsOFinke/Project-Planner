@@ -12,6 +12,8 @@ from project_planner.core.application.health.SystemHealthService import SystemHe
 from project_planner.core.domain.health.ApplicationIssue import ApplicationIssue
 from project_planner.frontend.shared.dialogs import open_details_dialog
 from project_planner.frontend.shared.theme import (
+    BORDER,
+    NAVY_800,
     NAVY_900,
     PEARL_GREY,
     RED,
@@ -19,6 +21,7 @@ from project_planner.frontend.shared.theme import (
     SLATE_400,
     caption_label,
     paint_background,
+    section_label,
     style_button,
     title_label,
 )
@@ -58,8 +61,10 @@ class AdminPanel(BoxLayout):
             height=dp(132),
         )
         self.health_summary.bind(size=lambda widget, size: setattr(widget, "text_size", size))
+        self.health_summary.padding = [dp(16), dp(10)]
+        paint_background(self.health_summary, NAVY_800, 8, BORDER)
         self.add_widget(self.health_summary)
-        self.add_widget(title_label("Recent issues"))
+        self.add_widget(section_label("Recent issues"))
         self._rows = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
         self._rows.bind(minimum_height=self._rows.setter("height"))
         scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))

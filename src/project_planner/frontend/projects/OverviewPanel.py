@@ -32,6 +32,7 @@ from project_planner.frontend.shared.theme import (
     caption_label,
     field_label,
     paint_background,
+    section_label,
     style_button,
     style_input,
     style_spinner,
@@ -64,13 +65,14 @@ class OverviewPanel(BoxLayout):
         scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
         form = BoxLayout(
             orientation="vertical",
-            spacing=dp(8),
+            spacing=dp(9),
             padding=[dp(24), dp(20), dp(24), dp(24)],
             size_hint_y=None,
         )
         form.bind(minimum_height=form.setter("height"))
         form.add_widget(title_label("Project overview"))
         form.add_widget(caption_label("Purpose, ownership, and planning context at a glance."))
+        form.add_widget(section_label("Project brief"))
         form.add_widget(field_label("Title"))
         self.title_input = style_input(
             TextInput(
@@ -86,10 +88,11 @@ class OverviewPanel(BoxLayout):
             TextInput(
                 hint_text="What outcome should this project create?",
                 size_hint_y=None,
-                height=dp(150),
+                height=dp(132),
             )
         )
         form.add_widget(self.description_input)
+        form.add_widget(section_label("Schedule and structure"))
         date_labels = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(10))
         date_labels.add_widget(field_label("Start date"))
         date_labels.add_widget(field_label("Target date"))
@@ -113,6 +116,7 @@ class OverviewPanel(BoxLayout):
         selectors.add_widget(self.method)
         selectors.add_widget(self.parent_spinner)
         form.add_widget(selectors)
+        form.add_widget(section_label("People"))
         people_labels = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(10))
         people_labels.add_widget(field_label("Project owner"))
         people_labels.add_widget(field_label("Assignee"))
@@ -123,6 +127,7 @@ class OverviewPanel(BoxLayout):
         people.add_widget(self.owner)
         people.add_widget(self.assignee)
         form.add_widget(people)
+        form.add_widget(section_label("Notes and activity"))
         form.add_widget(field_label("Project notes"))
         self.notes = style_input(
             TextInput(
@@ -143,13 +148,7 @@ class OverviewPanel(BoxLayout):
         self.metadata.bind(size=lambda widget, size: setattr(widget, "text_size", size))
         form.add_widget(self.metadata)
         form.add_widget(Widget(size_hint_y=None, height=dp(8)))
-        actions = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(8))
-        todos = style_button(Button(text="General To-Dos"), "secondary")
-        relationships = style_button(Button(text="Linked projects"), "secondary")
-        todos.bind(on_release=self._open_todos)
-        relationships.bind(on_release=self._open_project_links)
-        actions.add_widget(todos)
-        actions.add_widget(relationships)
+        actions = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(8))
         save = style_button(
             Button(
                 text="Save changes",
@@ -158,8 +157,14 @@ class OverviewPanel(BoxLayout):
             ),
             "primary",
         )
+        todos = style_button(Button(text="General To-Dos"), "secondary")
+        relationships = style_button(Button(text="Linked projects"), "secondary")
         save.bind(on_release=self._save)
+        todos.bind(on_release=self._open_todos)
+        relationships.bind(on_release=self._open_project_links)
         actions.add_widget(save)
+        actions.add_widget(todos)
+        actions.add_widget(relationships)
         form.add_widget(actions)
         scroll.add_widget(form)
         self.add_widget(scroll)

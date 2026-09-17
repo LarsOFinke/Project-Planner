@@ -19,6 +19,8 @@ Last refreshed: 2026-09-17
 - Window mode: persistent top-right Windowed/Fullscreen toggle beside the scale selector.
 - Diagnostics: unexpected Kivy event errors are recovered, stored in SQLite, and visible in Admin.
 - Class modules: exact PascalCase class filenames; non-class helper modules remain snake_case.
+- Visual system: shared low-glare palette, rounded controls, bordered surfaces, section hierarchy,
+  and whole-row directory indentation with branch guides.
 
 ## Implemented workflows
 

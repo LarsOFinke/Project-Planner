@@ -110,3 +110,12 @@ The main planning view preserves structural order instead of moving completed wo
 queue. Custom sections remain in one roadmap regardless of status. Agile keeps planned and
 completed sprints in one directory; selecting a sprint opens its work grouped into To Do, In
 Progress, and Done tabs.
+
+## AD-020 — Shared visual system and structural indentation
+
+Application screens use one low-glare navy/slate surface system with restrained gold emphasis,
+soft semantic red, bordered surfaces, rounded controls, consistent field focus, section labels,
+and empty states. Hierarchy is expressed by layout geometry: project controls are offset as whole
+rows and connected with branch guides instead of inserting whitespace into label text. Roadmap
+groups use the same whole-row indentation principle so visual nesting remains stable at every
+configured UI scale.

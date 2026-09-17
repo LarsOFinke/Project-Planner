@@ -6,6 +6,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.widget import Widget
 
 from project_planner.core.application.agile.AgilePlanningService import AgilePlanningService
 from project_planner.core.domain.agile.BacklogItem import BacklogItem
@@ -24,6 +25,7 @@ from project_planner.frontend.shared.theme import (
     SLATE_400,
     caption_label,
     paint_background,
+    section_label,
     style_button,
     title_label,
 )
@@ -67,11 +69,9 @@ class AgilePlanningPanel(BoxLayout):
 
     def _render_backlog(self, items: list[BacklogItem]) -> None:
         rows = self._backlog[1]
-        add = style_button(
-            Button(text="+ Add backlog item", size_hint_y=None, height=dp(44)), "primary"
-        )
+        add = style_button(Button(text="+ Add backlog item"), "primary")
         add.bind(on_release=self._add_item)
-        rows.add_widget(add)
+        rows.add_widget(self._action_row(add))
         backlog = [
             item
             for item in items
@@ -86,9 +86,9 @@ class AgilePlanningPanel(BoxLayout):
         rows = self._sprints[1]
         if self._project_id is None:
             return
-        add = style_button(Button(text="+ Add sprint", size_hint_y=None, height=dp(44)), "primary")
+        add = style_button(Button(text="+ Add sprint"), "primary")
         add.bind(on_release=self._add_sprint)
-        rows.add_widget(add)
+        rows.add_widget(self._action_row(add))
         sprints = list(self._agile.list_sprints(self._project_id, self._section_id))
         if not sprints:
             self._empty(rows, "No sprints in the roadmap yet.")
@@ -96,16 +96,7 @@ class AgilePlanningPanel(BoxLayout):
         planned = [sprint for sprint in sprints if sprint.status is not SprintStatus.COMPLETED]
         completed = [sprint for sprint in sprints if sprint.status is SprintStatus.COMPLETED]
         for heading, group in (("Planned", planned), ("Completed", completed)):
-            rows.add_widget(
-                Label(
-                    text=heading,
-                    color=SLATE_400,
-                    bold=True,
-                    halign="left",
-                    size_hint_y=None,
-                    height=dp(34),
-                )
-            )
+            rows.add_widget(section_label(f"{heading} sprints"))
             if not group:
                 self._empty(rows, f"No {heading.lower()} sprints.")
             for sprint in group:
@@ -117,7 +108,12 @@ class AgilePlanningPanel(BoxLayout):
                 )
 
     def _sprint_row(self, sprint: Sprint, *, allow_completion: bool) -> BoxLayout:
-        row = BoxLayout(size_hint_y=None, height=dp(72), spacing=dp(6))
+        row = BoxLayout(
+            size_hint_y=None,
+            height=dp(72),
+            spacing=dp(6),
+            padding=[dp(18), 0, 0, 0],
+        )
         open_sprint = style_button(
             Button(
                 text=(
@@ -164,7 +160,7 @@ class AgilePlanningPanel(BoxLayout):
                 )
                 button.bind(on_release=partial(self._move_item, item.id, offset))
                 row.add_widget(button)
-        remove = style_button(Button(text="Del", size_hint_x=None, width=dp(54)), "danger")
+        remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
         remove.bind(on_release=partial(self._remove_item, item.id))
         row.add_widget(remove)
         return row
@@ -266,3 +262,12 @@ class AgilePlanningPanel(BoxLayout):
     @staticmethod
     def _empty(rows: BoxLayout, text: str) -> None:
         rows.add_widget(Label(text=text, color=SLATE_400, size_hint_y=None, height=dp(54)))
+
+    @staticmethod
+    def _action_row(button: Button) -> BoxLayout:
+        row = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
+        row.add_widget(Widget())
+        button.size_hint_x = None
+        button.width = dp(190)
+        row.add_widget(button)
+        return row

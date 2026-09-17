@@ -20,8 +20,10 @@ from project_planner.frontend.shared.theme import (
     NAVY_800,
     PEARL_GREY,
     RED,
+    SLATE_400,
     field_label,
     paint_background,
+    section_label,
     style_button,
     style_input,
     style_spinner,
@@ -65,10 +67,12 @@ class NewProjectPopup(Popup):
         content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
         paint_background(content, NAVY_800)
         scroll, form = build_scrollable_form()
+        form.add_widget(section_label("Project brief"))
         self.name = self._field(form, "Project name", "Clear, short project name")
         self.description = self._field(
             form, "Short description", "What should this project accomplish?", multiline=True
         )
+        form.add_widget(section_label("Schedule and planning"))
         dates = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(10))
         start_box = BoxLayout(orientation="vertical")
         start_box.add_widget(field_label("Start date"))
@@ -94,7 +98,7 @@ class NewProjectPopup(Popup):
         form.add_widget(self.method)
         self.guidance = Label(
             text="Custom: choose a planning model per section.",
-            color=PEARL_GREY,
+            color=SLATE_400,
             halign="left",
             size_hint_y=None,
             height=dp(34),
@@ -111,6 +115,7 @@ class NewProjectPopup(Popup):
             )
         )
         form.add_widget(self.custom_start)
+        form.add_widget(section_label("People"))
         people = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(10))
         owner_box = BoxLayout(orientation="vertical")
         owner_box.add_widget(field_label("Project owner"))

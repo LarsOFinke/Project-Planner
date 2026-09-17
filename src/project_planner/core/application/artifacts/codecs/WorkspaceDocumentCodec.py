@@ -19,7 +19,7 @@ from project_planner.core.application.artifacts.documents.WorkspaceStroke import
 class WorkspaceDocumentCodec:
     CURRENT_VERSION = 4
     SHAPE_KINDS = {"rectangle", "ellipse", "line", "arrow"}
-    DEFAULT_COLOR = "#D5DAE2"
+    DEFAULT_COLOR = "#D7DDE5"
 
     def decode(self, data: object) -> WorkspaceDocument:
         if not isinstance(data, dict):

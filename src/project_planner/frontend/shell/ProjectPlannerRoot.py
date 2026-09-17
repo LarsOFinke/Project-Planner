@@ -16,13 +16,12 @@ from project_planner.frontend.planning.PlanningPanel import PlanningPanel
 from project_planner.frontend.projects.OverviewPanel import OverviewPanel
 from project_planner.frontend.projects.ProjectBrowser import ProjectBrowser
 from project_planner.frontend.shared.theme import (
-    GOLD,
+    BORDER,
+    GOLD_LIGHT,
     NAVY_800,
     NAVY_900,
     NAVY_950,
     PEARL_GREY,
-    SLATE_200,
-    SLATE_700,
     paint_background,
     style_button,
     style_spinner,
@@ -47,7 +46,7 @@ class ProjectPlannerRoot(BoxLayout):
         self._on_fullscreen_change = on_fullscreen_change
         paint_background(self, NAVY_950)
         self._build_header()
-        body = BoxLayout(spacing=dp(12), padding=[dp(14), dp(12), dp(14), dp(14)])
+        body = BoxLayout(spacing=dp(14), padding=[dp(16), dp(14), dp(16), dp(16)])
         self.browser = ProjectBrowser(
             container.project_workflows,
             container.project_queries,
@@ -92,7 +91,7 @@ class ProjectPlannerRoot(BoxLayout):
         self.tabs = TabbedPanel(
             do_default_tab=False,
             tab_width=dp(128),
-            tab_height=dp(46),
+            tab_height=dp(48),
             strip_border=[0, 0, 0, 0],
             background_color=NAVY_900,
             background_image="",
@@ -113,26 +112,26 @@ class ProjectPlannerRoot(BoxLayout):
     def _build_header(self) -> None:
         header = BoxLayout(
             size_hint_y=None,
-            height=dp(68),
-            padding=[dp(20), dp(10)],
-            spacing=dp(10),
+            height=dp(72),
+            padding=[dp(22), dp(10)],
+            spacing=dp(12),
         )
-        paint_background(header, NAVY_800)
+        paint_background(header, NAVY_800, 0, BORDER)
         identity = BoxLayout(orientation="vertical")
         identity.add_widget(
             Label(
                 text="PROJECT PLANNER",
                 color=PEARL_GREY,
                 bold=True,
-                font_size="20sp",
+                font_size="21sp",
                 halign="left",
             )
         )
         identity.children[0].bind(size=lambda widget, size: setattr(widget, "text_size", size))
         identity.add_widget(
             Label(
-                text="Local workspace  ·  Prototype 0.1",
-                color=SLATE_200,
+                text="LOCAL-FIRST PLANNING WORKSPACE  ·  0.1",
+                color=GOLD_LIGHT,
                 font_size="12sp",
                 halign="left",
             )
@@ -174,11 +173,7 @@ class ProjectPlannerRoot(BoxLayout):
         return "Windowed" if self._fullscreen else "Fullscreen"
 
     def _add_tab(self, tabs: TabbedPanel, title: str, content: BoxLayout) -> None:
-        tab = TabbedPanelItem(text=title)
-        tab.background_normal = ""
-        tab.background_down = ""
-        tab.background_color = SLATE_700
-        tab.color = PEARL_GREY
+        tab = style_button(TabbedPanelItem(text=title), "quiet")
         tab.font_size = "14sp"
         tab.add_widget(content)
         tabs.add_widget(tab)
@@ -187,8 +182,7 @@ class ProjectPlannerRoot(BoxLayout):
     def _style_tabs(self, tabs: TabbedPanel, current: TabbedPanelItem) -> None:
         for header in self._tab_headers:
             selected = header is current
-            header.background_color = GOLD if selected else SLATE_700
-            header.color = NAVY_950 if selected else PEARL_GREY
+            style_button(header, "selected" if selected else "quiet")
 
     def _update_scale(self, _widget: BoxLayout, width: float) -> None:
         self.browser.width = min(width * 0.34, max(dp(170), width * 0.24))

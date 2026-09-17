@@ -92,7 +92,7 @@ class WaterfallTasksPopup(Popup):
                 "quiet",
             )
             edit.bind(on_release=partial(self._edit, task))
-            remove = style_button(Button(text="Del", size_hint_x=None, width=dp(58)), "danger")
+            remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
             remove.bind(on_release=partial(self._remove, task.id))
             row.add_widget(edit)
             row.add_widget(remove)

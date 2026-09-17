@@ -4,7 +4,6 @@ from functools import partial
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 
 from project_planner.core.application.agile.AgilePlanningService import AgilePlanningService
@@ -21,9 +20,10 @@ from project_planner.frontend.planning.custom.SectionPlanningPopup import Sectio
 from project_planner.frontend.shared.date_parser import format_optional_date
 from project_planner.frontend.shared.theme import (
     NAVY_900,
-    SLATE_400,
     caption_label,
+    empty_state_label,
     paint_background,
+    section_label,
     style_button,
     title_label,
 )
@@ -64,6 +64,7 @@ class CustomPlanningPanel(BoxLayout):
             button.bind(on_release=partial(self._add, section_type))
             controls.add_widget(button)
         self.add_widget(controls)
+        self.add_widget(section_label("Ordered roadmap sections"))
         self._roadmap_rows = self._rows()
         self.add_widget(self._roadmap_rows[0])
 
@@ -80,13 +81,14 @@ class CustomPlanningPanel(BoxLayout):
 
     def _render(self, sections: list[PlanningSection], rows: BoxLayout, reorder: bool) -> None:
         if not sections:
-            rows.add_widget(
-                Label(
-                    text="No sections here yet.", color=SLATE_400, size_hint_y=None, height=dp(54)
-                )
-            )
+            rows.add_widget(empty_state_label("No roadmap sections yet."))
         for section in sections:
-            row = BoxLayout(size_hint_y=None, height=dp(68), spacing=dp(5))
+            row = BoxLayout(
+                size_hint_y=None,
+                height=dp(68),
+                spacing=dp(5),
+                padding=[dp(14), 0, 0, 0],
+            )
             status = section.status.value.replace("_", " ").title()
             start = format_optional_date(section.start_date) or "No start"
             end = format_optional_date(section.end_date) or "No end"
@@ -112,7 +114,7 @@ class CustomPlanningPanel(BoxLayout):
                     )
                     button.bind(on_release=partial(self._move, section.id, offset))
                     row.add_widget(button)
-            remove = style_button(Button(text="Del", size_hint_x=None, width=dp(54)), "danger")
+            remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
             remove.bind(on_release=partial(self._remove, section.id))
             row.add_widget(remove)
             rows.add_widget(row)

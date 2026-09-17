@@ -4,7 +4,6 @@ from functools import partial
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 
 from project_planner.core.application.phases.PhaseService import PhaseService
@@ -21,9 +20,10 @@ from project_planner.frontend.planning.waterfall.WaterfallTasksPopup import Wate
 from project_planner.frontend.shared.date_parser import format_optional_date
 from project_planner.frontend.shared.theme import (
     NAVY_900,
-    SLATE_400,
     caption_label,
+    empty_state_label,
     paint_background,
+    section_label,
     style_button,
     title_label,
 )
@@ -63,6 +63,7 @@ class PhasePlanningPanel(BoxLayout):
         reset.bind(on_release=self._reset)
         controls.add_widget(add)
         controls.add_widget(reset)
+        self.add_widget(section_label("Ordered delivery phases"))
         self._rows = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
         self._rows.bind(minimum_height=self._rows.setter("height"))
         scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
@@ -87,16 +88,18 @@ class PhasePlanningPanel(BoxLayout):
         phases = self._phases.list_for_context(self._project_id, self._section_id)
         if not phases:
             self._rows.add_widget(
-                Label(
-                    text="No phases yet. Add one or load the selected planning template.",
-                    color=SLATE_400,
-                    size_hint_y=None,
-                    height=dp(70),
+                empty_state_label(
+                    "No phases yet. Add one or load the selected planning template."
                 )
             )
             return
         for phase in phases:
-            row = BoxLayout(size_hint_y=None, height=dp(78), spacing=dp(6))
+            row = BoxLayout(
+                size_hint_y=None,
+                height=dp(78),
+                spacing=dp(6),
+                padding=[dp(14), 0, 0, 0],
+            )
             summary = phase.description.strip() or "No description"
             phase_tasks = list(self._tasks.list_for_phase(phase.id))
             task_summary = ", ".join(task.title for task in phase_tasks) or "No tasks"
@@ -119,7 +122,7 @@ class PhasePlanningPanel(BoxLayout):
             )
             up = style_button(Button(text="Up", size_hint_x=None, width=dp(46)), "secondary")
             down = style_button(Button(text="Down", size_hint_x=None, width=dp(52)), "secondary")
-            remove = style_button(Button(text="Del", size_hint_x=None, width=dp(46)), "danger")
+            remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
             todos = style_button(Button(text="To-Dos", size_hint_x=None, width=dp(82)), "secondary")
             task_count = len(phase_tasks)
             tasks = style_button(

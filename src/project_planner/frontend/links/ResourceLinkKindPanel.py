@@ -17,9 +17,10 @@ from project_planner.frontend.shared.theme import (
     NAVY_900,
     RED,
     SLATE_200,
-    SLATE_400,
     caption_label,
+    empty_state_label,
     paint_background,
+    section_label,
     style_button,
     style_input,
     title_label,
@@ -60,9 +61,11 @@ class ResourceLinkKindPanel(BoxLayout):
         self._rows.bind(minimum_height=self._rows.setter("height"))
         scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
         scroll.add_widget(self._rows)
+        self.add_widget(section_label("Add resource"))
         self.add_widget(self._title_controls())
         self.add_widget(self._target_controls())
         self.add_widget(self.feedback)
+        self.add_widget(section_label("Saved resources"))
         self.add_widget(scroll)
         self.disabled = True
 
@@ -119,14 +122,7 @@ class ResourceLinkKindPanel(BoxLayout):
             return
         links = self._resources.list_for_project(self._project_id, self._kind)
         if not links:
-            self._rows.add_widget(
-                Label(
-                    text=self._empty_message,
-                    color=SLATE_400,
-                    size_hint_y=None,
-                    height=dp(70),
-                )
-            )
+            self._rows.add_widget(empty_state_label(self._empty_message))
             return
         for link in links:
             self._add_row(link)
