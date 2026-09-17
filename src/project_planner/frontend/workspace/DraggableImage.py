@@ -21,9 +21,7 @@ class DraggableImage(Widget):
         texture = CoreImage(source).texture
         initial_width = dp(180)
         initial_height = (
-            initial_width * texture.height / texture.width
-            if texture.width
-            else dp(120)
+            initial_width * texture.height / texture.width if texture.width else dp(120)
         )
         super().__init__(
             size_hint=(None, None),

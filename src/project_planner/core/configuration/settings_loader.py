@@ -36,9 +36,7 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         "PROJECT_PLANNER_AUTOSAVE_SECONDS", parser["editor"]["autosave_seconds"]
     )
     ui_scale = os.environ.get("PROJECT_PLANNER_UI_SCALE", parser["ui"]["scale"])
-    fullscreen = os.environ.get(
-        "PROJECT_PLANNER_FULLSCREEN", parser["window"]["fullscreen"]
-    )
+    fullscreen = os.environ.get("PROJECT_PLANNER_FULLSCREEN", parser["window"]["fullscreen"])
     data_directory = os.environ.get("PROJECT_PLANNER_DATA_DIR", parser["storage"]["data_directory"])
     return Settings(
         database_path=Path(database).expanduser(),

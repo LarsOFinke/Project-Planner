@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from sqlalchemy import URL, Engine, create_engine, event
+from sqlalchemy import URL, Engine, create_engine, event, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -45,6 +45,21 @@ class Database:
 
     def new_session(self) -> Session:
         return self._session_factory()
+
+    @property
+    def database_backend(self) -> str:
+        return self.engine.dialect.name
+
+    @property
+    def database_location(self) -> str:
+        return ":memory:" if self.path.name == ":memory:" else str(self.path)
+
+    def is_healthy(self) -> bool:
+        try:
+            with self.engine.connect() as connection:
+                return connection.scalar(text("SELECT 1")) == 1
+        except Exception:
+            return False
 
     @staticmethod
     def _sqlite_url(path: Path) -> str:

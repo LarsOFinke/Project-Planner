@@ -1,3 +1,6 @@
+from project_planner.core.infrastructure.database.models.ApplicationIssueModel import (
+    ApplicationIssueModel,
+)
 from project_planner.core.infrastructure.database.models.ArtifactModel import ArtifactModel
 from project_planner.core.infrastructure.database.models.BacklogItemModel import BacklogItemModel
 from project_planner.core.infrastructure.database.models.Base import Base
@@ -19,6 +22,7 @@ from project_planner.core.infrastructure.database.models.WaterfallTaskModel impo
 
 __all__ = [
     "ArtifactModel",
+    "ApplicationIssueModel",
     "BacklogItemModel",
     "Base",
     "PhaseModel",

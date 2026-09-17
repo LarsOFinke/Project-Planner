@@ -46,6 +46,4 @@ def test_frontend_does_not_overwrite_kivy_parent_property() -> None:
                 ):
                     violations.append(f"{path}:{node.lineno}")
 
-    assert not violations, "Kivy's reserved self.parent was overwritten: " + ", ".join(
-        violations
-    )
+    assert not violations, "Kivy's reserved self.parent was overwritten: " + ", ".join(violations)

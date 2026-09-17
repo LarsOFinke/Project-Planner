@@ -41,9 +41,7 @@ class SQLAlchemyTodoRepository:
             else_=2,
         )
         statement = (
-            select(TodoModel)
-            .where(*criteria)
-            .order_by(status_order, TodoModel.updated_at.desc())
+            select(TodoModel).where(*criteria).order_by(status_order, TodoModel.updated_at.desc())
         )
         with self._database.session() as session:
             return [self._to_domain(model) for model in session.scalars(statement)]

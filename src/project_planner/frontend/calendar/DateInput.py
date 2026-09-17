@@ -20,9 +20,7 @@ class DateInput(BoxLayout):
         super().__init__(orientation="horizontal", spacing=dp(5), **kwargs)
         self._service = service or CalendarService()
         self.input = style_input(TextInput(hint_text=hint_text, multiline=False))
-        self.button = style_button(
-            Button(text="Date", size_hint_x=None, width=dp(72)), "secondary"
-        )
+        self.button = style_button(Button(text="Date", size_hint_x=None, width=dp(72)), "secondary")
         self.button.bind(on_release=self._open_calendar)
         self.add_widget(self.input)
         self.add_widget(self.button)

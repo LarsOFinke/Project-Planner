@@ -87,9 +87,7 @@ def test_workspace_codec_round_trips_stroke_and_shape_colors() -> None:
     codec = WorkspaceDocumentCodec()
     document = WorkspaceDocument(
         strokes=(WorkspaceStroke((1, 2, 3, 4), "#C84B4B"),),
-        shapes=(
-            WorkspaceShape("shape", "ellipse", 10, 20, 100, 80, 15, "#4C78A8"),
-        ),
+        shapes=(WorkspaceShape("shape", "ellipse", 10, 20, 100, 80, 15, "#4C78A8"),),
     )
 
     restored = codec.decode(codec.encode(document))

@@ -19,7 +19,6 @@ from project_planner.core.domain.custom.SectionType import SectionType
 from project_planner.frontend.planning.custom.SectionEditorPopup import SectionEditorPopup
 from project_planner.frontend.planning.custom.SectionPlanningPopup import SectionPlanningPopup
 from project_planner.frontend.shared.date_parser import format_optional_date
-from project_planner.frontend.shared.SimpleTabbedPanel import SimpleTabbedPanel
 from project_planner.frontend.shared.theme import (
     NAVY_900,
     SLATE_400,
@@ -50,9 +49,11 @@ class CustomPlanningPanel(BoxLayout):
         self._todos = todos
         self._project_id: str | None = None
         paint_background(self, NAVY_900)
-        self.add_widget(title_label("Custom plan"))
+        self.add_widget(title_label("Custom roadmap"))
         self.add_widget(
-            caption_label("Build an ordered plan from Free, Agile, and Waterfall sections.")
+            caption_label(
+                "Keep every section in its intended order, including completed roadmap steps."
+            )
         )
         controls = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         for section_type in SectionType:
@@ -63,26 +64,19 @@ class CustomPlanningPanel(BoxLayout):
             button.bind(on_release=partial(self._add, section_type))
             controls.add_widget(button)
         self.add_widget(controls)
-        self._plan_rows = self._rows()
-        self._completed_rows = self._rows()
-        self.add_widget(
-            SimpleTabbedPanel({"Plan": self._plan_rows[0], "Completed": self._completed_rows[0]})
-        )
+        self._roadmap_rows = self._rows()
+        self.add_widget(self._roadmap_rows[0])
 
     def show_project(self, project_id: str) -> None:
         self._project_id = project_id
         self.refresh()
 
     def refresh(self) -> None:
-        self._plan_rows[1].clear_widgets()
-        self._completed_rows[1].clear_widgets()
+        self._roadmap_rows[1].clear_widgets()
         if self._project_id is None:
             return
         sections = list(self._sections.list_for_project(self._project_id))
-        active = [section for section in sections if section.status is not SectionStatus.COMPLETED]
-        completed = [section for section in sections if section.status is SectionStatus.COMPLETED]
-        self._render(active, self._plan_rows[1], True)
-        self._render(completed, self._completed_rows[1], False)
+        self._render(sections, self._roadmap_rows[1], True)
 
     def _render(self, sections: list[PlanningSection], rows: BoxLayout, reorder: bool) -> None:
         if not sections:

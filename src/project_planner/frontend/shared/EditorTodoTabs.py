@@ -32,6 +32,7 @@ class EditorTodoTabs(TabbedPanel):
         self._add_tab(editor_title, editor)
         self._add_tab("To-Dos", todos)
         self.bind(current_tab=self._style_tabs)
+        self.bind(disabled=self._sync_content_disabled)
 
     def _add_tab(self, title: str, content: Widget) -> None:
         tab = TabbedPanelItem(text=title)
@@ -49,3 +50,7 @@ class EditorTodoTabs(TabbedPanel):
             selected = header is current
             header.background_color = GOLD if selected else SLATE_700
             header.color = NAVY_950 if selected else PEARL_GREY
+
+    def _sync_content_disabled(self, _tabs: TabbedPanel, disabled: bool) -> None:
+        """Keep Kivy's internal content state aligned with the effective tab state."""
+        self.content.disabled = disabled

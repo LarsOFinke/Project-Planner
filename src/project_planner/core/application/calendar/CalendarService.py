@@ -8,8 +8,7 @@ class CalendarService:
     def month(self, year: int, month: int) -> tuple[tuple[CalendarDay, ...], ...]:
         weeks = calendar.Calendar(firstweekday=calendar.MONDAY).monthdatescalendar(year, month)
         return tuple(
-            tuple(CalendarDay(value, value.month == month) for value in week)
-            for week in weeks
+            tuple(CalendarDay(value, value.month == month) for value in week) for week in weeks
         )
 
     @staticmethod

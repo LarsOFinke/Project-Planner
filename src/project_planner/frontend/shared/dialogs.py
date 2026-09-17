@@ -15,10 +15,68 @@ from project_planner.frontend.shared.theme import (
     GOLD,
     NAVY_800,
     PEARL_GREY,
+    RED,
     paint_background,
     style_button,
     style_input,
 )
+
+
+def show_error(message: str) -> None:
+    content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(12))
+    paint_background(content, NAVY_800)
+    details = Label(
+        text=message,
+        color=PEARL_GREY,
+        font_size="15sp",
+        halign="left",
+        valign="middle",
+    )
+    details.bind(size=lambda widget, size: setattr(widget, "text_size", size))
+    close = style_button(Button(text="Close", size_hint_y=None, height=dp(46)), "primary")
+    content.add_widget(details)
+    content.add_widget(close)
+    popup = Popup(
+        title="Something went wrong",
+        title_color=RED,
+        title_size="18sp",
+        separator_color=RED,
+        background_color=NAVY_800,
+        content=content,
+        size_hint=(None, None),
+        width=min(Window.width * 0.86, dp(620)),
+        height=min(Window.height * 0.72, dp(260)),
+    )
+    close.bind(on_release=lambda *_: popup.dismiss())
+    popup.open()
+
+
+def open_details_dialog(title: str, details: str) -> None:
+    content = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+    paint_background(content, NAVY_800)
+    value = style_input(
+        TextInput(
+            text=details,
+            readonly=True,
+            multiline=True,
+        )
+    )
+    close = style_button(Button(text="Close", size_hint_y=None, height=dp(46)), "secondary")
+    content.add_widget(value)
+    content.add_widget(close)
+    popup = Popup(
+        title=title,
+        title_color=PEARL_GREY,
+        title_size="18sp",
+        separator_color=GOLD,
+        background_color=NAVY_800,
+        content=content,
+        size_hint=(None, None),
+        width=min(Window.width * 0.92, dp(980)),
+        height=min(Window.height * 0.9, dp(680)),
+    )
+    close.bind(on_release=lambda *_: popup.dismiss())
+    popup.open()
 
 
 def show_confirmation(message: str, duration: float = 1.6) -> None:

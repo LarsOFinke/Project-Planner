@@ -16,11 +16,7 @@ class ProjectQueryService:
         project = self._projects.require(project_id)
         projects = tuple(self._projects.list_all())
         excluded_ids = self._descendant_ids(project_id, projects) | {project_id}
-        candidates = tuple(
-            candidate
-            for candidate in projects
-            if candidate.id not in excluded_ids
-        )
+        candidates = tuple(candidate for candidate in projects if candidate.id not in excluded_ids)
         return ProjectOverview(
             project=project,
             parent_choices=build_project_choices(candidates, include_empty=True),
@@ -28,9 +24,7 @@ class ProjectQueryService:
 
     def list_choices(self, *, exclude_id: str | None = None) -> tuple[ProjectChoice, ...]:
         projects = tuple(
-            project
-            for project in self._projects.list_all()
-            if project.id != exclude_id
+            project for project in self._projects.list_all() if project.id != exclude_id
         )
         return build_project_choices(projects)
 

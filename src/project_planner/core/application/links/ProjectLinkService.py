@@ -13,9 +13,7 @@ from project_planner.core.ports.ProjectRepository import ProjectRepository
 
 
 class ProjectLinkService:
-    def __init__(
-        self, links: ProjectLinkRepository, projects: ProjectRepository
-    ) -> None:
+    def __init__(self, links: ProjectLinkRepository, projects: ProjectRepository) -> None:
         self._links = links
         self._projects = projects
 
@@ -37,9 +35,7 @@ class ProjectLinkService:
 
     def available_targets(self, project_id: str) -> tuple[ProjectChoice, ...]:
         projects = tuple(
-            project
-            for project in self._projects.list_all()
-            if project.id != project_id
+            project for project in self._projects.list_all() if project.id != project_id
         )
         return build_project_choices(projects)
 

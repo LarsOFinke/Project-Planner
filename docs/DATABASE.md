@@ -11,6 +11,9 @@ migrations. SQLite remains the zero-configuration default, while `[database] url
 - An existing prototype database without Alembic metadata is safely baselined at revision `0001`;
   subsequent migrations add phase metadata, contextual To-Dos, seed history, resource links, and
   the minimal planning relations without deleting rows.
+- Revision `0008` repairs early prototype databases whose sprint-status constraint predates the
+  `planned` state; existing sprint rows are preserved during the SQLite table rebuild.
+- Revision `0009` adds the local `application_issues` diagnostics log used by the Admin screen.
 - `core/infrastructure/database/seeds/` contains the idempotent seed contract and runner. Each seed
   has its own class/file and is recorded in `seed_history` only after it succeeds.
 - Prototype 0.1 has no demo-data seed. Opening the application must never add sample projects to a
@@ -36,6 +39,7 @@ The relational metadata schema conforms to third normal form:
 | `todos` | `id` | title, description, module, optional phase and timestamps depend only on `id`; project/phase data is referenced, not copied |
 | `artifacts` | `id`; `(project_id, kind)` | title, content and timestamps depend on the artifact key |
 | `resource_links` | `id` | title, target, kind and timestamps depend only on `id`; project data is referenced, not copied |
+| `application_issues` | `id` | source, exception details and occurrence time depend only on the issue |
 | `seed_history` | `key` | `applied_at` depends only on the seed key |
 
 All columns are atomic for their application domain, repeating groups are separate rows, and
@@ -69,4 +73,6 @@ Dry-run is the default and always rolls that transaction back after constraints 
 `--apply` is required to commit. Import never removes records that are absent from the export.
 
 The export covers database rows only. Workspace image binaries live in the configured data
-directory and require a separate filesystem backup.
+directory and require a separate filesystem backup. Local application diagnostics are deliberately
+excluded from project exports because they describe the running installation rather than project
+content.

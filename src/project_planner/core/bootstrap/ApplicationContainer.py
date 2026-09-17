@@ -10,6 +10,8 @@ from project_planner.core.application.artifacts.codecs.WorkspaceDocumentCodec im
 )
 from project_planner.core.application.assets.ImageAssetService import ImageAssetService
 from project_planner.core.application.custom.SectionService import SectionService
+from project_planner.core.application.health.IssueLogService import IssueLogService
+from project_planner.core.application.health.SystemHealthService import SystemHealthService
 from project_planner.core.application.links.ProjectLinkService import ProjectLinkService
 from project_planner.core.application.phases.PhaseService import PhaseService
 from project_planner.core.application.projects.ProjectQueryService import ProjectQueryService
@@ -40,3 +42,5 @@ class ApplicationContainer:
     diagram_documents: DiagramDocumentCodec
     workspace_documents: WorkspaceDocumentCodec
     images: ImageAssetService
+    issues: IssueLogService
+    health: SystemHealthService

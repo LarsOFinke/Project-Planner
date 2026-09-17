@@ -27,9 +27,7 @@ from project_planner.frontend.workspace.WorkspaceMode import WorkspaceMode
 class FreehandCanvas(StencilView, FloatLayout):
     DEFAULT_COLOR = "#D5DAE2"
 
-    def __init__(
-        self, on_change: Callable[[], None], **kwargs: object
-    ) -> None:
+    def __init__(self, on_change: Callable[[], None], **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._on_change = on_change
         self._strokes: list[tuple[list[float], str]] = []
@@ -275,10 +273,7 @@ class FreehandCanvas(StencilView, FloatLayout):
                     )
                 )
         return WorkspaceDocument(
-            strokes=tuple(
-                WorkspaceStroke(tuple(points), color)
-                for points, color in self._strokes
-            ),
+            strokes=tuple(WorkspaceStroke(tuple(points), color) for points, color in self._strokes),
             shapes=tuple(shapes),
             images=tuple(images),
         )

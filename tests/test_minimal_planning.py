@@ -62,6 +62,9 @@ def test_agile_backlog_sprint_completion_and_history() -> None:
     assert items[third.id].sprint_id == next_sprint.id
     assert planner.agile.sprint_history(project.id)[0].id == sprint.id
     assert planner.agile.planned_sprints(project.id) == [next_sprint]
+    assert [item.id for item in planner.agile.list_sprint_items(project.id, sprint.id)] == [
+        first.id
+    ]
 
 
 def test_waterfall_phases_tasks_and_timeline_data_are_persisted() -> None:
@@ -138,6 +141,32 @@ def test_custom_sections_mix_models_reorder_and_preserve_content() -> None:
     planner.sections.remove_item(free_item.id)
     replacement_item = planner.sections.add_item(replacement.id, "Publish")
     assert replacement_item.position == 0
+
+
+def test_custom_agile_section_persists_a_planned_sprint() -> None:
+    planner = build_planner()
+    project = planner.project_workflows.create_project(
+        "Mixed sprint", planning_method=PlanningMethod.CUSTOM
+    )
+    agile = planner.sections.add(project.id, "Research", SectionType.AGILE)
+    backlog_item = planner.agile.add_item(
+        project.id,
+        "Interview users",
+        section_id=agile.id,
+    )
+
+    sprint = planner.agile.add_sprint(
+        project.id,
+        "Discovery sprint",
+        date(2026, 9, 9),
+        date(2026, 9, 26),
+        "Validate the problem",
+        [backlog_item.id],
+        agile.id,
+    )
+
+    assert planner.agile.planned_sprints(project.id, agile.id) == [sprint]
+    assert planner.agile.list_items(project.id, agile.id)[0].sprint_id == sprint.id
 
 
 def test_shared_project_setup_metadata_round_trips() -> None:

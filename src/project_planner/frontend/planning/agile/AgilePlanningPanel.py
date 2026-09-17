@@ -11,14 +11,16 @@ from project_planner.core.application.agile.AgilePlanningService import AgilePla
 from project_planner.core.domain.agile.BacklogItem import BacklogItem
 from project_planner.core.domain.agile.BacklogPriority import BacklogPriority
 from project_planner.core.domain.agile.BacklogStatus import BacklogStatus
+from project_planner.core.domain.agile.Sprint import Sprint
+from project_planner.core.domain.agile.SprintStatus import SprintStatus
 from project_planner.frontend.planning.agile.BacklogItemEditorPopup import (
     BacklogItemEditorPopup,
 )
+from project_planner.frontend.planning.agile.SprintDetailsPopup import SprintDetailsPopup
 from project_planner.frontend.planning.agile.SprintEditorPopup import SprintEditorPopup
 from project_planner.frontend.shared.SimpleTabbedPanel import SimpleTabbedPanel
 from project_planner.frontend.shared.theme import (
     NAVY_900,
-    SLATE_200,
     SLATE_400,
     caption_label,
     paint_background,
@@ -34,17 +36,17 @@ class AgilePlanningPanel(BoxLayout):
         self._project_id: str | None = None
         self._section_id: str | None = None
         paint_background(self, NAVY_900)
-        self.add_widget(title_label("Agile plan"))
-        self.add_widget(caption_label("Backlog → Sprints → Completed"))
+        self.add_widget(title_label("Agile roadmap"))
+        self.add_widget(
+            caption_label("Plan the roadmap in the backlog and open sprints from the directory.")
+        )
         self._backlog = self._list_area()
         self._sprints = self._list_area()
-        self._completed = self._list_area()
         self.add_widget(
             SimpleTabbedPanel(
                 {
                     "Backlog": self._backlog[0],
-                    "Sprints": self._sprints[0],
-                    "Completed": self._completed[0],
+                    "Sprint Directory": self._sprints[0],
                 }
             )
         )
@@ -55,14 +57,13 @@ class AgilePlanningPanel(BoxLayout):
         self.refresh()
 
     def refresh(self) -> None:
-        for _container, rows in (self._backlog, self._sprints, self._completed):
+        for _container, rows in (self._backlog, self._sprints):
             rows.clear_widgets()
         if self._project_id is None:
             return
         items = list(self._agile.list_items(self._project_id, self._section_id))
         self._render_backlog(items)
-        self._render_sprints(items)
-        self._render_completed(items)
+        self._render_sprints()
 
     def _render_backlog(self, items: list[BacklogItem]) -> None:
         rows = self._backlog[1]
@@ -81,78 +82,65 @@ class AgilePlanningPanel(BoxLayout):
         for item in backlog:
             rows.add_widget(self._item_row(item, reorder=True))
 
-    def _render_sprints(self, items: list[BacklogItem]) -> None:
+    def _render_sprints(self) -> None:
         rows = self._sprints[1]
         if self._project_id is None:
             return
         add = style_button(Button(text="+ Add sprint", size_hint_y=None, height=dp(44)), "primary")
         add.bind(on_release=self._add_sprint)
         rows.add_widget(add)
-        sprints = list(self._agile.planned_sprints(self._project_id, self._section_id))
+        sprints = list(self._agile.list_sprints(self._project_id, self._section_id))
         if not sprints:
-            self._empty(rows, "No planned sprints yet.")
-        for sprint in sprints:
+            self._empty(rows, "No sprints in the roadmap yet.")
+            return
+        planned = [sprint for sprint in sprints if sprint.status is not SprintStatus.COMPLETED]
+        completed = [sprint for sprint in sprints if sprint.status is SprintStatus.COMPLETED]
+        for heading, group in (("Planned", planned), ("Completed", completed)):
             rows.add_widget(
                 Label(
-                    text=(
-                        f"{sprint.name}  ·  {sprint.start_date} → {sprint.end_date}\n"
-                        f"Goal: {sprint.goal or 'No goal'}"
-                    ),
-                    color=SLATE_200,
+                    text=heading,
+                    color=SLATE_400,
+                    bold=True,
                     halign="left",
                     size_hint_y=None,
-                    height=dp(58),
+                    height=dp(34),
                 )
             )
-            sprint_items = [item for item in items if item.sprint_id == sprint.id]
-            groups = (
-                ("To Do", BacklogStatus.BACKLOG),
-                ("In Progress", BacklogStatus.IN_PROGRESS),
-                ("Done", BacklogStatus.DONE),
-            )
-            for label, status in groups:
-                grouped = [item for item in sprint_items if item.status is status]
+            if not group:
+                self._empty(rows, f"No {heading.lower()} sprints.")
+            for sprint in group:
                 rows.add_widget(
-                    Label(
-                        text=label,
-                        color=SLATE_400,
-                        bold=True,
-                        halign="left",
-                        size_hint_y=None,
-                        height=dp(32),
+                    self._sprint_row(
+                        sprint,
+                        allow_completion=sprint.status is not SprintStatus.COMPLETED,
                     )
                 )
-                for item in grouped:
-                    rows.add_widget(self._item_row(item))
-                if not grouped:
-                    self._empty(rows, "No items")
+
+    def _sprint_row(self, sprint: Sprint, *, allow_completion: bool) -> BoxLayout:
+        row = BoxLayout(size_hint_y=None, height=dp(72), spacing=dp(6))
+        open_sprint = style_button(
+            Button(
+                text=(
+                    f"{sprint.name}  ·  {sprint.start_date} → {sprint.end_date}\n"
+                    f"{sprint.status.value.title()} · Goal: {sprint.goal or 'No goal'}"
+                ),
+                halign="left",
+            ),
+            "quiet",
+        )
+        open_sprint.bind(on_release=partial(self._open_sprint, sprint))
+        row.add_widget(open_sprint)
+        if allow_completion:
             finish = style_button(
-                Button(text="Complete sprint", size_hint_y=None, height=dp(44)),
+                Button(text="Complete", size_hint_x=None, width=dp(110)),
                 "secondary",
             )
             finish.bind(on_release=partial(self._complete_sprint, sprint.id))
-            rows.add_widget(finish)
+            row.add_widget(finish)
+        return row
 
-    def _render_completed(self, items: list[BacklogItem]) -> None:
-        rows = self._completed[1]
-        completed = [item for item in items if item.status is BacklogStatus.DONE]
-        for item in completed:
-            rows.add_widget(self._item_row(item))
-        if self._project_id is not None:
-            for sprint in self._agile.sprint_history(self._project_id, self._section_id):
-                rows.add_widget(
-                    Label(
-                        text=(
-                            f"Sprint history · {sprint.name} · "
-                            f"{sprint.start_date} → {sprint.end_date}"
-                        ),
-                        color=SLATE_400,
-                        size_hint_y=None,
-                        height=dp(36),
-                    )
-                )
-        if not completed:
-            self._empty(rows, "No completed items yet.")
+    def _open_sprint(self, sprint: Sprint, *_: object) -> None:
+        SprintDetailsPopup(sprint, self._agile, self.refresh).open()
 
     def _item_row(self, item: BacklogItem, reorder: bool = False) -> BoxLayout:
         row = BoxLayout(size_hint_y=None, height=dp(62), spacing=dp(5))

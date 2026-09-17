@@ -96,3 +96,17 @@ Editor popups place variable-height fields in a shared top-anchored scroll conta
 primary/cancel action row outside it. Short forms no longer drift downward into unused space, while
 long forms remain reachable at high UI scales. Empty variable-content areas show an explicit state
 instead of an unexplained blank region.
+
+## AD-018 — Recoverable UI exception boundary
+
+Unexpected exceptions raised by Kivy event callbacks are recorded through the application issue
+service and surfaced as a recoverable error dialog. Fatal startup, memory, and process-control
+exceptions still propagate. The Admin screen reads the same service for health and recent issue
+details; diagnostics remain local and are excluded from project database exports.
+
+## AD-019 — Plan as a stable roadmap
+
+The main planning view preserves structural order instead of moving completed work into a separate
+queue. Custom sections remain in one roadmap regardless of status. Agile keeps planned and
+completed sprints in one directory; selecting a sprint opens its work grouped into To Do, In
+Progress, and Done tabs.

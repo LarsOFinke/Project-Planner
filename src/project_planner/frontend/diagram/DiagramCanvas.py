@@ -14,9 +14,7 @@ from project_planner.frontend.shared.theme import GOLD, NAVY_800, SLATE_200, SLA
 
 
 class DiagramCanvas(FloatLayout):
-    def __init__(
-        self, on_change: Callable[[], None], **kwargs: object
-    ) -> None:
+    def __init__(self, on_change: Callable[[], None], **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._on_change = on_change
         self._nodes: dict[str, NodeWidget] = {}
@@ -73,9 +71,7 @@ class DiagramCanvas(FloatLayout):
             node = self._nodes.pop(node_id, None)
             if node is not None:
                 self.remove_widget(node)
-        self._edges = [
-            edge for edge in self._edges if not selected.intersection(edge)
-        ]
+        self._edges = [edge for edge in self._edges if not selected.intersection(edge)]
         self._clear_selection()
         self._redraw_edges()
         self._on_change()
@@ -122,11 +118,7 @@ class DiagramCanvas(FloatLayout):
             self.selected_ids.append(node_id)
             self.selected_ids = self.selected_ids[-2:]
         for current_id, node in self._nodes.items():
-            node.background_color = (
-                GOLD
-                if current_id in self.selected_ids
-                else SLATE_600
-            )
+            node.background_color = GOLD if current_id in self.selected_ids else SLATE_600
 
     def _clear_selection(self) -> None:
         self.selected_ids.clear()

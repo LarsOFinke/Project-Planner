@@ -73,14 +73,20 @@ class AgilePlanningService:
     def remove_item(self, item_id: str) -> None:
         self._repository.delete_item(item_id)
 
-    def list_sprints(
-        self, project_id: str, section_id: str | None = None
-    ) -> Sequence[Sprint]:
+    def list_sprints(self, project_id: str, section_id: str | None = None) -> Sequence[Sprint]:
         return self._repository.list_sprints(project_id, section_id)
 
-    def planned_sprints(
-        self, project_id: str, section_id: str | None = None
-    ) -> Sequence[Sprint]:
+    def list_sprint_items(
+        self,
+        project_id: str,
+        sprint_id: str,
+        section_id: str | None = None,
+    ) -> Sequence[BacklogItem]:
+        return [
+            item for item in self.list_items(project_id, section_id) if item.sprint_id == sprint_id
+        ]
+
+    def planned_sprints(self, project_id: str, section_id: str | None = None) -> Sequence[Sprint]:
         return [
             sprint
             for sprint in self.list_sprints(project_id, section_id)

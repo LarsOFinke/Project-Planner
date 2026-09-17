@@ -8,6 +8,8 @@ from project_planner.core.application.artifacts.codecs.WorkspaceDocumentCodec im
 )
 from project_planner.core.application.assets.ImageAssetService import ImageAssetService
 from project_planner.core.application.custom.SectionService import SectionService
+from project_planner.core.application.health.IssueLogService import IssueLogService
+from project_planner.core.application.health.SystemHealthService import SystemHealthService
 from project_planner.core.application.links.ProjectLinkService import ProjectLinkService
 from project_planner.core.application.phases.PhaseService import PhaseService
 from project_planner.core.application.projects.ProjectQueryService import ProjectQueryService
@@ -28,6 +30,9 @@ from project_planner.core.infrastructure.repositories.SQLAlchemyAgileRepository 
 )
 from project_planner.core.infrastructure.repositories.SQLAlchemyArtifactRepository import (
     SQLAlchemyArtifactRepository,
+)
+from project_planner.core.infrastructure.repositories.SQLAlchemyIssueLogRepository import (
+    SQLAlchemyIssueLogRepository,
 )
 from project_planner.core.infrastructure.repositories.SQLAlchemyPhaseRepository import (
     SQLAlchemyPhaseRepository,
@@ -65,6 +70,7 @@ def build_container(settings: Settings | None = None) -> ApplicationContainer:
     agile = SQLAlchemyAgileRepository(database)
     sections = SQLAlchemySectionRepository(database)
     waterfall_tasks = SQLAlchemyWaterfallTaskRepository(database)
+    issue_log = IssueLogService(SQLAlchemyIssueLogRepository(database))
     project_service = ProjectService(projects)
     phase_service = PhaseService(phases)
     return ApplicationContainer(
@@ -83,4 +89,6 @@ def build_container(settings: Settings | None = None) -> ApplicationContainer:
         diagram_documents=DiagramDocumentCodec(),
         workspace_documents=WorkspaceDocumentCodec(),
         images=ImageAssetService(resolved.data_directory),
+        issues=issue_log,
+        health=SystemHealthService(database, issue_log),
     )

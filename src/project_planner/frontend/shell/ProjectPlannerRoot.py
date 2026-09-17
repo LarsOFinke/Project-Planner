@@ -9,6 +9,7 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 
 from project_planner.core.bootstrap.ApplicationContainer import ApplicationContainer
+from project_planner.frontend.admin.AdminPanel import AdminPanel
 from project_planner.frontend.diagram.DiagramPanel import DiagramPanel
 from project_planner.frontend.links.ResourceLinksPanel import ResourceLinksPanel
 from project_planner.frontend.planning.PlanningPanel import PlanningPanel
@@ -87,6 +88,7 @@ class ProjectPlannerRoot(BoxLayout):
             container.todos,
             container.settings.autosave_seconds,
         )
+        self.admin = AdminPanel(container.health, container.issues)
         self.tabs = TabbedPanel(
             do_default_tab=False,
             tab_width=dp(128),
@@ -97,10 +99,11 @@ class ProjectPlannerRoot(BoxLayout):
         )
         self._tab_headers: list[TabbedPanelItem] = []
         self._add_tab(self.tabs, "Overview", self.overview)
-        self._add_tab(self.tabs, "Plan", self.planning)
+        self._add_tab(self.tabs, "Plan Roadmap", self.planning)
         self._add_tab(self.tabs, "Diagram", self.diagram)
         self._add_tab(self.tabs, "Workspace", self.workspace)
         self._add_tab(self.tabs, "Links", self.links)
+        self._add_tab(self.tabs, "Admin", self.admin)
         self.tabs.bind(current_tab=self._style_tabs)
         body.add_widget(self.browser)
         body.add_widget(self.tabs)

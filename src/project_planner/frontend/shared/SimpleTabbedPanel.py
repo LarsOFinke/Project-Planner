@@ -28,6 +28,7 @@ class SimpleTabbedPanel(TabbedPanel):
         for title, content in tabs.items():
             self._add_tab(title, content)
         self.bind(current_tab=self._style_tabs)
+        self.bind(disabled=self._sync_content_disabled)
 
     def _add_tab(self, title: str, content: Widget) -> None:
         tab = TabbedPanelItem(text=title)
@@ -45,3 +46,7 @@ class SimpleTabbedPanel(TabbedPanel):
             selected = header is current
             header.background_color = GOLD if selected else SLATE_700
             header.color = NAVY_950 if selected else PEARL_GREY
+
+    def _sync_content_disabled(self, _tabs: TabbedPanel, disabled: bool) -> None:
+        """Undo stale nested-content state after an owning panel becomes interactive."""
+        self.content.disabled = disabled

@@ -1,6 +1,7 @@
 from dataclasses import replace
 
 from kivy.app import App
+from kivy.base import ExceptionManager
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.logger import Logger
@@ -10,6 +11,9 @@ from project_planner.core.bootstrap.container_builder import build_container
 from project_planner.core.configuration.Settings import Settings
 from project_planner.core.configuration.settings_loader import save_fullscreen, save_ui_scale
 from project_planner.frontend.application.ProjectPlannerHost import ProjectPlannerHost
+from project_planner.frontend.errors.ApplicationExceptionHandler import (
+    ApplicationExceptionHandler,
+)
 from project_planner.frontend.shared.theme import NAVY_950
 
 _BASE_DENSITY = Metrics.density
@@ -29,8 +33,11 @@ class ProjectPlannerApp(App):
         Window.size = (self._settings.window_width, self._settings.window_height)
         Window.fullscreen = "auto" if self._settings.fullscreen else False
         Window.clearcolor = NAVY_950
+        self._container = build_container(self._settings)
+        self._exception_handler = ApplicationExceptionHandler(self._container.issues)
+        ExceptionManager.add_handler(self._exception_handler)
         self._host = ProjectPlannerHost(
-            build_container(self._settings),
+            self._container,
             self._settings.ui_scale,
             self._settings.fullscreen,
             self._change_ui_scale,
@@ -67,5 +74,9 @@ class ProjectPlannerApp(App):
         self._host.rebuild(self._pending_ui_scale)
 
     def on_stop(self) -> None:
-        if hasattr(self, "_host"):
-            self._host.dispose()
+        try:
+            if hasattr(self, "_host"):
+                self._host.dispose()
+        finally:
+            if hasattr(self, "_exception_handler"):
+                ExceptionManager.remove_handler(self._exception_handler)

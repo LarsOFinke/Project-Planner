@@ -1,4 +1,5 @@
 import json
+import sqlite3
 from pathlib import Path
 
 from sqlalchemy import inspect, text
@@ -33,9 +34,10 @@ def test_migrations_create_versioned_normalized_schema(tmp_path: Path) -> None:
         "backlog_items",
         "section_items",
         "waterfall_tasks",
+        "application_issues",
     } <= set(inspector.get_table_names())
     with database.engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0007"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0009"
 
     todo_foreign_tables = {
         foreign_key["referred_table"] for foreign_key in inspector.get_foreign_keys("todos")
@@ -52,6 +54,54 @@ def test_migrations_create_versioned_normalized_schema(tmp_path: Path) -> None:
         "created_at",
         "updated_at",
     }
+
+
+def test_migration_repairs_legacy_sprint_status_constraint(tmp_path: Path) -> None:
+    path = tmp_path / "legacy-sprint-status.sqlite3"
+    with sqlite3.connect(path) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE alembic_version (
+                version_num VARCHAR(32) NOT NULL PRIMARY KEY
+            );
+            INSERT INTO alembic_version (version_num) VALUES ('0007');
+            CREATE TABLE projects (id VARCHAR PRIMARY KEY);
+            CREATE TABLE planning_sections (id VARCHAR PRIMARY KEY);
+            CREATE TABLE sprints (
+                id VARCHAR PRIMARY KEY,
+                project_id VARCHAR NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                section_id VARCHAR REFERENCES planning_sections(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                goal TEXT NOT NULL DEFAULT '',
+                status VARCHAR(24) NOT NULL,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                CONSTRAINT ck_sprints_status
+                    CHECK (status IN ('current', 'completed')),
+                CONSTRAINT ck_sprints_dates CHECK (end_date >= start_date)
+            );
+            CREATE INDEX idx_sprints_context_status
+                ON sprints (project_id, section_id, status);
+            """
+        )
+
+    database = Database(path)
+    with database.engine.begin() as connection:
+        connection.execute(text("INSERT INTO projects (id) VALUES ('project')"))
+        connection.execute(text("INSERT INTO planning_sections (id) VALUES ('section')"))
+        connection.execute(
+            text(
+                "INSERT INTO sprints "
+                "(id, project_id, section_id, name, start_date, end_date, goal, status, "
+                "created_at, updated_at) VALUES "
+                "('sprint', 'project', 'section', 'Sprint 1', '2026-09-01', "
+                "'2026-09-14', '', 'planned', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            )
+        )
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0009"
+        assert connection.scalar(text("SELECT status FROM sprints")) == "planned"
 
 
 def test_todos_are_shared_by_module_and_cascade_with_project(tmp_path: Path) -> None:

@@ -17,6 +17,7 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 - Custom planning with ordered Free, Agile, and Waterfall sections that can be mixed freely
 - shared calendar date picker backed by framework-independent core month/date logic
 - SQLAlchemy persistence with SQLite as the local default and ordered Alembic migrations
+- recoverable UI errors with a local diagnostics log and Admin health view
 - modular Kivy desktop UI with project browser and tabbed planning levels
 - persistent node/edge diagram editor with draggable nodes
 - persistent freehand workspace with explicit Select/Draw modes, selectable stroke/shape colors,
@@ -27,10 +28,12 @@ The core is deliberately independent from Kivy and SQLite details. Application w
 cross-feature operations, query services provide UI-ready read models, and versioned codecs keep
 artifact JSON outside Kivy canvases. Feature panels receive only the services they use.
 
-The Plan tab follows the selected project's model. Agile supplies Backlog → Sprints →
-Completed; Waterfall supplies Phases & Tasks plus Timeline; Custom supplies an ordered section
-list. Changing a Custom section model preserves its existing records and adds the selected
-template structure, leaving any reorganization to the user.
+The Plan Roadmap tab follows the selected project's model. Agile keeps a backlog beside a sprint
+directory; opening a planned or completed sprint shows its To Do, In Progress, and Done work in
+an overlay. Waterfall supplies Phases & Tasks plus Timeline. Custom keeps every Free, Agile, or
+Waterfall section in one stable ordered roadmap, including completed sections. Changing a Custom
+section model preserves its existing records and adds the selected template structure, leaving
+any reorganization to the user.
 
 Every planning date field remains keyboard-editable and includes the same Date button. The shared
 calendar supports month navigation, adjacent-month days, Today, and Clear, while ISO parsing and

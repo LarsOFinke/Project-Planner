@@ -49,20 +49,14 @@ class WorkspaceDocumentCodec:
         strokes: list[WorkspaceStroke] = []
         for entry in value:
             points = entry.get("points") if isinstance(entry, dict) else entry
-            if (
-                not isinstance(points, list)
-                or len(points) < 4
-                or len(points) % 2 != 0
-            ):
+            if not isinstance(points, list) or len(points) < 4 or len(points) % 2 != 0:
                 continue
             try:
                 parsed_points = tuple(self._finite_float(point) for point in points)
                 strokes.append(
                     WorkspaceStroke(
                         parsed_points,
-                        self._color(
-                            entry.get("color") if isinstance(entry, dict) else None
-                        ),
+                        self._color(entry.get("color") if isinstance(entry, dict) else None),
                     )
                 )
             except (TypeError, ValueError):

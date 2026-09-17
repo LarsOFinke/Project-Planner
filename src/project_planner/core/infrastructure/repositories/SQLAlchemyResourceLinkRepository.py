@@ -48,6 +48,4 @@ class SQLAlchemyResourceLinkRepository:
 
     def delete(self, link_id: str) -> None:
         with self._database.session() as session:
-            session.execute(
-                delete(ResourceLinkModel).where(ResourceLinkModel.id == link_id)
-            )
+            session.execute(delete(ResourceLinkModel).where(ResourceLinkModel.id == link_id))

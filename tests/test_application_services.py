@@ -4,6 +4,7 @@ from project_planner.core.bootstrap.ApplicationContainer import ApplicationConta
 from project_planner.core.bootstrap.container_builder import build_container
 from project_planner.core.configuration.Settings import Settings
 from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
+from project_planner.core.domain.resources.ResourceLinkKind import ResourceLinkKind
 
 
 def build_planner() -> ApplicationContainer:
@@ -73,3 +74,37 @@ def test_link_service_resolves_direction_and_duplicate_target_labels() -> None:
     assert resolved[0].other_project == source
     assert resolved[0].outgoing is False
     assert second.id in {choice.project_id for choice in targets}
+
+
+def test_resource_links_can_be_queried_by_url_or_file_kind() -> None:
+    planner = build_planner()
+    project = planner.project_workflows.create_project("Resources")
+    website = planner.resources.add(
+        project.id,
+        "Documentation",
+        "https://example.com/docs",
+        ResourceLinkKind.WEB,
+    )
+    specification = planner.resources.add(
+        project.id,
+        "Specification",
+        "/tmp/specification.pdf",
+        ResourceLinkKind.FILE,
+    )
+
+    assert planner.resources.list_for_project(project.id, ResourceLinkKind.WEB) == [website]
+    assert planner.resources.list_for_project(project.id, ResourceLinkKind.FILE) == [specification]
+
+
+def test_application_issues_are_persisted_and_reflected_in_health() -> None:
+    planner = build_planner()
+    try:
+        raise RuntimeError("Simulated UI failure")
+    except RuntimeError as error:
+        issue = planner.issues.record_exception(error, "Regression test")
+
+    assert planner.issues.list_recent() == [issue]
+    health = planner.health.snapshot()
+    assert health.database_healthy is True
+    assert health.database_backend == "sqlite"
+    assert health.issue_count == 1

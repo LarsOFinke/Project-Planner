@@ -1,6 +1,9 @@
 from project_planner.core.infrastructure.repositories.SQLAlchemyArtifactRepository import (
     SQLAlchemyArtifactRepository,
 )
+from project_planner.core.infrastructure.repositories.SQLAlchemyIssueLogRepository import (
+    SQLAlchemyIssueLogRepository,
+)
 from project_planner.core.infrastructure.repositories.SQLAlchemyPhaseRepository import (
     SQLAlchemyPhaseRepository,
 )
@@ -19,6 +22,7 @@ from project_planner.core.infrastructure.repositories.SQLAlchemyTodoRepository i
 
 __all__ = [
     "SQLAlchemyArtifactRepository",
+    "SQLAlchemyIssueLogRepository",
     "SQLAlchemyPhaseRepository",
     "SQLAlchemyProjectLinkRepository",
     "SQLAlchemyProjectRepository",

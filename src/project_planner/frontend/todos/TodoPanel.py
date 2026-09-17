@@ -36,9 +36,7 @@ class TodoPanel(BoxLayout):
         paint_background(self, NAVY_900)
         self._heading = title_label("To-Dos")
         self.add_widget(self._heading)
-        self.add_widget(
-            caption_label("Actions stay attached to this planning context.")
-        )
+        self.add_widget(caption_label("Actions stay attached to this planning context."))
         controls = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(8))
         controls.add_widget(Label(text="", size_hint_x=1))
         add = style_button(Button(text="+ Add to-do", size_hint_x=None, width=dp(140)), "primary")
@@ -71,9 +69,7 @@ class TodoPanel(BoxLayout):
         self._rows.clear_widgets()
         if self._project_id is None:
             return
-        todos = self._todos.list_for_context(
-            self._project_id, self._module, self._phase_id
-        )
+        todos = self._todos.list_for_context(self._project_id, self._module, self._phase_id)
         if not todos:
             self._rows.add_widget(
                 Label(

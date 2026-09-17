@@ -40,7 +40,7 @@ class PlanningPanel(BoxLayout):
         self._todos = todos
         self._project_id: str | None = None
         paint_background(self, NAVY_900)
-        self._show_empty("Select a project to open its plan.")
+        self._show_empty("Select a project to open its roadmap.")
 
     def show_project(self, project_id: str) -> None:
         self._project_id = project_id

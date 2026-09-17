@@ -8,7 +8,7 @@ Last refreshed: 2026-09-17
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `bash .agents/scripts/check-all.sh`.
-- Current suite: 41 tests.
+- Current suite: 45 tests.
 - Entry point: `project_planner.frontend.main:main`.
 - Database: SQLAlchemy ORM with Alembic migrations; SQLite default at
   `~/.project_planner/project_planner.sqlite3`.
@@ -17,6 +17,7 @@ Last refreshed: 2026-09-17
 - Window: native fullscreen by default; cfg/env can opt into windowed mode.
 - Fullscreen exit: persistent bottom-left Exit button; shutdown flushes editor autosaves.
 - Window mode: persistent top-right Windowed/Fullscreen toggle beside the scale selector.
+- Diagnostics: unexpected Kivy event errors are recovered, stored in SQLite, and visible in Admin.
 - Class modules: exact PascalCase class filenames; non-class helper modules remain snake_case.
 
 ## Implemented workflows
@@ -24,6 +25,8 @@ Last refreshed: 2026-09-17
 - hierarchical project browser with project status;
 - overview metadata, timestamps, parent project, and planning method;
 - Agile backlog, multiple planned sprints, completed work, and simple sprint history;
+- Roadmap views preserve completed sections in sequence; Agile keeps planned and completed sprints
+  in one directory and opens sprint work in separate To Do/In Progress/Done overlay tabs;
 - Waterfall phases, tasks, and chronological timeline;
 - ordered Custom sections that independently use Free, Agile, or Waterfall structures;
 - shared core calendar service and reusable Date picker across all planning date fields;
@@ -47,12 +50,15 @@ Last refreshed: 2026-09-17
 - contextual To-Dos surfaced from Overview, individual phases, and Links; Diagram and Workspace
   each expose a dedicated nested To-Dos tab beside their Canvas tab;
 - project relationships managed from Overview, with Links reserved for web URLs and local files;
+- Links separates Web URLs, Local Files, and contextual To-Dos into dedicated nested tabs while
+  retaining one normalized resource-link persistence model;
 - save confirmations and direct navigation from real project links;
 - versioned database JSON export/import with rollback-backed dry-run by default.
 
 ## Persistence facts
 
 - ORM models: `core/infrastructure/database/models/`.
+- Unexpected UI-event failures are stored in `application_issues`; Admin shows the latest 50.
 - Ordered schema revisions: `core/infrastructure/database/migrations/versions/`.
 - Optional idempotent seeds: `core/infrastructure/database/seeds/`.
 - Relational project metadata is 3NF; artifact JSON is an intentional opaque document aggregate.
@@ -63,7 +69,7 @@ Last refreshed: 2026-09-17
 - Diagram JSON version: `1`.
 - Workspace JSON version: `4`.
 - Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation.
-- Migration head: `0007`; database export format: `4`.
+- Migration head: `0009`; database export format: `4`.
 - Phase rows persist dates, description, normalized lifecycle status, optional Custom section,
   created timestamp, and updated timestamp; older phase rows are preserved and mapped forward.
 - Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
