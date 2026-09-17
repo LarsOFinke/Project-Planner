@@ -34,11 +34,10 @@ def test_creates_hierarchical_projects_and_phase_template(
 
     assert planner.projects.require(child.id).parent_id == parent.id
     assert [phase.name for phase in planner.phases.list_for_project(child.id)] == [
-        "Requirements",
+        "Planning",
         "Design",
-        "Implementation",
-        "Verification",
-        "Deployment",
+        "Execution",
+        "Completion",
     ]
 
 
@@ -88,7 +87,7 @@ def test_phase_metadata_and_timestamps_are_persisted(
         project.id,
         "Discovery",
         "Validate the problem and measurable outcome.",
-        PhaseStatus.ACTIVE,
+        PhaseStatus.IN_PROGRESS,
     )
     updated = planner.phases.update(
         phase.id,
@@ -145,7 +144,7 @@ def test_existing_phase_table_is_migrated_without_data_loss(tmp_path: Path) -> N
     restored = repository.list_for_project("project-1")[0]
 
     assert restored.name == "Legacy"
-    assert restored.status is PhaseStatus.PLANNED
+    assert restored.status is PhaseStatus.NOT_STARTED
     assert restored.created_at == restored.updated_at
 
 

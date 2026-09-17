@@ -6,12 +6,16 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 ## Prototype 0.1
 
 - file-browser-style project hierarchy
-- project status, description, planning method, and timestamps
+- shared project setup with dates, owner, assignee, notes, status, and planning model
 - project relationships and backlinks managed directly from Overview
 - web URLs and local file links in the dedicated Links module
 - contextual To-Dos in Overview, individual phases, and Links, plus dedicated nested To-Do tabs
   inside Diagram and Workspace
-- editable Waterfall, Agile, and Custom phase objects with descriptions, statuses, and timestamps
+- Agile planning with an ordered backlog, a collection of planned sprints, completion handling,
+  and history
+- Waterfall planning with editable ordered phases, phase tasks, and a simple chronological timeline
+- Custom planning with ordered Free, Agile, and Waterfall sections that can be mixed freely
+- shared calendar date picker backed by framework-independent core month/date logic
 - SQLAlchemy persistence with SQLite as the local default and ordered Alembic migrations
 - modular Kivy desktop UI with project browser and tabbed planning levels
 - persistent node/edge diagram editor with draggable nodes
@@ -22,6 +26,15 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 The core is deliberately independent from Kivy and SQLite details. Application workflows own
 cross-feature operations, query services provide UI-ready read models, and versioned codecs keep
 artifact JSON outside Kivy canvases. Feature panels receive only the services they use.
+
+The Plan tab follows the selected project's model. Agile supplies Backlog → Sprints →
+Completed; Waterfall supplies Phases & Tasks plus Timeline; Custom supplies an ordered section
+list. Changing a Custom section model preserves its existing records and adds the selected
+template structure, leaving any reorganization to the user.
+
+Every planning date field remains keyboard-editable and includes the same Date button. The shared
+calendar supports month navigation, adjacent-month days, Today, and Clear, while ISO parsing and
+month calculations remain in `core/application/calendar` rather than individual UI modules.
 
 ## Run locally
 
@@ -69,7 +82,12 @@ Configuration is read in this order: packaged defaults, `./project_planner.cfg`,
 settings. Available environment overrides are `PROJECT_PLANNER_DB`,
 `PROJECT_PLANNER_DB_URL`,
 `PROJECT_PLANNER_WINDOW_WIDTH`, `PROJECT_PLANNER_WINDOW_HEIGHT`, and
-`PROJECT_PLANNER_AUTOSAVE_SECONDS`. UI density can be adjusted with
+`PROJECT_PLANNER_AUTOSAVE_SECONDS`. The application starts in native fullscreen mode by default;
+set `PROJECT_PLANNER_FULLSCREEN=false` or `[window] fullscreen = false` for a normal window.
+The bottom-left Exit button closes the fullscreen application after flushing pending Diagram and
+Workspace changes. The top-right Windowed/Fullscreen button switches modes immediately and saves
+the selection for the next launch.
+UI density can be adjusted with
 `PROJECT_PLANNER_UI_SCALE`. The top-right scale dropdown provides 5%–500% in 5% steps, applies
 changes immediately, and saves the choice to `~/.config/project_planner/config.cfg`. The initial
 `auto` profile uses the configured window dimensions as a fallback: 200% for 1280×800 and 100%

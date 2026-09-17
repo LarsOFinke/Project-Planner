@@ -1,3 +1,4 @@
+from datetime import date
 from functools import partial
 
 from kivy.metrics import dp
@@ -11,13 +12,15 @@ from project_planner.core.application.projects.ProjectWorkflowService import (
     ProjectWorkflowService,
 )
 from project_planner.core.application.todos.TodoService import TodoService
+from project_planner.core.application.waterfall.WaterfallTaskService import WaterfallTaskService
 from project_planner.core.domain.phases.Phase import Phase
 from project_planner.core.domain.phases.PhaseStatus import PhaseStatus
 from project_planner.core.domain.todos.TodoModule import TodoModule
 from project_planner.frontend.phases.PhaseEditorPopup import PhaseEditorPopup
+from project_planner.frontend.planning.waterfall.WaterfallTasksPopup import WaterfallTasksPopup
+from project_planner.frontend.shared.date_parser import format_optional_date
 from project_planner.frontend.shared.theme import (
     NAVY_900,
-    RED,
     SLATE_400,
     caption_label,
     paint_background,
@@ -32,6 +35,7 @@ class PhasePlanningPanel(BoxLayout):
         self,
         phases: PhaseService,
         workflows: ProjectWorkflowService,
+        tasks: WaterfallTaskService,
         todos: TodoService,
         **kwargs: object,
     ) -> None:
@@ -43,10 +47,12 @@ class PhasePlanningPanel(BoxLayout):
         )
         self._phases = phases
         self._workflows = workflows
+        self._tasks = tasks
         self._todos = todos
         self._project_id: str | None = None
+        self._section_id: str | None = None
         paint_background(self, NAVY_900)
-        self.add_widget(title_label("Phase planning"))
+        self.add_widget(title_label("Waterfall plan"))
         self.add_widget(
             caption_label("Shape the delivery flow, then reorder phases as work evolves.")
         )
@@ -66,7 +72,11 @@ class PhasePlanningPanel(BoxLayout):
         self.disabled = True
 
     def show_project(self, project_id: str) -> None:
+        self.show_context(project_id)
+
+    def show_context(self, project_id: str, section_id: str | None = None) -> None:
         self._project_id = project_id
+        self._section_id = section_id
         self.disabled = False
         self.refresh()
 
@@ -74,7 +84,7 @@ class PhasePlanningPanel(BoxLayout):
         self._rows.clear_widgets()
         if self._project_id is None:
             return
-        phases = self._phases.list_for_project(self._project_id)
+        phases = self._phases.list_for_context(self._project_id, self._section_id)
         if not phases:
             self._rows.add_widget(
                 Label(
@@ -86,13 +96,18 @@ class PhasePlanningPanel(BoxLayout):
             )
             return
         for phase in phases:
-            row = BoxLayout(size_hint_y=None, height=dp(64), spacing=dp(6))
+            row = BoxLayout(size_hint_y=None, height=dp(78), spacing=dp(6))
             summary = phase.description.strip() or "No description"
+            phase_tasks = list(self._tasks.list_for_phase(phase.id))
+            task_summary = ", ".join(task.title for task in phase_tasks) or "No tasks"
             edit = style_button(
                 Button(
                     text=(
-                        f"{phase.position + 1:02}.  {phase.name}\n"
-                        f"{phase.status.value.title()}  ·  {summary}"
+                        f"{phase.name}\n"
+                        f"{phase.status.value.replace('_', ' ').title()} · "
+                        f"{format_optional_date(phase.start_date) or 'No start'} → "
+                        f"{format_optional_date(phase.end_date) or 'No end'} · {summary}\n"
+                        f"Tasks: {task_summary}"
                     ),
                     halign="left",
                     valign="middle",
@@ -100,30 +115,25 @@ class PhasePlanningPanel(BoxLayout):
                 "quiet",
             )
             edit.bind(
-                size=lambda widget, size: setattr(
-                    widget, "text_size", (size[0] - dp(18), size[1])
-                )
+                size=lambda widget, size: setattr(widget, "text_size", (size[0] - dp(18), size[1]))
             )
-            if phase.status is PhaseStatus.BLOCKED:
-                edit.color = RED
-            up = style_button(
-                Button(text="Up", size_hint_x=None, width=dp(46)), "secondary"
-            )
-            down = style_button(
-                Button(text="Down", size_hint_x=None, width=dp(52)), "secondary"
-            )
-            remove = style_button(
-                Button(text="Del", size_hint_x=None, width=dp(46)), "danger"
-            )
-            todos = style_button(
-                Button(text="To-Dos", size_hint_x=None, width=dp(82)), "secondary"
+            up = style_button(Button(text="Up", size_hint_x=None, width=dp(46)), "secondary")
+            down = style_button(Button(text="Down", size_hint_x=None, width=dp(52)), "secondary")
+            remove = style_button(Button(text="Del", size_hint_x=None, width=dp(46)), "danger")
+            todos = style_button(Button(text="To-Dos", size_hint_x=None, width=dp(82)), "secondary")
+            task_count = len(phase_tasks)
+            tasks = style_button(
+                Button(text=f"Tasks ({task_count})", size_hint_x=None, width=dp(104)),
+                "secondary",
             )
             edit.bind(on_release=partial(self._edit, phase))
             up.bind(on_release=partial(self._move, phase.id, -1))
             down.bind(on_release=partial(self._move, phase.id, 1))
             remove.bind(on_release=partial(self._remove, phase.id))
             todos.bind(on_release=partial(self._open_todos, phase))
+            tasks.bind(on_release=partial(self._open_tasks, phase))
             row.add_widget(edit)
+            row.add_widget(tasks)
             row.add_widget(todos)
             row.add_widget(up)
             row.add_widget(down)
@@ -136,17 +146,36 @@ class PhasePlanningPanel(BoxLayout):
         PhaseEditorPopup(None, self._add_phase).open()
 
     def _add_phase(
-        self, name: str, description: str, status: PhaseStatus
+        self,
+        name: str,
+        description: str,
+        status: PhaseStatus,
+        start_date: date | None,
+        end_date: date | None,
     ) -> None:
         if self._project_id is not None:
-            self._phases.add(self._project_id, name, description, status)
+            self._phases.add(
+                self._project_id,
+                name,
+                description,
+                status,
+                start_date,
+                end_date,
+                self._section_id,
+            )
             self.refresh()
 
     def _edit(self, phase: Phase, *_: object) -> None:
         if self._project_id is None:
             return
 
-        def submit(name: str, description: str, status: PhaseStatus) -> None:
+        def submit(
+            name: str,
+            description: str,
+            status: PhaseStatus,
+            start_date: date | None,
+            end_date: date | None,
+        ) -> None:
             if self._project_id is not None:
                 self._phases.update(
                     phase.id,
@@ -154,6 +183,8 @@ class PhasePlanningPanel(BoxLayout):
                     name,
                     description,
                     status,
+                    start_date,
+                    end_date,
                 )
                 self.refresh()
 
@@ -171,7 +202,10 @@ class PhasePlanningPanel(BoxLayout):
 
     def _reset(self, *_: object) -> None:
         if self._project_id is not None:
-            self._workflows.reset_phase_plan(self._project_id)
+            if self._section_id is None:
+                self._workflows.reset_phase_plan(self._project_id)
+            else:
+                self._phases.reset_waterfall(self._project_id, self._section_id)
             self.refresh()
 
     def _open_todos(self, phase: Phase, *_: object) -> None:
@@ -183,3 +217,6 @@ class PhasePlanningPanel(BoxLayout):
                 f"To-Dos · {phase.name}",
                 phase.id,
             ).open()
+
+    def _open_tasks(self, phase: Phase, *_: object) -> None:
+        WaterfallTasksPopup(self._tasks, phase, self.refresh).open()

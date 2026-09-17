@@ -6,9 +6,11 @@ path = ~/.project_planner/project_planner.sqlite3
 url =
 
 [window]
-# Environment overrides: PROJECT_PLANNER_WINDOW_WIDTH / PROJECT_PLANNER_WINDOW_HEIGHT
+# Environment overrides: PROJECT_PLANNER_WINDOW_WIDTH / PROJECT_PLANNER_WINDOW_HEIGHT /
+# PROJECT_PLANNER_FULLSCREEN
 width = 1280
 height = 800
+fullscreen = true
 
 [editor]
 # Environment override: PROJECT_PLANNER_AUTOSAVE_SECONDS

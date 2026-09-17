@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import date
 
 from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
 from project_planner.core.domain.projects.Project import Project
@@ -18,6 +19,11 @@ class ProjectService:
         status: ProjectStatus = ProjectStatus.IDEA,
         planning_method: PlanningMethod = PlanningMethod.CUSTOM,
         parent_id: str | None = None,
+        start_date: date | None = None,
+        target_date: date | None = None,
+        owner: str = "",
+        assignee: str = "",
+        notes: str = "",
     ) -> Project:
         if parent_id is not None:
             self.require(parent_id)
@@ -27,6 +33,11 @@ class ProjectService:
             status=status,
             planning_method=planning_method,
             parent_id=parent_id,
+            start_date=start_date,
+            target_date=target_date,
+            owner=owner.strip(),
+            assignee=assignee.strip(),
+            notes=notes.strip(),
         )
         self._projects.save(project)
         return project
@@ -40,6 +51,11 @@ class ProjectService:
         status: ProjectStatus,
         planning_method: PlanningMethod,
         parent_id: str | None,
+        start_date: date | None = None,
+        target_date: date | None = None,
+        owner: str = "",
+        assignee: str = "",
+        notes: str = "",
     ) -> Project:
         current = self.require(project_id)
         self._validate_parent(project_id, parent_id)
@@ -49,6 +65,11 @@ class ProjectService:
             status=status,
             planning_method=planning_method,
             parent_id=parent_id,
+            start_date=start_date,
+            target_date=target_date,
+            owner=owner.strip(),
+            assignee=assignee.strip(),
+            notes=notes.strip(),
         )
         self._projects.save(updated)
         return updated

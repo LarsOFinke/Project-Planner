@@ -19,7 +19,12 @@ from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
 from project_planner.core.domain.projects.Project import Project
 from project_planner.core.domain.projects.ProjectStatus import ProjectStatus
 from project_planner.core.domain.todos.TodoModule import TodoModule
+from project_planner.frontend.calendar.DateInput import DateInput
 from project_planner.frontend.links.ProjectLinksPopup import ProjectLinksPopup
+from project_planner.frontend.shared.date_parser import (
+    format_optional_date,
+    parse_optional_date,
+)
 from project_planner.frontend.shared.dialogs import show_confirmation
 from project_planner.frontend.shared.theme import (
     NAVY_900,
@@ -85,6 +90,16 @@ class OverviewPanel(BoxLayout):
             )
         )
         form.add_widget(self.description_input)
+        date_labels = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(10))
+        date_labels.add_widget(field_label("Start date"))
+        date_labels.add_widget(field_label("Target date"))
+        form.add_widget(date_labels)
+        dates = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(10))
+        self.start_date = DateInput()
+        self.target_date = DateInput()
+        dates.add_widget(self.start_date)
+        dates.add_widget(self.target_date)
+        form.add_widget(dates)
         selector_labels = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(10))
         selector_labels.add_widget(field_label("Status"))
         selector_labels.add_widget(field_label("Planning method"))
@@ -98,6 +113,26 @@ class OverviewPanel(BoxLayout):
         selectors.add_widget(self.method)
         selectors.add_widget(self.parent_spinner)
         form.add_widget(selectors)
+        people_labels = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(10))
+        people_labels.add_widget(field_label("Project owner"))
+        people_labels.add_widget(field_label("Assignee"))
+        form.add_widget(people_labels)
+        people = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(10))
+        self.owner = style_input(TextInput(hint_text="Optional", multiline=False))
+        self.assignee = style_input(TextInput(hint_text="Optional", multiline=False))
+        people.add_widget(self.owner)
+        people.add_widget(self.assignee)
+        form.add_widget(people)
+        form.add_widget(field_label("Project notes"))
+        self.notes = style_input(
+            TextInput(
+                hint_text="Simple shared notes",
+                multiline=True,
+                size_hint_y=None,
+                height=dp(120),
+            )
+        )
+        form.add_widget(self.notes)
         self.metadata = Label(
             size_hint_y=None,
             height=dp(40),
@@ -139,6 +174,11 @@ class OverviewPanel(BoxLayout):
         self.description_input.text = project.description
         self.status.text = project.status.value.title()
         self.method.text = project.planning_method.value.title()
+        self.start_date.text = format_optional_date(project.start_date)
+        self.target_date.text = format_optional_date(project.target_date)
+        self.owner.text = project.owner
+        self.assignee.text = project.assignee
+        self.notes.text = project.notes
         self._parent_ids = {choice.label: choice.project_id for choice in overview.parent_choices}
         self.parent_spinner.values = list(self._parent_ids)
         parent_title = next(
@@ -154,14 +194,23 @@ class OverviewPanel(BoxLayout):
     def _save(self, *_: object) -> None:
         if self._project is None:
             return
-        project = self._workflows.update_project(
-            self._project.id,
-            title=self.title_input.text,
-            description=self.description_input.text,
-            status=ProjectStatus(self.status.text.lower()),
-            planning_method=PlanningMethod(self.method.text.lower()),
-            parent_id=self._parent_ids[self.parent_spinner.text],
-        )
+        try:
+            project = self._workflows.update_project(
+                self._project.id,
+                title=self.title_input.text,
+                description=self.description_input.text,
+                status=ProjectStatus(self.status.text.lower()),
+                planning_method=PlanningMethod(self.method.text.lower()),
+                parent_id=self._parent_ids[self.parent_spinner.text],
+                start_date=parse_optional_date(self.start_date.text, "Start date"),
+                target_date=parse_optional_date(self.target_date.text, "Target date"),
+                owner=self.owner.text,
+                assignee=self.assignee.text,
+                notes=self.notes.text,
+            )
+        except ValueError as error:
+            show_confirmation(str(error), duration=2.5)
+            return
         self.show_project(project.id)
         self._on_saved(project.id)
         show_confirmation("Project changes saved locally.")
@@ -177,6 +226,4 @@ class OverviewPanel(BoxLayout):
 
     def _open_project_links(self, *_: object) -> None:
         if self._project is not None:
-            ProjectLinksPopup(
-                self._links, self._project.id, self._on_navigate
-            ).open()
+            ProjectLinksPopup(self._links, self._project.id, self._on_navigate).open()

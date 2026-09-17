@@ -74,3 +74,25 @@ The workspace defaults to Select mode so clicking the canvas does not create acc
 Draw mode routes pointer gestures to freehand strokes instead of draggable objects. Object color
 and selection indication are separate: palette colors render faithfully while a gold bounding
 frame communicates selection.
+
+## AD-015 — Planning templates are scoped structures
+
+Agile and Waterfall are complete-project templates when selected on a project. Custom stores an
+ordered list of sections whose model is independently Free, Agile, or Waterfall. Agile records and
+Waterfall phases can therefore reference a section without duplicating their domain or persistence
+logic. Changing a section model never deletes old content; it only adds the newly selected minimal
+structure.
+
+## AD-016 — One shared calendar boundary
+
+Month construction, navigation, and ISO date parsing live in the framework-independent core
+calendar service. Kivy modules reuse one Date input and popup implementation, keeping date fields
+keyboard-editable while preventing project, sprint, phase, task, and Custom-section pickers from
+developing separate behavior.
+
+## AD-017 — Top-anchored editor forms
+
+Editor popups place variable-height fields in a shared top-anchored scroll container and keep the
+primary/cancel action row outside it. Short forms no longer drift downward into unused space, while
+long forms remain reachable at high UI scales. Empty variable-content areas show an explicit state
+instead of an unexplained blank region.

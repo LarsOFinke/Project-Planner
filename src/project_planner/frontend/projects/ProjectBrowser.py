@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import date
 from functools import partial
 
 from kivy.metrics import dp
@@ -7,11 +8,14 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 
+from project_planner.core.application.custom.SectionService import SectionService
 from project_planner.core.application.projects.ProjectQueryService import ProjectQueryService
 from project_planner.core.application.projects.ProjectWorkflowService import (
     ProjectWorkflowService,
 )
-from project_planner.frontend.shared.dialogs import open_text_dialog
+from project_planner.core.domain.custom.SectionType import SectionType
+from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
+from project_planner.frontend.projects.NewProjectPopup import NewProjectPopup
 from project_planner.frontend.shared.theme import (
     GOLD,
     NAVY_800,
@@ -28,7 +32,9 @@ class ProjectBrowser(BoxLayout):
         self,
         workflows: ProjectWorkflowService,
         queries: ProjectQueryService,
+        sections: SectionService,
         on_select: Callable[[str], None],
+        on_exit: Callable[[], None],
         **kwargs: object,
     ) -> None:
         super().__init__(
@@ -39,7 +45,9 @@ class ProjectBrowser(BoxLayout):
         )
         self._workflows = workflows
         self._queries = queries
+        self._sections = sections
         self._on_select = on_select
+        self._on_exit = on_exit
         self.selected_id: str | None = None
         paint_background(self, NAVY_800, 8)
         self._list = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
@@ -48,6 +56,11 @@ class ProjectBrowser(BoxLayout):
         scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
         scroll.add_widget(self._list)
         self.add_widget(scroll)
+        self.exit_button = style_button(
+            Button(text="Exit", size_hint_y=None, height=dp(46)), "danger"
+        )
+        self.exit_button.bind(on_release=lambda *_: self._on_exit())
+        self.add_widget(self.exit_button)
         self.refresh()
 
     def _build_header(self) -> None:
@@ -62,9 +75,7 @@ class ProjectBrowser(BoxLayout):
                 halign="left",
             )
         )
-        self.children[0].bind(
-            size=lambda widget, size: setattr(widget, "text_size", size)
-        )
+        self.children[0].bind(size=lambda widget, size: setattr(widget, "text_size", size))
         self.add_widget(caption_label("Organize work from portfolio to task."))
         controls = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(7))
         new_root = style_button(Button(text="+ Project"), "primary")
@@ -79,12 +90,36 @@ class ProjectBrowser(BoxLayout):
         if parent_id is None and self.selected_id is not None:
             parent_id = None
 
-        def submit(title: str) -> None:
-            project = self._workflows.create_project(title, parent_id=parent_id)
+        def submit(
+            title: str,
+            description: str,
+            start_date: date | None,
+            target_date: date | None,
+            method: PlanningMethod,
+            owner: str,
+            assignee: str,
+            custom_type: SectionType | None,
+        ) -> None:
+            project = self._workflows.create_project(
+                title,
+                description=description,
+                parent_id=parent_id,
+                start_date=start_date,
+                target_date=target_date,
+                planning_method=method,
+                owner=owner,
+                assignee=assignee,
+            )
+            if custom_type is not None:
+                self._sections.add(
+                    project.id,
+                    f"{custom_type.value.title()} Section",
+                    custom_type,
+                )
             self.refresh()
             self.select(project.id)
 
-        open_text_dialog("New project", "Project title", submit)
+        NewProjectPopup(submit).open()
 
     def refresh(self) -> None:
         self._list.clear_widgets()
@@ -110,8 +145,7 @@ class ProjectBrowser(BoxLayout):
             marker = ">" if selected else " "
             button = Button(
                 text=(
-                    f"{prefix}{marker}  {project.title}\n"
-                    f"{prefix}    {project.status.value.title()}"
+                    f"{prefix}{marker}  {project.title}\n{prefix}    {project.status.value.title()}"
                 ),
                 size_hint_y=None,
                 height=dp(54),
@@ -126,9 +160,7 @@ class ProjectBrowser(BoxLayout):
             )
             button.font_size = "13sp"
             button.bind(
-                size=lambda widget, size: setattr(
-                    widget, "text_size", (size[0] - dp(16), size[1])
-                )
+                size=lambda widget, size: setattr(widget, "text_size", (size[0] - dp(16), size[1]))
             )
             button.bind(on_release=partial(self._select_event, project.id))
             self._list.add_widget(button)

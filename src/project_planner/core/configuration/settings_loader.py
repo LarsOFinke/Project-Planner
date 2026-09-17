@@ -36,6 +36,9 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         "PROJECT_PLANNER_AUTOSAVE_SECONDS", parser["editor"]["autosave_seconds"]
     )
     ui_scale = os.environ.get("PROJECT_PLANNER_UI_SCALE", parser["ui"]["scale"])
+    fullscreen = os.environ.get(
+        "PROJECT_PLANNER_FULLSCREEN", parser["window"]["fullscreen"]
+    )
     data_directory = os.environ.get("PROJECT_PLANNER_DATA_DIR", parser["storage"]["data_directory"])
     return Settings(
         database_path=Path(database).expanduser(),
@@ -43,6 +46,7 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         window_height=height,
         autosave_seconds=_positive_int(autosave, "autosave interval"),
         ui_scale=_ui_scale(ui_scale, width, height),
+        fullscreen=_boolean(fullscreen, "fullscreen"),
         data_directory=Path(data_directory).expanduser(),
         database_url=database_url,
     )
@@ -56,6 +60,15 @@ def _positive_int(value: str, label: str) -> int:
     if parsed <= 0:
         raise ValueError(f"{label.capitalize()} must be positive")
     return parsed
+
+
+def _boolean(value: str, label: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"Invalid {label}: {value!r}")
 
 
 def _ui_scale(value: str, width: int, height: int) -> float:
@@ -79,6 +92,19 @@ def save_ui_scale(ui_scale: float, config_path: str | Path | None = None) -> Non
     if not parser.has_section("ui"):
         parser.add_section("ui")
     parser["ui"]["scale"] = f"{validated:.2f}"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as config_file:
+        parser.write(config_file)
+
+
+def save_fullscreen(fullscreen: bool, config_path: str | Path | None = None) -> None:
+    path = Path(config_path).expanduser() if config_path is not None else _USER_CONFIG
+    parser = ConfigParser()
+    if path.is_file():
+        parser.read(path)
+    if not parser.has_section("window"):
+        parser.add_section("window")
+    parser["window"]["fullscreen"] = "true" if fullscreen else "false"
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as config_file:
         parser.write(config_file)

@@ -16,9 +16,10 @@
 Create, browse, nest, and update projects. Show status, planning method, description, and
 timestamps. Persist everything in SQLite.
 
-### M2 — Phase planning (prototype 0.1)
+### M2 — Minimal planning (prototype 0.1)
 
-Editable phases and Waterfall/Agile templates are implemented. Milestones, phase dependencies,
+Agile backlog/sprint flow, Waterfall phases/tasks/timeline, and mixed Custom sections are
+implemented. Milestones, task dependencies,
 and a timeline view remain follow-up work.
 
 ### M3 — Structured diagrams (basic editor in prototype 0.1)

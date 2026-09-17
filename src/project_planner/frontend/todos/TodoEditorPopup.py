@@ -6,7 +6,6 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
-from kivy.uix.scrollview import ScrollView
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 
@@ -14,6 +13,7 @@ from project_planner.core.domain.todos.Todo import Todo
 from project_planner.core.domain.todos.TodoModule import TodoModule
 from project_planner.core.domain.todos.TodoStatus import TodoStatus
 from project_planner.frontend.shared.dialogs import show_confirmation
+from project_planner.frontend.shared.form_layout import build_scrollable_form
 from project_planner.frontend.shared.theme import (
     GOLD,
     NAVY_800,
@@ -56,10 +56,7 @@ class TodoEditorPopup(Popup):
     def _build_content(self) -> BoxLayout:
         content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
         paint_background(content, NAVY_800)
-        form = BoxLayout(
-            orientation="vertical", spacing=dp(7), size_hint_y=None, padding=[dp(2), 0, dp(7), 0]
-        )
-        form.bind(minimum_height=form.setter("height"))
+        scroll, form = build_scrollable_form()
         form.add_widget(field_label("Title"))
         self.title_input = style_input(
             TextInput(
@@ -113,8 +110,6 @@ class TodoEditorPopup(Popup):
         )
         metadata.bind(size=lambda widget, size: setattr(widget, "text_size", size))
         form.add_widget(metadata)
-        scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
-        scroll.add_widget(form)
         actions = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
         cancel = style_button(Button(text="Cancel"), "secondary")
         save = style_button(Button(text="Save to-do"), "primary")

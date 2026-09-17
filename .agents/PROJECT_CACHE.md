@@ -8,25 +8,32 @@ Last refreshed: 2026-09-17
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `bash .agents/scripts/check-all.sh`.
-- Current suite: 32 tests.
+- Current suite: 41 tests.
 - Entry point: `project_planner.frontend.main:main`.
 - Database: SQLAlchemy ORM with Alembic migrations; SQLite default at
   `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
 - UI scale: persistent top-right dropdown from 5%–500%; cfg/env accepts `auto` or `0.05`–`5.00`.
+- Window: native fullscreen by default; cfg/env can opt into windowed mode.
+- Fullscreen exit: persistent bottom-left Exit button; shutdown flushes editor autosaves.
+- Window mode: persistent top-right Windowed/Fullscreen toggle beside the scale selector.
 - Class modules: exact PascalCase class filenames; non-class helper modules remain snake_case.
 
 ## Implemented workflows
 
 - hierarchical project browser with project status;
 - overview metadata, timestamps, parent project, and planning method;
-- editable Waterfall, Agile, and Custom phase objects with descriptions, statuses, and timestamps;
+- Agile backlog, multiple planned sprints, completed work, and simple sprint history;
+- Waterfall phases, tasks, and chronological timeline;
+- ordered Custom sections that independently use Free, Agile, or Waterfall structures;
+- shared core calendar service and reusable Date picker across all planning date fields;
 - project links and backlinks;
 - draggable node/edge diagram editor;
 - freehand workspace with explicit Select and Draw interaction modes;
 - movable, rotatable, scalable rectangle/ellipse/line/arrow objects;
 - imported PNG/JPEG/GIF/BMP/WebP images copied into per-project managed storage;
 - shared categorized-toolbox component;
+- top-anchored, scrollable editor forms with persistent bottom action rows at every UI scale;
 - content-sized text and image dialogs with responsive bounds and keyboard submission;
 - wrapping title/caption primitives and density-aware, horizontally scrollable planning tabs;
 - workspace toolboxes: Mode, Shapes, Media, Colors, Transform, Manage;
@@ -56,8 +63,9 @@ Last refreshed: 2026-09-17
 - Diagram JSON version: `1`.
 - Workspace JSON version: `4`.
 - Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation.
-- Phase rows persist description, status, created timestamp, and updated timestamp; startup migrates
-  older phase tables in place with `planned` status and preserved rows.
+- Migration head: `0007`; database export format: `4`.
+- Phase rows persist dates, description, normalized lifecycle status, optional Custom section,
+  created timestamp, and updated timestamp; older phase rows are preserved and mapped forward.
 - Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
 - Deleting an image object does not delete its managed source file.
 - Image location: `<data_directory>/projects/<project-id>/images/<uuid>.<ext>`.
@@ -76,6 +84,7 @@ Important overrides:
 - `PROJECT_PLANNER_DATA_DIR`
 - `PROJECT_PLANNER_WINDOW_WIDTH`
 - `PROJECT_PLANNER_WINDOW_HEIGHT`
+- `PROJECT_PLANNER_FULLSCREEN`
 - `PROJECT_PLANNER_AUTOSAVE_SECONDS`
 - `PROJECT_PLANNER_UI_SCALE`
 

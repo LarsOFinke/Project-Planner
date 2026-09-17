@@ -18,11 +18,10 @@ def test_project_workflow_owns_project_and_phase_creation() -> None:
     )
 
     assert [phase.name for phase in planner.phases.list_for_project(project.id)] == [
-        "Requirements",
+        "Planning",
         "Design",
-        "Implementation",
-        "Verification",
-        "Deployment",
+        "Execution",
+        "Completion",
     ]
 
 
@@ -38,16 +37,9 @@ def test_project_workflow_handles_planning_method_changes_and_reset() -> None:
         planning_method=PlanningMethod.AGILE,
         parent_id=None,
     )
-    planner.phases.add(updated.id, "Temporary")
-    planner.project_workflows.reset_phase_plan(updated.id)
-
-    assert [phase.name for phase in planner.phases.list_for_project(updated.id)] == [
-        "Product discovery",
-        "Backlog",
-        "Iteration",
-        "Review",
-        "Retrospective",
-    ]
+    assert planner.phases.list_for_project(updated.id) == []
+    backlog_item = planner.agile.add_item(updated.id, "Validate idea")
+    assert planner.agile.list_items(updated.id) == [backlog_item]
 
 
 def test_project_queries_flatten_tree_and_disambiguate_duplicate_titles() -> None:
@@ -63,9 +55,7 @@ def test_project_queries_flatten_tree_and_disambiguate_duplicate_titles() -> Non
     assert next(item.depth for item in tree if item.project.id == child.id) == 1
     assert len({choice.label for choice in choices}) == len(choices)
     assert all(choice.project_id != child.id for choice in overview.parent_choices)
-    assert second.id in {
-        choice.project_id for choice in overview.parent_choices
-    }
+    assert second.id in {choice.project_id for choice in overview.parent_choices}
 
 
 def test_link_service_resolves_direction_and_duplicate_target_labels() -> None:

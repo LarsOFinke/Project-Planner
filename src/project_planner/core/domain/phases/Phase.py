@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import date, datetime
 from uuid import uuid4
 
 from project_planner.core.domain.phases.PhaseStatus import PhaseStatus
@@ -14,7 +14,10 @@ class Phase:
     name: str
     position: int
     description: str = ""
-    status: PhaseStatus = PhaseStatus.PLANNED
+    status: PhaseStatus = PhaseStatus.NOT_STARTED
+    start_date: date | None = None
+    end_date: date | None = None
+    section_id: str | None = None
     id: str = field(default_factory=lambda: str(uuid4()))
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
@@ -24,6 +27,8 @@ class Phase:
             raise ValueError("Phase name must not be empty")
         if self.position < 0:
             raise ValueError("Phase position must not be negative")
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("Phase end date must not be before its start date")
 
     def revise(self, **changes: object) -> Phase:
         return replace(self, **changes, updated_at=utc_now())

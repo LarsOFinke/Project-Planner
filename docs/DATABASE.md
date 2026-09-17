@@ -9,8 +9,8 @@ migrations. SQLite remains the zero-configuration default, while `[database] url
 - `core/infrastructure/database/migrations/versions/` contains ordered, immutable structure
   changes. Startup upgrades the configured database to the current revision.
 - An existing prototype database without Alembic metadata is safely baselined at revision `0001`;
-  subsequent migrations add phase metadata, contextual To-Dos, seed history, and resource links
-  without deleting rows.
+  subsequent migrations add phase metadata, contextual To-Dos, seed history, resource links, and
+  the minimal planning relations without deleting rows.
 - `core/infrastructure/database/seeds/` contains the idempotent seed contract and runner. Each seed
   has its own class/file and is recorded in `seed_history` only after it succeeds.
 - Prototype 0.1 has no demo-data seed. Opening the application must never add sample projects to a
@@ -25,8 +25,13 @@ The relational metadata schema conforms to third normal form:
 
 | Relation | Candidate key | Non-key dependencies |
 | --- | --- | --- |
-| `projects` | `id` | title, description, status, method, parent and timestamps depend only on `id` |
-| `phases` | `id`; `(project_id, position)` | phase metadata depends on the selected candidate key, with no derived project attributes stored |
+| `projects` | `id` | setup, ownership text, notes, status, method, parent and timestamps depend only on `id` |
+| `planning_sections` | `id` | project, model, order, optional dates and status depend only on the section |
+| `sprints` | `id` | project/context, dates, goal and lifecycle state depend only on the sprint |
+| `backlog_items` | `id` | project/context, optional sprint, work fields and order depend only on the item |
+| `section_items` | `id` | free-section work fields and order depend only on the item |
+| `phases` | `id`; `(project_id, position)` | phase metadata and optional section depend on the selected candidate key, with no project facts copied |
+| `waterfall_tasks` | `id` | phase, work fields, dates, status and order depend only on the task |
 | `project_links` | `(source_id, target_id, relation)` | `note` depends on the whole relationship key |
 | `todos` | `id` | title, description, module, optional phase and timestamps depend only on `id`; project/phase data is referenced, not copied |
 | `artifacts` | `id`; `(project_id, kind)` | title, content and timestamps depend on the artifact key |
@@ -43,6 +48,13 @@ Phase To-Dos use a nullable `phase_id` foreign key rather than copying a phase n
 editing phases updates rows in place so attached To-Dos remain intact; deleting a phase cascades
 only its own To-Dos. Project relationships remain in `project_links`, while web URLs and local
 filesystem targets are separate `resource_links`, avoiding overloaded link semantics.
+
+Custom planning uses one `planning_sections` relation with a stable type code. Agile records and
+Waterfall phases optionally reference a section, so mixed models reuse the same normalized tables
+instead of creating one table per combination. Free items are separate rows rather than repeating
+columns on a section. Project owner and assignee are intentionally atomic display names in 0.1;
+they have no independent editable attributes yet, so a person directory would add identity and
+workflow complexity without removing a current transitive dependency.
 
 `artifacts.content` is an intentional document boundary: diagram/workspace JSON is treated as one
 opaque, versioned value by the relational layer and interpreted by dedicated codecs. Its internal

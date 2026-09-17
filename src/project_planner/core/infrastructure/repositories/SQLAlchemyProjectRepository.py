@@ -42,6 +42,11 @@ class SQLAlchemyProjectRepository:
             status=project.status.value,
             planning_method=project.planning_method.value,
             parent_id=project.parent_id,
+            start_date=project.start_date,
+            target_date=project.target_date,
+            owner=project.owner,
+            assignee=project.assignee,
+            notes=project.notes,
             created_at=project.created_at,
             updated_at=project.updated_at,
         )
@@ -55,6 +60,11 @@ class SQLAlchemyProjectRepository:
             status=ProjectStatus(model.status),
             planning_method=PlanningMethod(model.planning_method),
             parent_id=model.parent_id,
+            start_date=model.start_date,
+            target_date=model.target_date,
+            owner=model.owner,
+            assignee=model.assignee,
+            notes=model.notes,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )

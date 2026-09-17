@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text
+from sqlalchemy import CheckConstraint, Date, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from project_planner.core.infrastructure.database.models.Base import Base
@@ -23,5 +23,10 @@ class ProjectModel(Base):
     parent_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True
     )
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    owner: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    assignee: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)

@@ -15,9 +15,7 @@ class SQLAlchemyPhaseRepository:
     def save_all(self, project_id: str, phases: Sequence[Phase]) -> None:
         with self._database.session() as session:
             existing = list(
-                session.scalars(
-                    select(PhaseModel).where(PhaseModel.project_id == project_id)
-                )
+                session.scalars(select(PhaseModel).where(PhaseModel.project_id == project_id))
             )
             retained_ids = {phase.id for phase in phases}
             for temporary_position, model in enumerate(existing, start=1):
@@ -38,6 +36,9 @@ class SQLAlchemyPhaseRepository:
                         description=phase.description,
                         status=phase.status.value,
                         position=phase.position,
+                        start_date=phase.start_date,
+                        end_date=phase.end_date,
+                        section_id=phase.section_id,
                         created_at=phase.created_at,
                         updated_at=phase.updated_at,
                     )
@@ -58,6 +59,9 @@ class SQLAlchemyPhaseRepository:
                     description=model.description,
                     status=PhaseStatus(model.status),
                     position=model.position,
+                    start_date=model.start_date,
+                    end_date=model.end_date,
+                    section_id=model.section_id,
                     created_at=model.created_at,
                     updated_at=model.updated_at,
                 )

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from project_planner.core.application.agile.AgilePlanningService import AgilePlanningService
 from project_planner.core.application.artifacts.ArtifactService import ArtifactService
 from project_planner.core.application.artifacts.codecs.DiagramDocumentCodec import (
     DiagramDocumentCodec,
@@ -8,6 +9,7 @@ from project_planner.core.application.artifacts.codecs.WorkspaceDocumentCodec im
     WorkspaceDocumentCodec,
 )
 from project_planner.core.application.assets.ImageAssetService import ImageAssetService
+from project_planner.core.application.custom.SectionService import SectionService
 from project_planner.core.application.links.ProjectLinkService import ProjectLinkService
 from project_planner.core.application.phases.PhaseService import PhaseService
 from project_planner.core.application.projects.ProjectQueryService import ProjectQueryService
@@ -17,16 +19,20 @@ from project_planner.core.application.projects.ProjectWorkflowService import (
 )
 from project_planner.core.application.resources.ResourceLinkService import ResourceLinkService
 from project_planner.core.application.todos.TodoService import TodoService
+from project_planner.core.application.waterfall.WaterfallTaskService import WaterfallTaskService
 from project_planner.core.configuration.Settings import Settings
 
 
 @dataclass(frozen=True, slots=True)
 class ApplicationContainer:
     settings: Settings
+    agile: AgilePlanningService
     projects: ProjectService
     project_queries: ProjectQueryService
     project_workflows: ProjectWorkflowService
     phases: PhaseService
+    sections: SectionService
+    waterfall_tasks: WaterfallTaskService
     links: ProjectLinkService
     resources: ResourceLinkService
     todos: TodoService

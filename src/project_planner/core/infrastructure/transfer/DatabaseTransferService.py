@@ -3,25 +3,34 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import inspect, select
+from sqlalchemy import Date, inspect, select
 from sqlalchemy.orm import Session
 
 from project_planner.core.infrastructure.database.Database import Database
 from project_planner.core.infrastructure.database.models.ArtifactModel import ArtifactModel
+from project_planner.core.infrastructure.database.models.BacklogItemModel import BacklogItemModel
 from project_planner.core.infrastructure.database.models.PhaseModel import PhaseModel
+from project_planner.core.infrastructure.database.models.PlanningSectionModel import (
+    PlanningSectionModel,
+)
 from project_planner.core.infrastructure.database.models.ProjectLinkModel import ProjectLinkModel
 from project_planner.core.infrastructure.database.models.ProjectModel import ProjectModel
 from project_planner.core.infrastructure.database.models.ResourceLinkModel import ResourceLinkModel
+from project_planner.core.infrastructure.database.models.SectionItemModel import SectionItemModel
+from project_planner.core.infrastructure.database.models.SprintModel import SprintModel
 from project_planner.core.infrastructure.database.models.TodoModel import TodoModel
 from project_planner.core.infrastructure.database.models.UTCDateTime import UTCDateTime
+from project_planner.core.infrastructure.database.models.WaterfallTaskModel import (
+    WaterfallTaskModel,
+)
 from project_planner.core.infrastructure.transfer.ImportReport import ImportReport
 
 _FORMAT = "project-planner-database-export"
-_VERSION = 3
+_VERSION = 4
 _TABLES = (
     "projects",
     "phases",
@@ -29,6 +38,11 @@ _TABLES = (
     "todos",
     "artifacts",
     "resource_links",
+    "planning_sections",
+    "sprints",
+    "backlog_items",
+    "section_items",
+    "waterfall_tasks",
 )
 
 
@@ -51,6 +65,11 @@ class DatabaseTransferService:
                     "todos": self._rows(session, TodoModel),
                     "artifacts": self._rows(session, ArtifactModel),
                     "resource_links": self._rows(session, ResourceLinkModel),
+                    "planning_sections": self._rows(session, PlanningSectionModel),
+                    "sprints": self._rows(session, SprintModel),
+                    "backlog_items": self._rows(session, BacklogItemModel),
+                    "section_items": self._rows(session, SectionItemModel),
+                    "waterfall_tasks": self._rows(session, WaterfallTaskModel),
                 },
             }
         handle, temporary_name = tempfile.mkstemp(
@@ -98,14 +117,14 @@ class DatabaseTransferService:
 
     @staticmethod
     def _json_value(value: Any) -> Any:
-        return value.isoformat() if isinstance(value, datetime) else value
+        return value.isoformat() if isinstance(value, date) else value
 
     @staticmethod
     def _validated_tables(payload: object) -> dict[str, list[dict[str, Any]]]:
         if not isinstance(payload, dict):
             raise ValueError("Import document must be a JSON object")
         version = payload.get("version")
-        if payload.get("format") != _FORMAT or version not in {1, 2, _VERSION}:
+        if payload.get("format") != _FORMAT or version not in {1, 2, 3, _VERSION}:
             raise ValueError("Unsupported database export format or version")
         raw_tables = payload.get("tables")
         if not isinstance(raw_tables, dict):
@@ -116,6 +135,14 @@ class DatabaseTransferService:
         missing_tables = set(_TABLES) - set(raw_tables)
         if version in {1, 2}:
             missing_tables.discard("resource_links")
+        if version in {1, 2, 3}:
+            missing_tables -= {
+                "planning_sections",
+                "sprints",
+                "backlog_items",
+                "section_items",
+                "waterfall_tasks",
+            }
         if missing_tables:
             raise ValueError(f"Import document is missing tables: {sorted(missing_tables)}")
         result: dict[str, list[dict[str, Any]]] = {}
@@ -127,13 +154,27 @@ class DatabaseTransferService:
         if version == 1:
             for todo in result["todos"]:
                 todo.setdefault("phase_id", None)
+        if version in {1, 2, 3}:
+            status_map = {
+                "completed": "completed",
+                "skipped": "completed",
+                "active": "in_progress",
+                "blocked": "in_progress",
+            }
+            for phase in result["phases"]:
+                phase["status"] = status_map.get(phase.get("status"), "not_started")
         return result
 
     def _merge(self, session: Session, tables: dict[str, list[dict[str, Any]]]) -> tuple[int, int]:
         created = updated = 0
         model_rows: tuple[tuple[type[Any], list[dict[str, Any]]], ...] = (
             (ProjectModel, self._ordered_projects(tables["projects"])),
+            (PlanningSectionModel, tables["planning_sections"]),
+            (SprintModel, tables["sprints"]),
             (PhaseModel, tables["phases"]),
+            (BacklogItemModel, tables["backlog_items"]),
+            (SectionItemModel, tables["section_items"]),
+            (WaterfallTaskModel, tables["waterfall_tasks"]),
             (ProjectLinkModel, tables["project_links"]),
             (TodoModel, tables["todos"]),
             (ArtifactModel, tables["artifacts"]),
@@ -170,10 +211,16 @@ class DatabaseTransferService:
     @staticmethod
     def _model_value(model_type: type[Any], key: str, value: Any) -> Any:
         column = inspect(model_type).columns[key]
+        if value is None:
+            return None
         if isinstance(column.type, UTCDateTime):
             if not isinstance(value, str):
                 raise ValueError(f"{model_type.__tablename__}.{key} must be a timestamp")
             return datetime.fromisoformat(value)
+        if isinstance(column.type, Date):
+            if not isinstance(value, str):
+                raise ValueError(f"{model_type.__tablename__}.{key} must be a date")
+            return date.fromisoformat(value)
         return value
 
     @staticmethod

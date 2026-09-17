@@ -6,6 +6,7 @@ from sqlalchemy import inspect, text
 from project_planner.core.bootstrap.container_builder import build_container
 from project_planner.core.configuration.Settings import Settings
 from project_planner.core.domain.artifacts.ArtifactKind import ArtifactKind
+from project_planner.core.domain.custom.SectionType import SectionType
 from project_planner.core.domain.resources.ResourceLinkKind import ResourceLinkKind
 from project_planner.core.domain.todos.TodoModule import TodoModule
 from project_planner.core.infrastructure.database.Database import Database
@@ -27,9 +28,14 @@ def test_migrations_create_versioned_normalized_schema(tmp_path: Path) -> None:
         "artifacts",
         "seed_history",
         "resource_links",
+        "planning_sections",
+        "sprints",
+        "backlog_items",
+        "section_items",
+        "waterfall_tasks",
     } <= set(inspector.get_table_names())
     with database.engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0006"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0007"
 
     todo_foreign_tables = {
         foreign_key["referred_table"] for foreign_key in inspector.get_foreign_keys("todos")
@@ -79,9 +85,7 @@ def test_phase_todos_survive_reordering_and_follow_phase_deletion(tmp_path: Path
     assert planner.todos.require(todo.id).phase_id == discovery.id
 
     planner.phases.remove(project.id, discovery.id)
-    assert planner.todos.list_for_context(
-        project.id, TodoModule.PHASES, discovery.id
-    ) == []
+    assert planner.todos.list_for_context(project.id, TodoModule.PHASES, discovery.id) == []
 
 
 def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
@@ -99,12 +103,14 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
         "https://example.com/project",
         ResourceLinkKind.WEB,
     )
+    section = source.sections.add(project.id, "Launch prep", SectionType.FREE)
+    source.sections.add_item(section.id, "Confirm release copy", assignee="Ada")
 
     export_path = tmp_path / "planner-export.json"
     DatabaseTransferService(Database(source_path)).export_to(export_path)
     document = json.loads(export_path.read_text(encoding="utf-8"))
     assert document["format"] == "project-planner-database-export"
-    assert document["version"] == 3
+    assert document["version"] == 4
 
     target_path = tmp_path / "target.sqlite3"
     target_database = Database(target_path)
@@ -113,18 +119,21 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     target = build_container(Settings(target_path, 1280, 800, 20))
 
     assert dry_run.dry_run is True
-    assert dry_run.created == 7
+    assert dry_run.created == 9
     assert target.projects.list_all() == []
 
     applied = transfer.import_from(export_path, dry_run=False)
     restored = build_container(Settings(target_path, 1280, 800, 20))
 
     assert applied.dry_run is False
-    assert applied.created == 7
+    assert applied.created == 9
     assert {item.title for item in restored.projects.list_all()} == {"Platform", "Desktop"}
     assert restored.todos.list_for_project(project.id)[0].title == "Confirm scope"
     assert restored.links.list_for_project(project.id)[0].relation == "contains"
     assert restored.resources.list_for_project(project.id)[0].title == "Project website"
+    restored_section = restored.sections.list_for_project(project.id)[0]
+    assert restored_section.name == "Launch prep"
+    assert restored.sections.list_items(restored_section.id)[0].assignee == "Ada"
 
 
 def test_import_rejects_unknown_export_version_without_changes(tmp_path: Path) -> None:

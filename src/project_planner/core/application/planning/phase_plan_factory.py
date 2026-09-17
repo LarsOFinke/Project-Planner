@@ -7,12 +7,8 @@ from project_planner.core.domain.phases.Phase import Phase
 from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
 
 _STRATEGIES: dict[PlanningMethod, PhasePlanStrategy] = {
-    PlanningMethod.WATERFALL: NamedPhasePlan(
-        ("Requirements", "Design", "Implementation", "Verification", "Deployment")
-    ),
-    PlanningMethod.AGILE: NamedPhasePlan(
-        ("Product discovery", "Backlog", "Iteration", "Review", "Retrospective")
-    ),
+    PlanningMethod.WATERFALL: NamedPhasePlan(("Planning", "Design", "Execution", "Completion")),
+    PlanningMethod.AGILE: EmptyPhasePlan(),
     PlanningMethod.CUSTOM: EmptyPhasePlan(),
 }
 

@@ -1,0 +1,192 @@
+from datetime import date
+from functools import partial
+
+from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
+
+from project_planner.core.application.agile.AgilePlanningService import AgilePlanningService
+from project_planner.core.application.custom.SectionService import SectionService
+from project_planner.core.application.phases.PhaseService import PhaseService
+from project_planner.core.application.projects.ProjectWorkflowService import ProjectWorkflowService
+from project_planner.core.application.todos.TodoService import TodoService
+from project_planner.core.application.waterfall.WaterfallTaskService import WaterfallTaskService
+from project_planner.core.domain.custom.PlanningSection import PlanningSection
+from project_planner.core.domain.custom.SectionStatus import SectionStatus
+from project_planner.core.domain.custom.SectionType import SectionType
+from project_planner.frontend.planning.custom.SectionEditorPopup import SectionEditorPopup
+from project_planner.frontend.planning.custom.SectionPlanningPopup import SectionPlanningPopup
+from project_planner.frontend.shared.date_parser import format_optional_date
+from project_planner.frontend.shared.SimpleTabbedPanel import SimpleTabbedPanel
+from project_planner.frontend.shared.theme import (
+    NAVY_900,
+    SLATE_400,
+    caption_label,
+    paint_background,
+    style_button,
+    title_label,
+)
+
+
+class CustomPlanningPanel(BoxLayout):
+    def __init__(
+        self,
+        sections: SectionService,
+        agile: AgilePlanningService,
+        phases: PhaseService,
+        workflows: ProjectWorkflowService,
+        tasks: WaterfallTaskService,
+        todos: TodoService,
+        **kwargs: object,
+    ) -> None:
+        super().__init__(orientation="vertical", spacing=dp(8), padding=dp(8), **kwargs)
+        self._sections = sections
+        self._agile = agile
+        self._phases = phases
+        self._workflows = workflows
+        self._tasks = tasks
+        self._todos = todos
+        self._project_id: str | None = None
+        paint_background(self, NAVY_900)
+        self.add_widget(title_label("Custom plan"))
+        self.add_widget(
+            caption_label("Build an ordered plan from Free, Agile, and Waterfall sections.")
+        )
+        controls = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        for section_type in SectionType:
+            button = style_button(
+                Button(text=f"+ {section_type.value.title()} section"),
+                "primary" if section_type is SectionType.FREE else "secondary",
+            )
+            button.bind(on_release=partial(self._add, section_type))
+            controls.add_widget(button)
+        self.add_widget(controls)
+        self._plan_rows = self._rows()
+        self._completed_rows = self._rows()
+        self.add_widget(
+            SimpleTabbedPanel({"Plan": self._plan_rows[0], "Completed": self._completed_rows[0]})
+        )
+
+    def show_project(self, project_id: str) -> None:
+        self._project_id = project_id
+        self.refresh()
+
+    def refresh(self) -> None:
+        self._plan_rows[1].clear_widgets()
+        self._completed_rows[1].clear_widgets()
+        if self._project_id is None:
+            return
+        sections = list(self._sections.list_for_project(self._project_id))
+        active = [section for section in sections if section.status is not SectionStatus.COMPLETED]
+        completed = [section for section in sections if section.status is SectionStatus.COMPLETED]
+        self._render(active, self._plan_rows[1], True)
+        self._render(completed, self._completed_rows[1], False)
+
+    def _render(self, sections: list[PlanningSection], rows: BoxLayout, reorder: bool) -> None:
+        if not sections:
+            rows.add_widget(
+                Label(
+                    text="No sections here yet.", color=SLATE_400, size_hint_y=None, height=dp(54)
+                )
+            )
+        for section in sections:
+            row = BoxLayout(size_hint_y=None, height=dp(68), spacing=dp(5))
+            status = section.status.value.replace("_", " ").title()
+            start = format_optional_date(section.start_date) or "No start"
+            end = format_optional_date(section.end_date) or "No end"
+            open_button = style_button(
+                Button(
+                    text=(
+                        f"{section.position + 1}. {section.name}\n"
+                        f"{section.section_type.value.title()} · {status} · {start} → {end}"
+                    ),
+                    halign="left",
+                ),
+                "quiet",
+            )
+            open_button.bind(on_release=partial(self._open, section))
+            edit = style_button(Button(text="Edit", size_hint_x=None, width=dp(62)), "secondary")
+            edit.bind(on_release=partial(self._edit, section))
+            row.add_widget(open_button)
+            row.add_widget(edit)
+            if reorder:
+                for label, offset in (("Up", -1), ("Down", 1)):
+                    button = style_button(
+                        Button(text=label, size_hint_x=None, width=dp(60)), "secondary"
+                    )
+                    button.bind(on_release=partial(self._move, section.id, offset))
+                    row.add_widget(button)
+            remove = style_button(Button(text="Del", size_hint_x=None, width=dp(54)), "danger")
+            remove.bind(on_release=partial(self._remove, section.id))
+            row.add_widget(remove)
+            rows.add_widget(row)
+
+    def _add(self, section_type: SectionType, *_: object) -> None:
+        SectionEditorPopup(None, section_type, self._create).open()
+
+    def _create(
+        self,
+        name: str,
+        description: str,
+        section_type: SectionType,
+        start_date: date | None,
+        end_date: date | None,
+        _status: SectionStatus,
+    ) -> None:
+        if self._project_id:
+            self._sections.add(
+                self._project_id, name, section_type, description, start_date, end_date
+            )
+            self.refresh()
+
+    def _edit(self, section: PlanningSection, *_: object) -> None:
+        def save(
+            name: str,
+            description: str,
+            section_type: SectionType,
+            start_date: date | None,
+            end_date: date | None,
+            status: SectionStatus,
+        ) -> None:
+            self._sections.update(
+                section.id,
+                name=name,
+                description=description,
+                section_type=section_type,
+                start_date=start_date,
+                end_date=end_date,
+                status=status,
+            )
+            self.refresh()
+
+        SectionEditorPopup(section, section.section_type, save).open()
+
+    def _open(self, section: PlanningSection, *_: object) -> None:
+        SectionPlanningPopup(
+            section,
+            self._sections,
+            self._agile,
+            self._phases,
+            self._workflows,
+            self._tasks,
+            self._todos,
+        ).open()
+
+    def _move(self, section_id: str, offset: int, *_: object) -> None:
+        if self._project_id:
+            self._sections.move(self._project_id, section_id, offset)
+            self.refresh()
+
+    def _remove(self, section_id: str, *_: object) -> None:
+        self._sections.remove(section_id)
+        self.refresh()
+
+    @staticmethod
+    def _rows() -> tuple[ScrollView, BoxLayout]:
+        rows = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6), padding=dp(8))
+        rows.bind(minimum_height=rows.setter("height"))
+        scroll = ScrollView(do_scroll_x=False)
+        scroll.add_widget(rows)
+        return scroll, rows

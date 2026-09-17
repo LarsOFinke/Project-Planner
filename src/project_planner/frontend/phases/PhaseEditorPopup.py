@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import date
 
 from kivy.core.window import Window
 from kivy.metrics import dp
@@ -6,13 +7,15 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
-from kivy.uix.scrollview import ScrollView
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 
 from project_planner.core.domain.phases.Phase import Phase
 from project_planner.core.domain.phases.PhaseStatus import PhaseStatus
+from project_planner.frontend.calendar.DateInput import DateInput
+from project_planner.frontend.shared.date_parser import format_optional_date, parse_optional_date
 from project_planner.frontend.shared.dialogs import show_confirmation
+from project_planner.frontend.shared.form_layout import build_scrollable_form
 from project_planner.frontend.shared.theme import (
     GOLD,
     NAVY_800,
@@ -30,7 +33,7 @@ class PhaseEditorPopup(Popup):
     def __init__(
         self,
         phase: Phase | None,
-        on_save: Callable[[str, str, PhaseStatus], None],
+        on_save: Callable[[str, str, PhaseStatus, date | None, date | None], None],
         **kwargs: object,
     ) -> None:
         self._phase = phase
@@ -53,13 +56,7 @@ class PhaseEditorPopup(Popup):
     def _build_content(self) -> BoxLayout:
         content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
         paint_background(content, NAVY_800)
-        form = BoxLayout(
-            orientation="vertical",
-            spacing=dp(7),
-            size_hint_y=None,
-            padding=[dp(2), 0, dp(7), 0],
-        )
-        form.bind(minimum_height=form.setter("height"))
+        scroll, form = build_scrollable_form()
         form.add_widget(field_label("Name"))
         self.name_input = style_input(
             TextInput(
@@ -79,12 +76,24 @@ class PhaseEditorPopup(Popup):
             )
         )
         form.add_widget(self.description_input)
+        dates = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(8))
+        start_box = BoxLayout(orientation="vertical")
+        start_box.add_widget(field_label("Start date"))
+        self.start_date = DateInput()
+        start_box.add_widget(self.start_date)
+        end_box = BoxLayout(orientation="vertical")
+        end_box.add_widget(field_label("End date"))
+        self.end_date = DateInput()
+        end_box.add_widget(self.end_date)
+        dates.add_widget(start_box)
+        dates.add_widget(end_box)
+        form.add_widget(dates)
         form.add_widget(field_label("Status"))
-        initial_status = self._phase.status if self._phase is not None else PhaseStatus.PLANNED
+        initial_status = self._phase.status if self._phase is not None else PhaseStatus.NOT_STARTED
         self.status = style_spinner(
             Spinner(
-                text=initial_status.value.title(),
-                values=[status.value.title() for status in PhaseStatus],
+                text=self._status_label(initial_status),
+                values=[self._status_label(status) for status in PhaseStatus],
                 size_hint_y=None,
                 height=dp(48),
             )
@@ -101,8 +110,6 @@ class PhaseEditorPopup(Popup):
         )
         metadata.bind(size=lambda widget, size: setattr(widget, "text_size", size))
         form.add_widget(metadata)
-        scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
-        scroll.add_widget(form)
         actions = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
         cancel = style_button(Button(text="Cancel"), "secondary")
         save = style_button(Button(text="Save phase"), "primary")
@@ -128,6 +135,8 @@ class PhaseEditorPopup(Popup):
         self.name_input.unbind(width=self._populate_fields)
         self.name_input.text = self._phase.name
         self.description_input.text = self._phase.description
+        self.start_date.text = format_optional_date(self._phase.start_date)
+        self.end_date.text = format_optional_date(self._phase.end_date)
         self.name_input.focus = True
 
     def _metadata_text(self) -> str:
@@ -143,10 +152,24 @@ class PhaseEditorPopup(Popup):
         if not name:
             self.name_input.hint_text = "A phase name is required"
             return
-        self._on_save(
-            name,
-            self.description_input.text.strip(),
-            PhaseStatus(self.status.text.lower()),
-        )
+        try:
+            start = parse_optional_date(self.start_date.text, "Start date")
+            end = parse_optional_date(self.end_date.text, "End date")
+            if start and end and end < start:
+                raise ValueError("End date must not be before start date")
+            self._on_save(
+                name,
+                self.description_input.text.strip(),
+                PhaseStatus(self.status.text.lower().replace(" ", "_")),
+                start,
+                end,
+            )
+        except ValueError as error:
+            self.start_date.hint_text = str(error)
+            return
         self.dismiss()
         show_confirmation("Phase changes saved locally.")
+
+    @staticmethod
+    def _status_label(status: PhaseStatus) -> str:
+        return status.value.replace("_", " ").title()
