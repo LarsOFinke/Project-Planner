@@ -21,6 +21,9 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
     parser.read([str(path) for path in candidates if path.is_file()])
 
     database = os.environ.get("PROJECT_PLANNER_DB", parser["database"]["path"])
+    database_url = (
+        os.environ.get("PROJECT_PLANNER_DB_URL", parser["database"].get("url", "")).strip() or None
+    )
     width = _positive_int(
         os.environ.get("PROJECT_PLANNER_WINDOW_WIDTH", parser["window"]["width"]),
         "window width",
@@ -33,9 +36,7 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         "PROJECT_PLANNER_AUTOSAVE_SECONDS", parser["editor"]["autosave_seconds"]
     )
     ui_scale = os.environ.get("PROJECT_PLANNER_UI_SCALE", parser["ui"]["scale"])
-    data_directory = os.environ.get(
-        "PROJECT_PLANNER_DATA_DIR", parser["storage"]["data_directory"]
-    )
+    data_directory = os.environ.get("PROJECT_PLANNER_DATA_DIR", parser["storage"]["data_directory"])
     return Settings(
         database_path=Path(database).expanduser(),
         window_width=width,
@@ -43,6 +44,7 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         autosave_seconds=_positive_int(autosave, "autosave interval"),
         ui_scale=_ui_scale(ui_scale, width, height),
         data_directory=Path(data_directory).expanduser(),
+        database_url=database_url,
     )
 
 

@@ -8,19 +8,24 @@ version = "0.1.0"
 description = "A local-first visual project planning desktop application"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
-dependencies = ["Kivy>=2.3,<3"]
+dependencies = [
+    "Kivy>=2.3,<3",
+    "SQLAlchemy>=2.0,<3",
+    "alembic>=1.14,<2",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.9"]
 
 [project.scripts]
 project-planner = "project_planner.frontend.main:main"
+project-planner-db = "project_planner.cli.database_transfer:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-project_planner = ["config/*.cfg"]
+project_planner = ["config/*.cfg", "core/infrastructure/database/migrations/script.py.mako"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

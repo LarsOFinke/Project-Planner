@@ -9,13 +9,18 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
+from project_planner.core.application.links.ProjectLinkService import ProjectLinkService
 from project_planner.core.application.projects.ProjectQueryService import ProjectQueryService
 from project_planner.core.application.projects.ProjectWorkflowService import (
     ProjectWorkflowService,
 )
+from project_planner.core.application.todos.TodoService import TodoService
 from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
 from project_planner.core.domain.projects.Project import Project
 from project_planner.core.domain.projects.ProjectStatus import ProjectStatus
+from project_planner.core.domain.todos.TodoModule import TodoModule
+from project_planner.frontend.links.ProjectLinksPopup import ProjectLinksPopup
+from project_planner.frontend.shared.dialogs import show_confirmation
 from project_planner.frontend.shared.theme import (
     NAVY_900,
     SLATE_400,
@@ -27,6 +32,7 @@ from project_planner.frontend.shared.theme import (
     style_spinner,
     title_label,
 )
+from project_planner.frontend.todos.TodoManagerPopup import TodoManagerPopup
 
 
 class OverviewPanel(BoxLayout):
@@ -34,12 +40,18 @@ class OverviewPanel(BoxLayout):
         self,
         workflows: ProjectWorkflowService,
         queries: ProjectQueryService,
+        links: ProjectLinkService,
+        todos: TodoService,
+        on_navigate: Callable[[str], None],
         on_saved: Callable[[str], None],
         **kwargs: object,
     ) -> None:
         super().__init__(orientation="vertical", **kwargs)
         self._workflows = workflows
         self._queries = queries
+        self._links = links
+        self._todos = todos
+        self._on_navigate = on_navigate
         self._on_saved = on_saved
         self._project: Project | None = None
         self._parent_ids: dict[str, str | None] = {"No parent": None}
@@ -79,12 +91,8 @@ class OverviewPanel(BoxLayout):
         selector_labels.add_widget(field_label("Parent project"))
         form.add_widget(selector_labels)
         selectors = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(10))
-        self.status = style_spinner(
-            Spinner(values=[item.value.title() for item in ProjectStatus])
-        )
-        self.method = style_spinner(
-            Spinner(values=[item.value.title() for item in PlanningMethod])
-        )
+        self.status = style_spinner(Spinner(values=[item.value.title() for item in ProjectStatus]))
+        self.method = style_spinner(Spinner(values=[item.value.title() for item in PlanningMethod]))
         self.parent_spinner = style_spinner(Spinner(text="No parent"))
         selectors.add_widget(self.status)
         selectors.add_widget(self.method)
@@ -101,7 +109,12 @@ class OverviewPanel(BoxLayout):
         form.add_widget(self.metadata)
         form.add_widget(Widget(size_hint_y=None, height=dp(8)))
         actions = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(8))
-        actions.add_widget(Widget())
+        todos = style_button(Button(text="General To-Dos"), "secondary")
+        relationships = style_button(Button(text="Linked projects"), "secondary")
+        todos.bind(on_release=self._open_todos)
+        relationships.bind(on_release=self._open_project_links)
+        actions.add_widget(todos)
+        actions.add_widget(relationships)
         save = style_button(
             Button(
                 text="Save changes",
@@ -126,9 +139,7 @@ class OverviewPanel(BoxLayout):
         self.description_input.text = project.description
         self.status.text = project.status.value.title()
         self.method.text = project.planning_method.value.title()
-        self._parent_ids = {
-            choice.label: choice.project_id for choice in overview.parent_choices
-        }
+        self._parent_ids = {choice.label: choice.project_id for choice in overview.parent_choices}
         self.parent_spinner.values = list(self._parent_ids)
         parent_title = next(
             (name for name, value in self._parent_ids.items() if value == project.parent_id),
@@ -153,3 +164,19 @@ class OverviewPanel(BoxLayout):
         )
         self.show_project(project.id)
         self._on_saved(project.id)
+        show_confirmation("Project changes saved locally.")
+
+    def _open_todos(self, *_: object) -> None:
+        if self._project is not None:
+            TodoManagerPopup(
+                self._todos,
+                self._project.id,
+                TodoModule.GENERAL,
+                "General project To-Dos",
+            ).open()
+
+    def _open_project_links(self, *_: object) -> None:
+        if self._project is not None:
+            ProjectLinksPopup(
+                self._links, self._project.id, self._on_navigate
+            ).open()

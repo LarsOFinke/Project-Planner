@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from functools import partial
 
 from kivy.metrics import dp
@@ -25,7 +26,10 @@ from project_planner.frontend.shared.theme import (
 
 class ProjectLinksPanel(BoxLayout):
     def __init__(
-        self, links: ProjectLinkService, **kwargs: object
+        self,
+        links: ProjectLinkService,
+        on_navigate: Callable[[str], None],
+        **kwargs: object,
     ) -> None:
         super().__init__(
             orientation="vertical",
@@ -34,21 +38,18 @@ class ProjectLinksPanel(BoxLayout):
             **kwargs,
         )
         self._links = links
+        self._on_navigate = on_navigate
         self._project_id: str | None = None
         self._target_ids: dict[str, str] = {}
         paint_background(self, NAVY_900)
         self.add_widget(title_label("Linked projects"))
-        self.add_widget(
-            caption_label("Make dependencies and cross-project relationships visible.")
-        )
+        self.add_widget(caption_label("Make dependencies and cross-project relationships visible."))
         controls = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(8))
         self.target = style_spinner(Spinner(text="Choose project"))
         self.relation = style_input(
             TextInput(text="related", multiline=False, hint_text="Relation")
         )
-        add = style_button(
-            Button(text="Add link", size_hint_x=None, width=dp(120)), "primary"
-        )
+        add = style_button(Button(text="Add link", size_hint_x=None, width=dp(120)), "primary")
         add.bind(on_release=self._add)
         controls.add_widget(self.target)
         controls.add_widget(self.relation)
@@ -105,14 +106,18 @@ class ProjectLinksPanel(BoxLayout):
                 shorten_from="right",
             )
             relationship.bind(
-                size=lambda widget, size: setattr(
-                    widget, "text_size", (size[0] - dp(8), size[1])
-                )
+                size=lambda widget, size: setattr(widget, "text_size", (size[0] - dp(8), size[1]))
             )
             row.add_widget(relationship)
-            remove = style_button(
-                Button(text="Remove", size_hint_x=None, width=dp(96)), "danger"
+            open_project = style_button(
+                Button(text="Open", size_hint_x=None, width=dp(82)), "secondary"
             )
+            if resolved.other_project is None:
+                open_project.disabled = True
+            else:
+                open_project.bind(on_release=partial(self._navigate, resolved.other_project.id))
+            row.add_widget(open_project)
+            remove = style_button(Button(text="Remove", size_hint_x=None, width=dp(96)), "danger")
             remove.bind(on_release=partial(self._remove, link))
             row.add_widget(remove)
             self._rows.add_widget(row)
@@ -130,3 +135,6 @@ class ProjectLinksPanel(BoxLayout):
     def _remove(self, link: ProjectLink, *_: object) -> None:
         self._links.remove(link)
         self.refresh()
+
+    def _navigate(self, project_id: str, *_: object) -> None:
+        self._on_navigate(project_id)

@@ -15,6 +15,8 @@ from project_planner.core.application.projects.ProjectService import ProjectServ
 from project_planner.core.application.projects.ProjectWorkflowService import (
     ProjectWorkflowService,
 )
+from project_planner.core.application.resources.ResourceLinkService import ResourceLinkService
+from project_planner.core.application.todos.TodoService import TodoService
 from project_planner.core.configuration.Settings import Settings
 
 
@@ -26,6 +28,8 @@ class ApplicationContainer:
     project_workflows: ProjectWorkflowService
     phases: PhaseService
     links: ProjectLinkService
+    resources: ResourceLinkService
+    todos: TodoService
     artifacts: ArtifactService
     diagram_documents: DiagramDocumentCodec
     workspace_documents: WorkspaceDocumentCodec

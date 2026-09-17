@@ -10,8 +10,10 @@ from project_planner.core.application.phases.PhaseService import PhaseService
 from project_planner.core.application.projects.ProjectWorkflowService import (
     ProjectWorkflowService,
 )
+from project_planner.core.application.todos.TodoService import TodoService
 from project_planner.core.domain.phases.Phase import Phase
 from project_planner.core.domain.phases.PhaseStatus import PhaseStatus
+from project_planner.core.domain.todos.TodoModule import TodoModule
 from project_planner.frontend.phases.PhaseEditorPopup import PhaseEditorPopup
 from project_planner.frontend.shared.theme import (
     NAVY_900,
@@ -22,6 +24,7 @@ from project_planner.frontend.shared.theme import (
     style_button,
     title_label,
 )
+from project_planner.frontend.todos.TodoManagerPopup import TodoManagerPopup
 
 
 class PhasePlanningPanel(BoxLayout):
@@ -29,6 +32,7 @@ class PhasePlanningPanel(BoxLayout):
         self,
         phases: PhaseService,
         workflows: ProjectWorkflowService,
+        todos: TodoService,
         **kwargs: object,
     ) -> None:
         super().__init__(
@@ -39,6 +43,7 @@ class PhasePlanningPanel(BoxLayout):
         )
         self._phases = phases
         self._workflows = workflows
+        self._todos = todos
         self._project_id: str | None = None
         paint_background(self, NAVY_900)
         self.add_widget(title_label("Phase planning"))
@@ -110,11 +115,16 @@ class PhasePlanningPanel(BoxLayout):
             remove = style_button(
                 Button(text="Del", size_hint_x=None, width=dp(46)), "danger"
             )
+            todos = style_button(
+                Button(text="To-Dos", size_hint_x=None, width=dp(82)), "secondary"
+            )
             edit.bind(on_release=partial(self._edit, phase))
             up.bind(on_release=partial(self._move, phase.id, -1))
             down.bind(on_release=partial(self._move, phase.id, 1))
             remove.bind(on_release=partial(self._remove, phase.id))
+            todos.bind(on_release=partial(self._open_todos, phase))
             row.add_widget(edit)
+            row.add_widget(todos)
             row.add_widget(up)
             row.add_widget(down)
             row.add_widget(remove)
@@ -163,3 +173,13 @@ class PhasePlanningPanel(BoxLayout):
         if self._project_id is not None:
             self._workflows.reset_phase_plan(self._project_id)
             self.refresh()
+
+    def _open_todos(self, phase: Phase, *_: object) -> None:
+        if self._project_id is not None:
+            TodoManagerPopup(
+                self._todos,
+                self._project_id,
+                TodoModule.PHASES,
+                f"To-Dos · {phase.name}",
+                phase.id,
+            ).open()

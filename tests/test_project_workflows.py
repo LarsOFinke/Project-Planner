@@ -10,9 +10,9 @@ from project_planner.core.domain.artifacts.ArtifactKind import ArtifactKind
 from project_planner.core.domain.phases.PhaseStatus import PhaseStatus
 from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
 from project_planner.core.domain.projects.ProjectStatus import ProjectStatus
-from project_planner.core.infrastructure.database.SQLiteDatabase import SQLiteDatabase
-from project_planner.core.infrastructure.repositories.SQLitePhaseRepository import (
-    SQLitePhaseRepository,
+from project_planner.core.infrastructure.database.Database import Database
+from project_planner.core.infrastructure.repositories.SQLAlchemyPhaseRepository import (
+    SQLAlchemyPhaseRepository,
 )
 
 
@@ -110,19 +110,38 @@ def test_existing_phase_table_is_migrated_without_data_loss(tmp_path: Path) -> N
     with sqlite3.connect(database_path) as connection:
         connection.executescript(
             """
+            CREATE TABLE projects (
+                id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL,
+                status TEXT NOT NULL, planning_method TEXT NOT NULL,
+                parent_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            );
+            INSERT INTO projects VALUES (
+                'project-1', 'Legacy project', '', 'idea', 'custom', NULL,
+                '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00'
+            );
             CREATE TABLE phases (
                 id TEXT PRIMARY KEY,
-                project_id TEXT NOT NULL,
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
                 name TEXT NOT NULL,
                 description TEXT NOT NULL DEFAULT '',
                 position INTEGER NOT NULL,
                 UNIQUE(project_id, position)
             );
             INSERT INTO phases VALUES ('phase-1', 'project-1', 'Legacy', '', 0);
+            CREATE TABLE project_links (
+                source_id TEXT NOT NULL, target_id TEXT NOT NULL,
+                relation TEXT NOT NULL, note TEXT NOT NULL,
+                PRIMARY KEY(source_id, target_id, relation)
+            );
+            CREATE TABLE artifacts (
+                id TEXT PRIMARY KEY, project_id TEXT NOT NULL, title TEXT NOT NULL,
+                kind TEXT NOT NULL, content TEXT NOT NULL,
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            );
             """
         )
 
-    repository = SQLitePhaseRepository(SQLiteDatabase(database_path))
+    repository = SQLAlchemyPhaseRepository(Database(database_path))
     restored = repository.list_for_project("project-1")[0]
 
     assert restored.name == "Legacy"

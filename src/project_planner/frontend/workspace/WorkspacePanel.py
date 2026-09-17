@@ -7,15 +7,22 @@ from project_planner.core.application.artifacts.codecs.WorkspaceDocumentCodec im
     WorkspaceDocumentCodec,
 )
 from project_planner.core.application.assets.ImageAssetService import ImageAssetService
+from project_planner.core.application.todos.TodoService import TodoService
 from project_planner.core.domain.artifacts.Artifact import Artifact
 from project_planner.core.domain.artifacts.ArtifactKind import ArtifactKind
-from project_planner.frontend.shared.dialogs import open_image_dialog
+from project_planner.core.domain.todos.TodoModule import TodoModule
+from project_planner.frontend.shared.dialogs import (
+    open_image_dialog,
+    show_confirmation,
+)
+from project_planner.frontend.shared.EditorTodoTabs import EditorTodoTabs
 from project_planner.frontend.shared.theme import (
     NAVY_900,
     caption_label,
     paint_background,
     title_label,
 )
+from project_planner.frontend.todos.TodoPanel import TodoPanel
 from project_planner.frontend.workspace.FreehandCanvas import FreehandCanvas
 from project_planner.frontend.workspace.WorkspaceMode import WorkspaceMode
 from project_planner.frontend.workspace.WorkspaceToolbox import WorkspaceToolbox
@@ -27,6 +34,7 @@ class WorkspacePanel(BoxLayout):
         artifacts: ArtifactService,
         documents: WorkspaceDocumentCodec,
         images: ImageAssetService,
+        todos: TodoService,
         autosave_seconds: float,
         **kwargs: object,
     ) -> None:
@@ -39,6 +47,7 @@ class WorkspacePanel(BoxLayout):
         self._artifacts = artifacts
         self._documents = documents
         self._images = images
+        self._todos = todos
         self._artifact: Artifact | None = None
         self._project_id: str | None = None
         self._dirty = False
@@ -58,26 +67,31 @@ class WorkspacePanel(BoxLayout):
             set_mode=self._set_mode,
             delete_selected=self._delete_selected,
             clear_all=self._clear,
-            save=self._save,
+            save=self._save_now,
         )
         self.canvas_editor = FreehandCanvas(self._mark_dirty)
-        self.add_widget(toolbox)
-        self.add_widget(self.canvas_editor)
+        editor = BoxLayout(orientation="vertical", spacing=dp(8))
+        editor.add_widget(toolbox)
+        editor.add_widget(self.canvas_editor)
+        self.todo_panel = TodoPanel(self._todos)
+        self.module_tabs = EditorTodoTabs("Canvas", editor, self.todo_panel)
+        self.add_widget(self.module_tabs)
         self.disabled = True
-        self._autosave_event = Clock.schedule_interval(
-            self._autosave, autosave_seconds
-        )
+        self._autosave_event = Clock.schedule_interval(self._autosave, autosave_seconds)
 
     def show_project(self, project_id: str) -> None:
         self._save()
         self._project_id = project_id
-        self._artifact = self._artifacts.get_or_create(
-            project_id, ArtifactKind.WORKSPACE
-        )
+        self._artifact = self._artifacts.get_or_create(project_id, ArtifactKind.WORKSPACE)
         self.canvas_editor.load_document(
             self._documents.decode(self._artifacts.read_json(self._artifact))
         )
         self._dirty = False
+        self.todo_panel.show_context(
+            project_id,
+            TodoModule.WORKSPACE,
+            title="Workspace To-Dos",
+        )
         self.disabled = False
 
     def _add_shape(self, kind: str) -> None:
@@ -114,13 +128,20 @@ class WorkspacePanel(BoxLayout):
     def _mark_dirty(self) -> None:
         self._dirty = True
 
-    def _save(self, *_: object) -> None:
+    def _save(self, *_: object) -> bool:
         if self._artifact is not None and self._dirty:
             self._artifact = self._artifacts.save_json(
                 self._artifact,
                 self._documents.encode(self.canvas_editor.to_document()),
             )
             self._dirty = False
+            return True
+        return False
+
+    def _save_now(self, *_: object) -> None:
+        saved = self._save()
+        message = "Workspace saved locally." if saved else "Workspace is already up to date."
+        show_confirmation(message)
 
     def _autosave(self, _elapsed: float) -> None:
         self._save()

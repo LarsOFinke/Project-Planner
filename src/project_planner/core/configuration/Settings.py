@@ -9,6 +9,5 @@ class Settings:
     window_height: int
     autosave_seconds: int
     ui_scale: float = 2.00
-    data_directory: Path = field(
-        default_factory=lambda: Path.home() / ".project_planner" / "data"
-    )
+    data_directory: Path = field(default_factory=lambda: Path.home() / ".project_planner" / "data")
+    database_url: str | None = None

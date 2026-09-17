@@ -1,3 +1,4 @@
-from project_planner.core.infrastructure.database.SQLiteDatabase import SQLiteDatabase
+from project_planner.core.infrastructure.database.Database import Database
+from project_planner.core.infrastructure.database.MigrationManager import MigrationManager
 
-__all__ = ["SQLiteDatabase"]
+__all__ = ["Database", "MigrationManager"]

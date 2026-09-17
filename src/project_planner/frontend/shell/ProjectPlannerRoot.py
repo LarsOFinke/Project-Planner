@@ -8,7 +8,7 @@ from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 
 from project_planner.core.bootstrap.ApplicationContainer import ApplicationContainer
 from project_planner.frontend.diagram.DiagramPanel import DiagramPanel
-from project_planner.frontend.links.ProjectLinksPanel import ProjectLinksPanel
+from project_planner.frontend.links.ResourceLinksPanel import ResourceLinksPanel
 from project_planner.frontend.phases.PhasePlanningPanel import PhasePlanningPanel
 from project_planner.frontend.projects.OverviewPanel import OverviewPanel
 from project_planner.frontend.projects.ProjectBrowser import ProjectBrowser
@@ -50,19 +50,26 @@ class ProjectPlannerRoot(BoxLayout):
         self.overview = OverviewPanel(
             container.project_workflows,
             container.project_queries,
+            container.links,
+            container.todos,
+            self._navigate_to_project,
             self._project_saved,
         )
-        self.phases = PhasePlanningPanel(container.phases, container.project_workflows)
-        self.links = ProjectLinksPanel(container.links)
+        self.phases = PhasePlanningPanel(
+            container.phases, container.project_workflows, container.todos
+        )
+        self.links = ResourceLinksPanel(container.resources, container.todos)
         self.diagram = DiagramPanel(
             container.artifacts,
             container.diagram_documents,
+            container.todos,
             container.settings.autosave_seconds,
         )
         self.workspace = WorkspacePanel(
             container.artifacts,
             container.workspace_documents,
             container.images,
+            container.todos,
             container.settings.autosave_seconds,
         )
         self.tabs = TabbedPanel(
@@ -103,9 +110,7 @@ class ProjectPlannerRoot(BoxLayout):
                 halign="left",
             )
         )
-        identity.children[0].bind(
-            size=lambda widget, size: setattr(widget, "text_size", size)
-        )
+        identity.children[0].bind(size=lambda widget, size: setattr(widget, "text_size", size))
         identity.add_widget(
             Label(
                 text="Local workspace  ·  Prototype 0.1",
@@ -114,9 +119,7 @@ class ProjectPlannerRoot(BoxLayout):
                 halign="left",
             )
         )
-        identity.children[0].bind(
-            size=lambda widget, size: setattr(widget, "text_size", size)
-        )
+        identity.children[0].bind(size=lambda widget, size: setattr(widget, "text_size", size))
         scale = style_spinner(
             Spinner(
                 text=f"Scale {round(self._ui_scale * 100)}%",
@@ -134,9 +137,7 @@ class ProjectPlannerRoot(BoxLayout):
         percent = int(value.removeprefix("Scale ").removesuffix("%"))
         self._on_scale_change(percent / 100)
 
-    def _add_tab(
-        self, tabs: TabbedPanel, title: str, content: BoxLayout
-    ) -> None:
+    def _add_tab(self, tabs: TabbedPanel, title: str, content: BoxLayout) -> None:
         tab = TabbedPanelItem(text=title)
         tab.background_normal = ""
         tab.background_down = ""
@@ -156,9 +157,7 @@ class ProjectPlannerRoot(BoxLayout):
     def _update_scale(self, _widget: BoxLayout, width: float) -> None:
         self.browser.width = min(width * 0.34, max(dp(170), width * 0.24))
         tab_space = max(0, width - self.browser.width - dp(42))
-        self.tabs.tab_width = max(
-            dp(96), tab_space / len(self._tab_headers)
-        )
+        self.tabs.tab_width = max(dp(96), tab_space / len(self._tab_headers))
 
     def _show_project(self, project_id: str) -> None:
         self.overview.show_project(project_id)
@@ -172,6 +171,13 @@ class ProjectPlannerRoot(BoxLayout):
         self.browser.refresh()
         self.phases.show_project(project_id)
         self.links.show_project(project_id)
+
+    def _navigate_to_project(self, project_id: str) -> None:
+        self.browser.select(project_id)
+        for header in self._tab_headers:
+            if header.text == "Overview":
+                self.tabs.switch_to(header)
+                return
 
     def dispose(self) -> None:
         self.diagram.dispose()

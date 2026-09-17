@@ -3,6 +3,8 @@ from project_planner.core.application.assets.ImageAssetService import ImageAsset
 from project_planner.core.application.links.ProjectLinkService import ProjectLinkService
 from project_planner.core.application.phases.PhaseService import PhaseService
 from project_planner.core.application.projects.ProjectService import ProjectService
+from project_planner.core.application.resources.ResourceLinkService import ResourceLinkService
+from project_planner.core.application.todos.TodoService import TodoService
 
 __all__ = [
     "ArtifactService",
@@ -10,4 +12,6 @@ __all__ = [
     "PhaseService",
     "ProjectLinkService",
     "ProjectService",
+    "ResourceLinkService",
+    "TodoService",
 ]

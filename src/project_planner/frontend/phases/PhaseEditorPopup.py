@@ -12,6 +12,7 @@ from kivy.uix.textinput import TextInput
 
 from project_planner.core.domain.phases.Phase import Phase
 from project_planner.core.domain.phases.PhaseStatus import PhaseStatus
+from project_planner.frontend.shared.dialogs import show_confirmation
 from project_planner.frontend.shared.theme import (
     GOLD,
     NAVY_800,
@@ -50,9 +51,7 @@ class PhaseEditorPopup(Popup):
         self.bind(on_open=self._queue_population)
 
     def _build_content(self) -> BoxLayout:
-        content = BoxLayout(
-            orientation="vertical", spacing=dp(10), padding=dp(10)
-        )
+        content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
         paint_background(content, NAVY_800)
         form = BoxLayout(
             orientation="vertical",
@@ -81,9 +80,7 @@ class PhaseEditorPopup(Popup):
         )
         form.add_widget(self.description_input)
         form.add_widget(field_label("Status"))
-        initial_status = (
-            self._phase.status if self._phase is not None else PhaseStatus.PLANNED
-        )
+        initial_status = self._phase.status if self._phase is not None else PhaseStatus.PLANNED
         self.status = style_spinner(
             Spinner(
                 text=initial_status.value.title(),
@@ -112,8 +109,8 @@ class PhaseEditorPopup(Popup):
         cancel.bind(on_release=lambda *_: self.dismiss())
         save.bind(on_release=self._save)
         self.name_input.bind(on_text_validate=self._save)
-        actions.add_widget(cancel)
         actions.add_widget(save)
+        actions.add_widget(cancel)
         content.add_widget(scroll)
         content.add_widget(actions)
         return content
@@ -152,3 +149,4 @@ class PhaseEditorPopup(Popup):
             PhaseStatus(self.status.text.lower()),
         )
         self.dismiss()
+        show_confirmation("Phase changes saved locally.")

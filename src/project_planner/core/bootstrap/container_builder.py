@@ -13,31 +13,43 @@ from project_planner.core.application.projects.ProjectService import ProjectServ
 from project_planner.core.application.projects.ProjectWorkflowService import (
     ProjectWorkflowService,
 )
+from project_planner.core.application.resources.ResourceLinkService import ResourceLinkService
+from project_planner.core.application.todos.TodoService import TodoService
 from project_planner.core.bootstrap.ApplicationContainer import ApplicationContainer
 from project_planner.core.configuration.Settings import Settings
 from project_planner.core.configuration.settings_loader import load_settings
-from project_planner.core.infrastructure.database.SQLiteDatabase import SQLiteDatabase
-from project_planner.core.infrastructure.repositories.SQLiteArtifactRepository import (
-    SQLiteArtifactRepository,
+from project_planner.core.infrastructure.database.Database import Database
+from project_planner.core.infrastructure.database.seeds.SeedRunner import SeedRunner
+from project_planner.core.infrastructure.repositories.SQLAlchemyArtifactRepository import (
+    SQLAlchemyArtifactRepository,
 )
-from project_planner.core.infrastructure.repositories.SQLitePhaseRepository import (
-    SQLitePhaseRepository,
+from project_planner.core.infrastructure.repositories.SQLAlchemyPhaseRepository import (
+    SQLAlchemyPhaseRepository,
 )
-from project_planner.core.infrastructure.repositories.SQLiteProjectLinkRepository import (
-    SQLiteProjectLinkRepository,
+from project_planner.core.infrastructure.repositories.SQLAlchemyProjectLinkRepository import (
+    SQLAlchemyProjectLinkRepository,
 )
-from project_planner.core.infrastructure.repositories.SQLiteProjectRepository import (
-    SQLiteProjectRepository,
+from project_planner.core.infrastructure.repositories.SQLAlchemyProjectRepository import (
+    SQLAlchemyProjectRepository,
+)
+from project_planner.core.infrastructure.repositories.SQLAlchemyResourceLinkRepository import (
+    SQLAlchemyResourceLinkRepository,
+)
+from project_planner.core.infrastructure.repositories.SQLAlchemyTodoRepository import (
+    SQLAlchemyTodoRepository,
 )
 
 
 def build_container(settings: Settings | None = None) -> ApplicationContainer:
     resolved = settings or load_settings()
-    database = SQLiteDatabase(resolved.database_path)
-    projects = SQLiteProjectRepository(database)
-    phases = SQLitePhaseRepository(database)
-    links = SQLiteProjectLinkRepository(database)
-    artifacts = SQLiteArtifactRepository(database)
+    database = Database(resolved.database_path, resolved.database_url)
+    SeedRunner(database).run()
+    projects = SQLAlchemyProjectRepository(database)
+    phases = SQLAlchemyPhaseRepository(database)
+    links = SQLAlchemyProjectLinkRepository(database)
+    artifacts = SQLAlchemyArtifactRepository(database)
+    todos = SQLAlchemyTodoRepository(database)
+    resources = SQLAlchemyResourceLinkRepository(database)
     project_service = ProjectService(projects)
     phase_service = PhaseService(phases)
     return ApplicationContainer(
@@ -47,6 +59,8 @@ def build_container(settings: Settings | None = None) -> ApplicationContainer:
         project_workflows=ProjectWorkflowService(project_service, phase_service),
         phases=phase_service,
         links=ProjectLinkService(links, projects),
+        resources=ResourceLinkService(resources),
+        todos=TodoService(todos),
         artifacts=ArtifactService(artifacts),
         diagram_documents=DiagramDocumentCodec(),
         workspace_documents=WorkspaceDocumentCodec(),

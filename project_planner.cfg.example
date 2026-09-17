@@ -1,6 +1,9 @@
 [database]
 # Environment override: PROJECT_PLANNER_DB
 path = ~/.project_planner/project_planner.sqlite3
+# Optional database-agnostic SQLAlchemy URL; overrides path when non-empty.
+# Environment override: PROJECT_PLANNER_DB_URL
+url =
 
 [window]
 # Environment overrides: PROJECT_PLANNER_WINDOW_WIDTH / PROJECT_PLANNER_WINDOW_HEIGHT

@@ -8,9 +8,10 @@ Last refreshed: 2026-09-17
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `bash .agents/scripts/check-all.sh`.
-- Current suite: 26 tests.
+- Current suite: 32 tests.
 - Entry point: `project_planner.frontend.main:main`.
-- Database: SQLite, default `~/.project_planner/project_planner.sqlite3`.
+- Database: SQLAlchemy ORM with Alembic migrations; SQLite default at
+  `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
 - UI scale: persistent top-right dropdown from 5%–500%; cfg/env accepts `auto` or `0.05`–`5.00`.
 - Class modules: exact PascalCase class filenames; non-class helper modules remain snake_case.
@@ -36,10 +37,21 @@ Last refreshed: 2026-09-17
 - resolved link projections with incoming/outgoing direction;
 - typed diagram/workspace documents with version-aware codecs;
 - narrow service injection into feature panels.
+- contextual To-Dos surfaced from Overview, individual phases, and Links; Diagram and Workspace
+  each expose a dedicated nested To-Dos tab beside their Canvas tab;
+- project relationships managed from Overview, with Links reserved for web URLs and local files;
+- save confirmations and direct navigation from real project links;
+- versioned database JSON export/import with rollback-backed dry-run by default.
 
 ## Persistence facts
 
-- Relational schema: `core/infrastructure/database/schema.py`.
+- ORM models: `core/infrastructure/database/models/`.
+- Ordered schema revisions: `core/infrastructure/database/migrations/versions/`.
+- Optional idempotent seeds: `core/infrastructure/database/seeds/`.
+- Relational project metadata is 3NF; artifact JSON is an intentional opaque document aggregate.
+- Phase To-Dos reference `phases.id` and survive reorder/edit operations; real phase deletion
+  cascades the matching To-Dos.
+- `project_links` stores project relationships; `resource_links` stores web/file targets.
 - Projects, phases, links, and artifacts cascade from project deletion as defined by SQLite.
 - Diagram JSON version: `1`.
 - Workspace JSON version: `4`.
@@ -60,6 +72,7 @@ Last refreshed: 2026-09-17
 Important overrides:
 
 - `PROJECT_PLANNER_DB`
+- `PROJECT_PLANNER_DB_URL`
 - `PROJECT_PLANNER_DATA_DIR`
 - `PROJECT_PLANNER_WINDOW_WIDTH`
 - `PROJECT_PLANNER_WINDOW_HEIGHT`
@@ -77,7 +90,7 @@ Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environmen
 - Settings: `src/project_planner/core/configuration/`
 - Models: `src/project_planner/core/domain/`
 - Use cases: `src/project_planner/core/application/`
-- SQLite adapters: `src/project_planner/core/infrastructure/`
+- SQLAlchemy adapters/migrations/transfer: `src/project_planner/core/infrastructure/`
 - UI shell: `src/project_planner/frontend/shell/ProjectPlannerRoot.py`
 - Theme: `src/project_planner/frontend/shared/theme.py`
 - Workspace: `src/project_planner/frontend/workspace/`
@@ -88,10 +101,12 @@ Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environmen
 
 - System `python3` is 3.14.4. Running `python3 -m venv .venv` recreates an incompatible venv.
   Use `make setup`; it locates Python 3.11–3.13 and replaces incompatible environments.
-- On newer-Python target systems, install the managed interpreter bootstrap with
-  `pipx install uv`; `make setup` then installs/finds Python 3.13 through `uv`.
-- Missing `xclip`/`xsel` produces a scary but non-fatal Kivy Cutbuffer warning. SDL2 clipboard
-  remains available. Distinguish that warning from the traceback that terminates the app.
+- `uv` is optional and is not an application dependency. Standard `venv` + `pip` is preferred
+  when Python 3.11–3.13 is installed. On systems that only provide newer Python, `pipx install uv`
+  can supply the compatible interpreter used by `make setup`.
+- Startup forces Kivy's bundled SDL2 clipboard. A narrow log filter suppresses only Kivy 2.3.1's
+  failed optional X11 cutbuffer probe when `xclip`/`xsel` are absent; real clipboard/window
+  failures remain visible.
 - Kivy schedules some layout work after `build()`. Always exercise the event loop for UI work.
 
 ## Cache refresh triggers
