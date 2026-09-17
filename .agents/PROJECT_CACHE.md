@@ -8,7 +8,7 @@ Last refreshed: 2026-09-17
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `bash .agents/scripts/check-all.sh`.
-- Current suite: 25 tests.
+- Current suite: 26 tests.
 - Entry point: `project_planner.frontend.main:main`.
 - Database: SQLite, default `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
@@ -22,13 +22,13 @@ Last refreshed: 2026-09-17
 - editable Waterfall, Agile, and Custom phase objects with descriptions, statuses, and timestamps;
 - project links and backlinks;
 - draggable node/edge diagram editor;
-- freehand workspace;
+- freehand workspace with explicit Select and Draw interaction modes;
 - movable, rotatable, scalable rectangle/ellipse/line/arrow objects;
 - imported PNG/JPEG/GIF/BMP/WebP images copied into per-project managed storage;
 - shared categorized-toolbox component;
 - content-sized text and image dialogs with responsive bounds and keyboard submission;
 - wrapping title/caption primitives and density-aware, horizontally scrollable planning tabs;
-- workspace toolboxes: Shapes, Media, Colors, Transform, Manage;
+- workspace toolboxes: Mode, Shapes, Media, Colors, Transform, Manage;
 - diagram toolboxes: Nodes, Relations, Manage;
 - local artifact autosave with JSON payloads.
 - project workflow orchestration for project/phase lifecycle operations;

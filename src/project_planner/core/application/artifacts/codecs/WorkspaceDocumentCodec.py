@@ -1,3 +1,4 @@
+from math import isfinite
 from pathlib import Path
 from uuid import uuid4
 
@@ -48,12 +49,17 @@ class WorkspaceDocumentCodec:
         strokes: list[WorkspaceStroke] = []
         for entry in value:
             points = entry.get("points") if isinstance(entry, dict) else entry
-            if not isinstance(points, list) or len(points) < 4:
+            if (
+                not isinstance(points, list)
+                or len(points) < 4
+                or len(points) % 2 != 0
+            ):
                 continue
             try:
+                parsed_points = tuple(self._finite_float(point) for point in points)
                 strokes.append(
                     WorkspaceStroke(
-                        tuple(float(point) for point in points),
+                        parsed_points,
                         self._color(
                             entry.get("color") if isinstance(entry, dict) else None
                         ),
@@ -74,18 +80,19 @@ class WorkspaceDocumentCodec:
             if kind not in self.SHAPE_KINDS:
                 continue
             try:
-                shapes.append(
-                    WorkspaceShape(
-                        element_id=str(entry.get("id") or uuid4()),
-                        kind=kind,
-                        x=float(entry.get("x", 30)),
-                        y=float(entry.get("y", 30)),
-                        width=float(entry.get("width", 130)),
-                        height=float(entry.get("height", 86)),
-                        rotation=float(entry.get("rotation", 0)),
-                        color=self._color(entry.get("color")),
-                    )
+                width = self._positive_float(entry.get("width", 130))
+                height = self._positive_float(entry.get("height", 86))
+                shape = WorkspaceShape(
+                    element_id=str(entry.get("id") or uuid4()),
+                    kind=kind,
+                    x=self._finite_float(entry.get("x", 30)),
+                    y=self._finite_float(entry.get("y", 30)),
+                    width=width,
+                    height=height,
+                    rotation=self._finite_float(entry.get("rotation", 0)),
+                    color=self._color(entry.get("color")),
                 )
+                shapes.append(shape)
             except (TypeError, ValueError):
                 continue
         return tuple(shapes)
@@ -101,17 +108,16 @@ class WorkspaceDocumentCodec:
             if not Path(source).is_file():
                 continue
             try:
-                images.append(
-                    WorkspaceImage(
-                        element_id=str(entry.get("id") or uuid4()),
-                        source=source,
-                        x=float(entry.get("x", 40)),
-                        y=float(entry.get("y", 40)),
-                        width=float(entry.get("width", 180)),
-                        height=float(entry.get("height", 120)),
-                        rotation=float(entry.get("rotation", 0)),
-                    )
+                image = WorkspaceImage(
+                    element_id=str(entry.get("id") or uuid4()),
+                    source=source,
+                    x=self._finite_float(entry.get("x", 40)),
+                    y=self._finite_float(entry.get("y", 40)),
+                    width=self._positive_float(entry.get("width", 180)),
+                    height=self._positive_float(entry.get("height", 120)),
+                    rotation=self._finite_float(entry.get("rotation", 0)),
                 )
+                images.append(image)
             except (TypeError, ValueError):
                 continue
         return tuple(images)
@@ -141,6 +147,19 @@ class WorkspaceDocumentCodec:
         except ValueError:
             return self.DEFAULT_COLOR
         return color
+
+    @staticmethod
+    def _finite_float(value: object) -> float:
+        parsed = float(value)
+        if not isfinite(parsed):
+            raise ValueError("A workspace coordinate must be finite")
+        return parsed
+
+    def _positive_float(self, value: object) -> float:
+        parsed = self._finite_float(value)
+        if parsed <= 0:
+            raise ValueError("A workspace size must be positive")
+        return parsed
 
     def _version(self, value: object) -> int:
         try:

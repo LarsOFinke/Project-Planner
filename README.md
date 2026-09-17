@@ -12,8 +12,8 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 - local SQLite persistence
 - modular Kivy desktop UI with project browser and tabbed planning levels
 - persistent node/edge diagram editor with draggable nodes
-- persistent freehand workspace with selectable stroke/shape colors, local autosave, and movable,
-  rotatable, scalable shapes and images
+- persistent freehand workspace with explicit Select/Draw modes, selectable stroke/shape colors,
+  local autosave, and movable, rotatable, scalable shapes and images
 - categorized diagram and workspace toolboxes that keep dense actions readable across scale profiles
 
 The core is deliberately independent from Kivy and SQLite details. Application workflows own

@@ -28,8 +28,14 @@ def test_diagram_codec_validates_nodes_edges_and_future_versions() -> None:
                 {"id": "one", "label": "One", "x": 10, "y": 20},
                 {"id": "two", "label": "Two", "x": 30, "y": 40},
                 {"id": "broken", "x": "not-a-number"},
+                {"id": "infinite", "x": float("inf"), "y": 0},
             ],
-            "edges": [["one", "two"], ["one", "missing"]],
+            "edges": [
+                ["one", "two"],
+                ["two", "one"],
+                ["one", "one"],
+                ["one", "missing"],
+            ],
         }
     )
 
@@ -90,3 +96,34 @@ def test_workspace_codec_round_trips_stroke_and_shape_colors() -> None:
 
     assert restored.strokes[0].color == "#C84B4B"
     assert restored.shapes[0].color == "#4C78A8"
+
+
+def test_workspace_codec_filters_unsafe_geometry() -> None:
+    codec = WorkspaceDocumentCodec()
+    document = codec.decode(
+        {
+            "version": 4,
+            "strokes": [
+                {"points": [1, 2, 3], "color": "#C84B4B"},
+                {"points": [1, 2, float("nan"), 4], "color": "#C84B4B"},
+            ],
+            "shapes": [
+                {
+                    "id": "negative",
+                    "kind": "rectangle",
+                    "width": -10,
+                    "height": 20,
+                },
+                {
+                    "id": "infinite",
+                    "kind": "ellipse",
+                    "x": float("inf"),
+                    "width": 20,
+                    "height": 20,
+                },
+            ],
+        }
+    )
+
+    assert document.strokes == ()
+    assert document.shapes == ()

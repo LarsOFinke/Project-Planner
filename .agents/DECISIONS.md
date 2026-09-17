@@ -67,3 +67,10 @@ available without a manual conversion step.
 Workspace document version 4 stores colors with strokes and shapes. The codec assigns the former
 pearl-grey default when reading version 1–3 documents, preserving their appearance while allowing
 new and selected objects to use the workspace palette.
+
+## AD-014 — Explicit workspace interaction modes
+
+The workspace defaults to Select mode so clicking the canvas does not create accidental strokes.
+Draw mode routes pointer gestures to freehand strokes instead of draggable objects. Object color
+and selection indication are separate: palette colors render faithfully while a gold bounding
+frame communicates selection.

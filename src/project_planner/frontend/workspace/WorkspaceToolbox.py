@@ -1,7 +1,13 @@
 from collections.abc import Callable
 
 from project_planner.frontend.shared.CategorizedToolbox import CategorizedToolbox
-from project_planner.frontend.shared.theme import NAVY_950, PEARL_GREY, hex_color
+from project_planner.frontend.shared.theme import (
+    NAVY_950,
+    PEARL_GREY,
+    hex_color,
+    style_button,
+)
+from project_planner.frontend.workspace.WorkspaceMode import WorkspaceMode
 
 
 class WorkspaceToolbox(CategorizedToolbox):
@@ -12,13 +18,16 @@ class WorkspaceToolbox(CategorizedToolbox):
         rotate: Callable[[float], None],
         scale: Callable[[float], None],
         set_color: Callable[[str], None],
+        set_mode: Callable[[WorkspaceMode], None],
         delete_selected: Callable[..., None],
         clear_all: Callable[..., None],
         save: Callable[..., None],
         **kwargs: object,
     ) -> None:
         self._set_color = set_color
+        self._set_mode = set_mode
         self._selected_color = "#D5DAE2"
+        self._selected_mode = WorkspaceMode.SELECT
         self._palette_colors = {
             "Pearl": "#D5DAE2",
             "Gold": "#D4A72C",
@@ -28,6 +37,18 @@ class WorkspaceToolbox(CategorizedToolbox):
         }
         super().__init__(
             groups={
+                "Mode": [
+                    (
+                        "Select",
+                        lambda *_: self._choose_mode(WorkspaceMode.SELECT),
+                        "secondary",
+                    ),
+                    (
+                        "Draw",
+                        lambda *_: self._choose_mode(WorkspaceMode.DRAW),
+                        "secondary",
+                    ),
+                ],
                 "Shapes": [
                     ("Rectangle", lambda *_: add_shape("rectangle"), "secondary"),
                     ("Ellipse", lambda *_: add_shape("ellipse"), "secondary"),
@@ -55,12 +76,20 @@ class WorkspaceToolbox(CategorizedToolbox):
                     ("Save now", save, "primary"),
                 ],
             },
-            initial_group="Shapes",
+            initial_group="Mode",
             **kwargs,
         )
 
     def show_group(self, name: str, *_: object) -> None:
         super().show_group(name)
+        if name == "Mode":
+            for button in self._actions.children:
+                mode = WorkspaceMode(button.text.lower())
+                style_button(
+                    button,
+                    "selected" if mode is self._selected_mode else "secondary",
+                )
+            return
         if name != "Colors":
             return
         for button in self._actions.children:
@@ -74,3 +103,8 @@ class WorkspaceToolbox(CategorizedToolbox):
         self._selected_color = color
         self._set_color(color)
         self.show_group("Colors")
+
+    def _choose_mode(self, mode: WorkspaceMode) -> None:
+        self._selected_mode = mode
+        self._set_mode(mode)
+        self.show_group("Mode")

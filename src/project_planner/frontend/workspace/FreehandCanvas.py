@@ -21,6 +21,7 @@ from project_planner.core.application.artifacts.documents.WorkspaceStroke import
 from project_planner.frontend.shared.theme import NAVY_700, hex_color
 from project_planner.frontend.workspace.DraggableImage import DraggableImage
 from project_planner.frontend.workspace.ShapeWidget import ShapeWidget
+from project_planner.frontend.workspace.WorkspaceMode import WorkspaceMode
 
 
 class FreehandCanvas(StencilView, FloatLayout):
@@ -36,6 +37,7 @@ class FreehandCanvas(StencilView, FloatLayout):
         self._elements: dict[str, ShapeWidget | DraggableImage] = {}
         self._selected_id: str | None = None
         self._current_color = self.DEFAULT_COLOR
+        self._mode = WorkspaceMode.SELECT
         self._last_canvas_pos = self.pos
         with self.canvas.before:
             Color(*NAVY_700)
@@ -144,6 +146,11 @@ class FreehandCanvas(StencilView, FloatLayout):
         if isinstance(selected, ShapeWidget):
             selected.set_color(self._current_color)
 
+    def set_mode(self, mode: WorkspaceMode) -> None:
+        self._mode = mode
+        if mode is WorkspaceMode.DRAW:
+            self._select_none()
+
     def _select(self, element_id: str) -> None:
         self._selected_id = element_id
         for current_id, element in self._elements.items():
@@ -152,7 +159,10 @@ class FreehandCanvas(StencilView, FloatLayout):
     def on_touch_down(self, touch: object) -> bool:
         if not self.collide_point(*touch.pos):
             return super().on_touch_down(touch)
-        if super().on_touch_down(touch):
+        if self._mode is WorkspaceMode.SELECT:
+            if super().on_touch_down(touch):
+                return True
+            self._select_none()
             return True
         self._select_none()
         points = [touch.x, touch.y]

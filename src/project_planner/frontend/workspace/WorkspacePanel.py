@@ -17,6 +17,7 @@ from project_planner.frontend.shared.theme import (
     title_label,
 )
 from project_planner.frontend.workspace.FreehandCanvas import FreehandCanvas
+from project_planner.frontend.workspace.WorkspaceMode import WorkspaceMode
 from project_planner.frontend.workspace.WorkspaceToolbox import WorkspaceToolbox
 
 
@@ -45,7 +46,7 @@ class WorkspacePanel(BoxLayout):
         self.add_widget(title_label("Free workspace"))
         self.add_widget(
             caption_label(
-                "Draw freely or place movable shapes and images. Changes autosave locally."
+                "Use Select to edit objects or Draw for freehand strokes. Changes autosave locally."
             )
         )
         toolbox = WorkspaceToolbox(
@@ -54,6 +55,7 @@ class WorkspacePanel(BoxLayout):
             rotate=self._rotate,
             scale=self._scale,
             set_color=self._set_color,
+            set_mode=self._set_mode,
             delete_selected=self._delete_selected,
             clear_all=self._clear,
             save=self._save,
@@ -102,6 +104,9 @@ class WorkspacePanel(BoxLayout):
 
     def _set_color(self, color: str) -> None:
         self.canvas_editor.set_color(color)
+
+    def _set_mode(self, mode: WorkspaceMode) -> None:
+        self.canvas_editor.set_mode(mode)
 
     def _clear(self, *_: object) -> None:
         self.canvas_editor.clear_drawing()

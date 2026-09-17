@@ -24,7 +24,6 @@ class ShapeWidget(Widget):
         self.rotation_degrees = rotation_degrees
         self.color_hex = color_hex
         self._base_color = hex_color(color_hex)
-        self._selected = False
         self._on_select = on_select
         self._on_change = on_change
         self._drag_offset = (0.0, 0.0)
@@ -39,25 +38,24 @@ class ShapeWidget(Widget):
             )
             self._line_color = Color(*self._base_color)
             self._outline = Line(width=2)
+            self._selection_color = Color(*GOLD[:3], 0)
+            self._selection_outline = Line(width=2)
             PopMatrix()
         self.bind(pos=self._update_graphics, size=self._update_graphics)
         self._update_graphics()
 
     def set_selected(self, selected: bool) -> None:
-        self._selected = selected
-        self._line_color.rgba = GOLD if selected else self._base_color
-        self._outline.width = 3 if selected else 2
+        self._selection_color.rgba = (*GOLD[:3], 1 if selected else 0)
 
     def set_color(self, color_hex: str) -> None:
         self.color_hex = color_hex
         self._base_color = hex_color(color_hex)
         self._fill_color.rgba = self._shape_fill()
-        self._line_color.rgba = GOLD if self._selected else self._base_color
+        self._line_color.rgba = self._base_color
         self._on_change()
 
     def _shape_fill(self) -> tuple[float, float, float, float]:
-        red, green, blue, _alpha = self._base_color
-        return red, green, blue, 0.24
+        return self._base_color
 
     def rotate_by(self, degrees: float) -> None:
         self.rotation_degrees = (self.rotation_degrees + degrees) % 360
@@ -76,6 +74,13 @@ class ShapeWidget(Widget):
         x, y = self.pos
         width, height = self.size
         self._rotation.origin = self.center
+        selection_padding = dp(4)
+        self._selection_outline.rectangle = (
+            x - selection_padding,
+            y - selection_padding,
+            width + selection_padding * 2,
+            height + selection_padding * 2,
+        )
         if self.kind == "ellipse":
             self._fill.pos = self.pos
             self._fill.size = self.size
