@@ -1,28 +1,28 @@
 import sqlite3
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from project_planner.core.bootstrap.ApplicationContainer import ApplicationContainer
-from project_planner.core.bootstrap.container_builder import build_container
-from project_planner.core.configuration.Settings import Settings
-from project_planner.core.domain.artifacts.ArtifactKind import ArtifactKind
-from project_planner.core.domain.phases.PhaseStatus import PhaseStatus
-from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
-from project_planner.core.domain.projects.ProjectStatus import ProjectStatus
-from project_planner.core.infrastructure.database.Database import Database
-from project_planner.core.infrastructure.repositories.SQLAlchemyPhaseRepository import (
+from project_planner.modules.artifacts.entities.ArtifactKind import ArtifactKind
+from project_planner.modules.planning.entities.PhaseStatus import PhaseStatus
+from project_planner.modules.planning.repositories.SQLAlchemyPhaseRepository import (
     SQLAlchemyPhaseRepository,
 )
+from project_planner.modules.projects.entities.PlanningMethod import PlanningMethod
+from project_planner.modules.projects.entities.ProjectStatus import ProjectStatus
+from project_planner.shared.database.Database import Database
+from project_planner.shared.settings.Settings import Settings
+from tests.support import build_test_services
 
 
 @pytest.fixture
-def planner() -> ApplicationContainer:
-    return build_container(Settings(Path(":memory:"), 1280, 800, 20))
+def planner() -> SimpleNamespace:
+    return build_test_services(Settings(Path(":memory:"), 1280, 800, 20))
 
 
 def test_creates_hierarchical_projects_and_phase_template(
-    planner: ApplicationContainer,
+    planner: SimpleNamespace,
 ) -> None:
     parent = planner.projects.create("Product")
     child = planner.projects.create(
@@ -42,7 +42,7 @@ def test_creates_hierarchical_projects_and_phase_template(
 
 
 def test_updates_metadata_and_rejects_hierarchy_cycles(
-    planner: ApplicationContainer,
+    planner: SimpleNamespace,
 ) -> None:
     parent = planner.projects.create("Parent")
     child = planner.projects.create("Child", parent_id=parent.id)
@@ -67,7 +67,23 @@ def test_updates_metadata_and_rejects_hierarchy_cycles(
         )
 
 
-def test_edits_and_reorders_custom_phases(planner: ApplicationContainer) -> None:
+def test_categories_group_projects_without_owning_their_lifecycle(
+    planner: SimpleNamespace,
+) -> None:
+    category = planner.project_categories.create("Client work")
+    project = planner.projects.create("Website", category_id=category.id)
+
+    directory = planner.project_queries.list_directory()
+    assert directory[0].category == category
+    assert directory[0].projects[0].project == project
+
+    planner.project_categories.delete(category.id)
+    restored = planner.projects.require(project.id)
+    assert restored.category_id is None
+    assert planner.project_queries.list_directory()[0].category is None
+
+
+def test_edits_and_reorders_custom_phases(planner: SimpleNamespace) -> None:
     project = planner.projects.create("Custom")
     discovery = planner.phases.add(project.id, "Discovery")
     delivery = planner.phases.add(project.id, "Delivery")
@@ -80,7 +96,7 @@ def test_edits_and_reorders_custom_phases(planner: ApplicationContainer) -> None
 
 
 def test_phase_metadata_and_timestamps_are_persisted(
-    planner: ApplicationContainer,
+    planner: SimpleNamespace,
 ) -> None:
     project = planner.projects.create("Structured phases")
     phase = planner.phases.add(
@@ -148,7 +164,7 @@ def test_existing_phase_table_is_migrated_without_data_loss(tmp_path: Path) -> N
     assert restored.created_at == restored.updated_at
 
 
-def test_links_projects_and_removes_link(planner: ApplicationContainer) -> None:
+def test_links_projects_and_removes_link(planner: SimpleNamespace) -> None:
     first = planner.projects.create("Core")
     second = planner.projects.create("Companion")
     link = planner.links.add(first.id, second.id, "depends-on")
@@ -159,7 +175,7 @@ def test_links_projects_and_removes_link(planner: ApplicationContainer) -> None:
 
 
 def test_persists_versioned_diagram_and_workspace_json(
-    planner: ApplicationContainer,
+    planner: SimpleNamespace,
 ) -> None:
     project = planner.projects.create("Visual")
     diagram = planner.artifacts.get_or_create(project.id, ArtifactKind.DIAGRAM)

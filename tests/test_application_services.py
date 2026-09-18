@@ -1,14 +1,14 @@
 from pathlib import Path
+from types import SimpleNamespace
 
-from project_planner.core.bootstrap.ApplicationContainer import ApplicationContainer
-from project_planner.core.bootstrap.container_builder import build_container
-from project_planner.core.configuration.Settings import Settings
-from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
-from project_planner.core.domain.resources.ResourceLinkKind import ResourceLinkKind
+from project_planner.modules.projects.entities.PlanningMethod import PlanningMethod
+from project_planner.modules.resources.entities.ResourceLinkKind import ResourceLinkKind
+from project_planner.shared.settings.Settings import Settings
+from tests.support import build_test_services
 
 
-def build_planner() -> ApplicationContainer:
-    return build_container(Settings(Path(":memory:"), 1280, 800, 20))
+def build_planner() -> SimpleNamespace:
+    return build_test_services(Settings(Path(":memory:"), 1280, 800, 20))
 
 
 def test_project_workflow_owns_project_and_phase_creation() -> None:
@@ -66,8 +66,8 @@ def test_link_service_resolves_direction_and_duplicate_target_labels() -> None:
     second = planner.project_workflows.create_project("Target")
     link = planner.links.add(source.id, first.id, "depends-on")
 
-    targets = planner.links.available_targets(source.id)
-    resolved = planner.links.list_resolved(first.id)
+    targets = planner.collaboration_queries.available_targets(source.id)
+    resolved = planner.collaboration_queries.list_resolved(first.id)
 
     assert len({choice.label for choice in targets}) == len(targets)
     assert resolved[0].link == link

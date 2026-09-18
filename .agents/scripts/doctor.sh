@@ -27,7 +27,7 @@ echo "ui-scale-override: ${PROJECT_PLANNER_UI_SCALE:-unset}"
 
 if [[ -x .venv/bin/python ]]; then
     .venv/bin/python - <<'PY'
-from project_planner.core.configuration.settings_loader import load_settings
+from project_planner.shared.settings.settings_loader import load_settings
 
 settings = load_settings()
 print("resolved-database:", settings.database_path)

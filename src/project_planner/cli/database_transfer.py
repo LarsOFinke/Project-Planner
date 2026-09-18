@@ -1,11 +1,11 @@
 import argparse
 from collections.abc import Sequence
 
-from project_planner.core.configuration.settings_loader import load_settings
-from project_planner.core.infrastructure.database.Database import Database
-from project_planner.core.infrastructure.transfer.DatabaseTransferService import (
-    DatabaseTransferService,
+from project_planner.modules.transfer.gateways.DatabaseTransferGateway import (
+    DatabaseTransferGateway,
 )
+from project_planner.shared.database.Database import Database
+from project_planner.shared.settings.settings_loader import load_settings
 
 
 def main(arguments: Sequence[str] | None = None) -> int:
@@ -13,7 +13,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
     options = parser.parse_args(arguments)
     settings = load_settings(options.config)
     database = Database(settings.database_path, settings.database_url)
-    transfer = DatabaseTransferService(database)
+    transfer = DatabaseTransferGateway(database)
     if options.command == "export":
         path = transfer.export_to(options.path)
         print(f"Exported database to {path}")

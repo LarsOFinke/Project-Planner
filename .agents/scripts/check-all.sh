@@ -9,9 +9,10 @@ if [[ ! -x .venv/bin/python ]]; then
     exit 1
 fi
 
-.venv/bin/ruff check src tests
+.venv/bin/ruff check src frontend/src tests
+.venv/bin/ruff format --check src frontend/src tests
 .venv/bin/python -m pytest -q
-.venv/bin/python -m compileall -q src tests
+.venv/bin/python -m compileall -q src frontend/src tests
 bash -n scripts/bootstrap.sh
 bash -n .agents/scripts/doctor.sh
 bash -n .agents/scripts/check-all.sh

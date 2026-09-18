@@ -8,6 +8,7 @@ Read in this order:
 2. `PROJECT_CACHE.md` for the compact current state.
 3. `ARCHITECTURE.md` only when changing module boundaries or persistence.
 4. `debugging/README.md` only when investigating a problem.
+5. `REPOSITORY_SPRING_CLEANING.md` for a repository-wide quality audit.
 
 Do not recursively read the repository before consulting the cache. The cache identifies the
 smallest relevant paths and the canonical validation commands.

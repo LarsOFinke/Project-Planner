@@ -1,6 +1,6 @@
 import logging
 
-from project_planner.frontend.bootstrap.CutbufferLogFilter import CutbufferLogFilter
+from project_planner_frontend.bootstrap.CutbufferLogFilter import CutbufferLogFilter
 
 
 def test_cutbuffer_filter_only_hides_known_optional_provider_probe() -> None:

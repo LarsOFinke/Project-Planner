@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from project_planner.core.configuration import settings_loader
-from project_planner.core.configuration.settings_loader import (
+from project_planner.shared.settings import settings_loader
+from project_planner.shared.settings.settings_loader import (
     load_settings,
     save_fullscreen,
     save_ui_scale,

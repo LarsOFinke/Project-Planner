@@ -2,20 +2,20 @@ from pathlib import Path
 
 import pytest
 
-from project_planner.core.application.artifacts.codecs.DiagramDocumentCodec import (
-    DiagramDocumentCodec,
-)
-from project_planner.core.application.artifacts.codecs.WorkspaceDocumentCodec import (
-    WorkspaceDocumentCodec,
-)
-from project_planner.core.application.artifacts.documents.WorkspaceDocument import (
+from project_planner.modules.artifacts.documents.WorkspaceDocument import (
     WorkspaceDocument,
 )
-from project_planner.core.application.artifacts.documents.WorkspaceShape import (
+from project_planner.modules.artifacts.documents.WorkspaceShape import (
     WorkspaceShape,
 )
-from project_planner.core.application.artifacts.documents.WorkspaceStroke import (
+from project_planner.modules.artifacts.documents.WorkspaceStroke import (
     WorkspaceStroke,
+)
+from project_planner.modules.artifacts.services.codecs.DiagramDocumentCodec import (
+    DiagramDocumentCodec,
+)
+from project_planner.modules.artifacts.services.codecs.WorkspaceDocumentCodec import (
+    WorkspaceDocumentCodec,
 )
 
 

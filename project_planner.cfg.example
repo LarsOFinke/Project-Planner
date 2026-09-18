@@ -25,3 +25,11 @@ scale = auto
 [storage]
 # Environment override: PROJECT_PLANNER_DATA_DIR
 data_directory = ~/.project_planner/data
+
+[api]
+# Optional remote API base including /api/v1. Empty starts the embedded localhost API.
+# Environment override: PROJECT_PLANNER_API_URL
+url =
+# Comma-separated browser origins permitted by a separately hosted API.
+# Environment override: PROJECT_PLANNER_API_CORS_ORIGINS
+cors_origins =

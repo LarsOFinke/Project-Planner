@@ -23,7 +23,9 @@ supported interpreter.
 - One source class per file; its PascalCase filename must match the class name exactly.
   `tests/test_structure.py` enforces both rules.
 - Domain and application code must not import Kivy.
-- UI code consumes services through `ApplicationContainer`.
+- UI code consumes backend workflows only through the `clients/` directory of its mirrored
+  frontend feature. FastAPI feature controllers own service coordination; only desktop bootstrap
+  may start the embedded API host.
 - Configuration belongs in `default.cfg`, the example cfg, and `Settings`/loader together.
 - New persisted editor data must remain backward-compatible and include a version number.
 - Imported files belong in the configured data directory, never inside the source tree.

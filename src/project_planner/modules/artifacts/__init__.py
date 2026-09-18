@@ -1,0 +1,1 @@
+"""Persisted visual artifact module."""

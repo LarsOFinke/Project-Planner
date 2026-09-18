@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from project_planner.core.application.calendar.CalendarService import CalendarService
+from project_planner.modules.calendar.services.CalendarService import CalendarService
 
 
 def test_calendar_builds_monday_first_month_grid_with_adjacent_days() -> None:

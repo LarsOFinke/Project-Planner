@@ -36,9 +36,10 @@ filename. Modules without a class retain conventional descriptive snake_case nam
 
 ## AD-008 — Application workflows and read projections
 
-Feature panels receive narrow service dependencies. Cross-module operations live in application
-workflow services, while UI-oriented joins and hierarchy shaping use framework-independent read
-models. The complete application container is visible only to the frontend composition root.
+Cross-module operations live in application workflow services, while UI-oriented joins and
+hierarchy shaping use framework-independent read models. This earlier direct service injection was
+superseded by AD-022: feature panels now receive HTTP clients and FastAPI controllers coordinate
+the backend services.
 
 ## AD-009 — Typed artifact boundaries
 
@@ -85,8 +86,8 @@ structure.
 
 ## AD-016 — One shared calendar boundary
 
-Month construction, navigation, and ISO date parsing live in the framework-independent core
-calendar service. Kivy modules reuse one Date input and popup implementation, keeping date fields
+Month construction, navigation, and ISO date parsing live in the framework-independent calendar
+service. Kivy modules reuse one Date input and popup implementation, keeping date fields
 keyboard-editable while preventing project, sprint, phase, task, and Custom-section pickers from
 developing separate behavior.
 
@@ -119,3 +120,36 @@ and empty states. Hierarchy is expressed by layout geometry: project controls ar
 rows and connected with branch guides instead of inserting whitespace into label text. Roadmap
 groups use the same whole-row indentation principle so visual nesting remains stable at every
 configured UI scale.
+
+## AD-021 — Feature-first backend and replaceable frontend
+
+Backend business code is organized as vertical modules. Each module owns only the entities,
+protocols, services, repositories, and mappers it needs. API features own transport DTOs.
+Database, settings, and narrow utilities remain shared.
+The Kivy client lives in a separate root source package; backend modules never import it. Project
+categories are a normalized directory concern inside the Projects module and do not own or delete
+projects.
+
+## AD-022 — Versioned HTTP boundary between backend and clients
+
+FastAPI `/api/v1` resources are the public application boundary. Each feature controller owns
+its routes and coordinates only that feature's backend services. Kivy
+panels receive narrowly typed HTTP clients. Desktop mode hosts the API on an ephemeral loopback
+port; a configured remote URL and explicit CORS origins support a later browser frontend. OpenAPI
+is the cross-language contract; no aggregate service container is used.
+
+## AD-023 — One planning feature and mirrored frontend boundaries
+
+Agile, Custom sections, phases, and Waterfall tasks are strategies and structures within one
+backend Planning capability, so their entities, protocols, services, and repositories live in
+`modules/planning`. The Kivy client mirrors the API's Project, Planning, Collaboration, Artifact,
+and System feature controllers. Each frontend feature colocates its typed HTTP clients and views;
+only transport and connection setup remain in the frontend `api` package.
+
+## AD-024 — API-owned transport DTOs
+
+Each API feature is a module whose controller lives at its root and whose transport/read DTOs live
+under `dtos/`. Business modules do not import the API. Persisted Diagram/Workspace structures are
+named documents, and database transfer results are internal models, because neither is an HTTP
+transport contract. API-specific query projection services may depend inward on business services
+and repository protocols.

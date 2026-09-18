@@ -1,15 +1,17 @@
 # Project cache
 
-Last refreshed: 2026-09-17
+Last refreshed: 2026-09-18
 
 ## Hot context
 
 - Product: local-first desktop project planner, prototype `0.1.0`.
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
-- Quality: `make test`, `make lint`, or `bash .agents/scripts/check-all.sh`.
-- Current suite: 45 tests.
-- Entry point: `project_planner.frontend.main:main`.
+- Quality: `make test`, `make lint`, or `make validate`.
+- Current suite: 62 tests.
+- Entry point: `project_planner_frontend.main:main`.
+- HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
+- Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
 - Database: SQLAlchemy ORM with Alembic migrations; SQLite default at
   `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
@@ -19,19 +21,26 @@ Last refreshed: 2026-09-17
 - Window mode: persistent top-right Windowed/Fullscreen toggle beside the scale selector.
 - Diagnostics: unexpected Kivy event errors are recovered, stored in SQLite, and visible in Admin.
 - Class modules: exact PascalCase class filenames; non-class helper modules remain snake_case.
+- Architecture boundaries are enforced by AST tests; the cleanup standard is documented in
+  `.agents/REPOSITORY_SPRING_CLEANING.md`.
+- Agile, Custom, phase, and Waterfall backend code is consolidated in `modules/planning`.
+- Frontend `projects`, `planning`, `collaboration`, `artifacts`, and `system` boundaries mirror
+  the five API feature controllers and colocate their clients and views.
+- API feature modules keep their controller at the module root and transport DTOs in `dtos/`;
+  business modules contain no transport DTO directories.
 - Visual system: shared low-glare palette, rounded controls, bordered surfaces, section hierarchy,
   and whole-row directory indentation with branch guides.
 
 ## Implemented workflows
 
-- hierarchical project browser with project status;
+- category-based project directory with add/remove controls, child hierarchy, and project status;
 - overview metadata, timestamps, parent project, and planning method;
 - Agile backlog, multiple planned sprints, completed work, and simple sprint history;
 - Roadmap views preserve completed sections in sequence; Agile keeps planned and completed sprints
   in one directory and opens sprint work in separate To Do/In Progress/Done overlay tabs;
 - Waterfall phases, tasks, and chronological timeline;
 - ordered Custom sections that independently use Free, Agile, or Waterfall structures;
-- shared core calendar service and reusable Date picker across all planning date fields;
+- shared calendar-module service and reusable Date picker across all planning date fields;
 - project links and backlinks;
 - draggable node/edge diagram editor;
 - freehand workspace with explicit Select and Draw interaction modes;
@@ -48,7 +57,8 @@ Last refreshed: 2026-09-17
 - query projections for project trees, parent choices, and duplicate-title-safe selectors;
 - resolved link projections with incoming/outgoing direction;
 - typed diagram/workspace documents with version-aware codecs;
-- narrow service injection into feature panels.
+- typed HTTP-client injection into feature panels; backend services never enter the Kivy widget
+  tree, and one controller coordinates each FastAPI feature area.
 - contextual To-Dos surfaced from Overview, individual phases, and Links; Diagram and Workspace
   each expose a dedicated nested To-Dos tab beside their Canvas tab;
 - project relationships managed from Overview, with Links reserved for web URLs and local files;
@@ -59,10 +69,10 @@ Last refreshed: 2026-09-17
 
 ## Persistence facts
 
-- ORM models: `core/infrastructure/database/models/`.
+- ORM models: `shared/database/models/`.
 - Unexpected UI-event failures are stored in `application_issues`; Admin shows the latest 50.
-- Ordered schema revisions: `core/infrastructure/database/migrations/versions/`.
-- Optional idempotent seeds: `core/infrastructure/database/seeds/`.
+- Ordered schema revisions: `shared/database/migrations/versions/`.
+- Optional idempotent seeds: `shared/database/seeds/`.
 - Relational project metadata is 3NF; artifact JSON is an intentional opaque document aggregate.
 - Phase To-Dos reference `phases.id` and survive reorder/edit operations; real phase deletion
   cascades the matching To-Dos.
@@ -71,7 +81,7 @@ Last refreshed: 2026-09-17
 - Diagram JSON version: `1`.
 - Workspace JSON version: `4`.
 - Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation.
-- Migration head: `0009`; database export format: `4`.
+- Migration head: `0010`; database export format: `5`.
 - Phase rows persist dates, description, normalized lifecycle status, optional Custom section,
   created timestamp, and updated timestamp; older phase rows are preserved and mapped forward.
 - Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
@@ -95,23 +105,28 @@ Important overrides:
 - `PROJECT_PLANNER_FULLSCREEN`
 - `PROJECT_PLANNER_AUTOSAVE_SECONDS`
 - `PROJECT_PLANNER_UI_SCALE`
+- `PROJECT_PLANNER_API_URL`
+- `PROJECT_PLANNER_API_CORS_ORIGINS`
 
 `PROJECT_PLANNER_UI_SCALE` accepts `auto` or a numeric value from `0.05` through `5.00`.
 Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environment overrides win.
 
 ## High-value paths
 
-- Composition: `src/project_planner/core/bootstrap/container_builder.py`
-- Workflows/queries: `src/project_planner/core/application/projects/`
-- Artifact documents/codecs: `src/project_planner/core/application/artifacts/`
-- Settings: `src/project_planner/core/configuration/`
-- Models: `src/project_planner/core/domain/`
-- Use cases: `src/project_planner/core/application/`
-- SQLAlchemy adapters/migrations/transfer: `src/project_planner/core/infrastructure/`
-- UI shell: `src/project_planner/frontend/shell/ProjectPlannerRoot.py`
-- Theme: `src/project_planner/frontend/shared/theme.py`
-- Workspace: `src/project_planner/frontend/workspace/`
-- Diagram: `src/project_planner/frontend/diagram/`
+- FastAPI/composition: `src/project_planner/api/`
+- API feature contracts: `src/project_planner/api/<feature>/dtos/`
+- Kivy HTTP transport/facade: `frontend/src/project_planner_frontend/api/`
+- Kivy feature clients/views: `frontend/src/project_planner_frontend/{projects,planning,collaboration,artifacts,system}/`
+- Feature modules: `src/project_planner/modules/`
+- Project entities/protocols/services/repositories/mappers:
+  `src/project_planner/modules/projects/`
+- Artifact persisted documents/codecs: `src/project_planner/modules/artifacts/`
+- Settings: `src/project_planner/shared/settings/`
+- Database/migrations: `src/project_planner/shared/database/`
+- UI shell: `frontend/src/project_planner_frontend/shell/ProjectPlannerRoot.py`
+- Theme: `frontend/src/project_planner_frontend/shared/theme.py`
+- Workspace: `frontend/src/project_planner_frontend/artifacts/views/workspace/`
+- Diagram: `frontend/src/project_planner_frontend/artifacts/views/diagram/`
 - Tests: `tests/`
 
 ## Known environment behavior

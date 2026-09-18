@@ -1,71 +1,93 @@
 # Architecture map
 
+Project Planner is a feature-first modular monolith with a physically separate Kivy client.
+
 ```text
-frontend -> application services -> repository ports <- SQLAlchemy adapters
-                         |
-                      domain
+Kivy UI -> typed HTTP clients -> FastAPI /api/v1 feature controllers
+                                                               |
+entities <- services -> protocols <- repositories -> SQLAlchemy models
+                              ^             |
+                              └── mappers <-┘
 ```
 
-## Core
+## Backend
 
-`src/project_planner/core/domain/`
-: Immutable entities and enums grouped by projects, phases, links, and artifacts.
+`src/project_planner/api/`
+: FastAPI application factory, embedded/standalone Uvicorn hosts, and controller composition.
+  Each `api/<feature>/` keeps its route-owning controller at the feature root and transport DTOs
+  below `dtos/`. OpenAPI is the public contract; no aggregate application or service container
+  exists.
 
-`src/project_planner/core/application/`
-: Use cases grouped by feature. Planning strategies live under `planning`; managed image import
-  is handled by `assets/ImageAssetService.py`.
+`src/project_planner/modules/<feature>/`
+: Business modules grouped vertically. A module owns only the layer directories it needs:
+  `entities`, `protocols`, `services`, `repositories`, `mappers`, `documents`, and `models`.
+  Transport DTOs do not live in business modules.
 
-`src/project_planner/core/application/projects/`
-: Project CRUD is separated from workflow orchestration and read projections. The workflow
-  service coordinates projects with phase templates; the query service produces overview,
-  choice, and flattened-tree models for the frontend.
+`src/project_planner/modules/transfer/gateways/`
+: Explicit database import/export boundary. It is a gateway—not a repository—because it transfers
+  a complete relational snapshot rather than managing one aggregate.
 
-`src/project_planner/core/application/artifacts/`
-: Artifact persistence remains generic. Diagram and workspace codecs own JSON validation,
-  version compatibility, and typed document conversion.
+`src/project_planner/modules/projects/`
+: Project/category entities, repository protocols, workflows, persistence repositories, and
+  entity/ORM mappers. API-specific directory and overview projections live under `api/projects`.
+  Categories organize projects without owning their lifecycle; deleting a category moves its
+  projects to Uncategorized.
 
-`src/project_planner/core/ports/`
-: Repository protocols. Application logic depends on these boundaries rather than SQLite.
+`src/project_planner/modules/planning/`
+: One cohesive planning capability containing Agile backlog/sprints, Custom sections, and
+  Waterfall phases/tasks. These are strategies within one feature rather than peer modules.
 
-`src/project_planner/core/infrastructure/`
-: SQLAlchemy connection/session boundary, Alembic migrations, isolated seeds, versioned transfer
-  service, and one repository adapter per file. SQLite is the default configured dialect.
+`src/project_planner/modules/artifacts/`
+: Artifact entity and persistence contract, typed persisted Diagram/Workspace documents,
+  version-aware codecs, service, and repository.
 
-`src/project_planner/core/bootstrap/`
-: Creates the database, adapters, services, and immutable `ApplicationContainer`.
+`src/project_planner/shared/database/`
+: SQLAlchemy session boundary, shared ORM schema models, ordered Alembic migrations, and isolated
+  seeds. Feature services never import this directory.
 
-`src/project_planner/core/configuration/`
-: Typed settings and cfg/environment resolution.
+`src/project_planner/shared/settings/`
+: Typed cfg/environment settings and persistence of user UI preferences.
+
+`src/project_planner/shared/utils/`
+: Small dependency-free helpers that are genuinely shared; feature-specific helpers stay in their
+  module.
 
 ## Frontend
 
-`src/project_planner/frontend/shell/`
-: Responsive application shell, project sidebar, and planning-level tabs.
+`frontend/src/project_planner_frontend/`
+: Independently discoverable Kivy client package. `api/` owns transport and the connection facade.
+  Desktop mode starts an ephemeral localhost API; remote mode uses the configured API URL. The
+  backend never imports this package.
 
-`projects/`, `phases/`, `links/`, `todos/`
-: Metadata workflows, contextual To-Do management, project relationships in Overview, and
-  separate web/filesystem resource links.
+`projects/`, `planning/`, `collaboration/`, `artifacts/`, `system/`
+: Frontend feature boundaries mirroring the five FastAPI controllers. Each owns its `clients/`
+  and `views/`; planning views retain Agile, Custom, and Waterfall subdirectories.
 
-`diagram/`
-: Node/edge editor with persisted version-1 JSON.
-
-`workspace/`
-: Freehand canvas, draggable shape/image objects, transforms, toolboxes, and version-3 JSON.
+`artifacts/views/diagram/`, `artifacts/views/workspace/`
+: Node/edge and free-form editors for persisted artifact documents.
 
 `shared/`
-: Theme tokens, dialog helpers, and the reusable categorized-toolbox control. White is
-  intentionally replaced by pearl grey. Gold means primary/selected; red means
-  destructive/blocked.
+: Kivy-only theme tokens, dialog helpers, layouts, and reusable controls. White is intentionally
+  replaced by pearl grey. Gold means primary/selected; red means destructive/blocked.
 
 ## Dependency rules
 
-- `core` never imports `frontend` or Kivy.
-- Domain entities never import application, infrastructure, or UI modules.
-- Frontend does not execute SQL or copy assets directly; it calls container services.
-- Feature panels receive only the services they use; only the frontend composition root sees the
-  complete `ApplicationContainer`.
-- Kivy canvases render typed documents and do not parse persisted JSON structures.
-- Repository adapters share `Database`, but each adapter has one responsibility and no
-  dialect-specific SQL.
+- Backend code never imports `project_planner_frontend` or Kivy.
+- Module entities import neither protocols, services, repositories, mappers, nor API code.
+- API DTOs may reference entities but never services, repositories, or mappers.
+- Protocols may reference entities/documents but never services, repositories, or API composition.
+- Services depend on entities, documents, models, and protocols; they never import API or
+  SQLAlchemy/database code.
+- Repositories implement protocols and may use `shared/database` plus explicit mappers.
+- Mappers translate between feature entities and SQLAlchemy schema models where that translation
+  is substantial enough to deserve a separate unit.
+- Only `api/controller_builder.py` composes repositories, services, and feature controllers.
+- Each FastAPI feature controller owns its `/api/v1` routes and coordinates its services directly.
+- Controller `_register_routes()` methods delegate to small resource-specific registration helpers
+  so the route table remains readable without recreating a separate router layer.
+- Frontend panels depend on typed feature HTTP clients, never backend services or composition
+  types; frontend feature names mirror their API controllers.
+- Frontend code never imports SQLAlchemy, `shared/database`, or module repositories.
+- Kivy clients decode API DTOs; canvases render typed persisted documents and do not parse JSON.
 - Each source file contains at most one class, and class modules use the exact PascalCase class
   name as their filename.

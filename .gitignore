@@ -4,6 +4,7 @@ __pycache__/
 project_planner.cfg
 .coverage
 .pytest_cache/
+.ruff_cache/
 .venv/
 .venv-*/
 dist/

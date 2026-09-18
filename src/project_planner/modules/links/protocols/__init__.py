@@ -1,0 +1,1 @@
+"""Project-link module contracts."""

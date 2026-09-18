@@ -1,20 +1,20 @@
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 
-from project_planner.core.bootstrap.ApplicationContainer import ApplicationContainer
-from project_planner.core.bootstrap.container_builder import build_container
-from project_planner.core.configuration.Settings import Settings
-from project_planner.core.domain.agile.BacklogPriority import BacklogPriority
-from project_planner.core.domain.agile.BacklogStatus import BacklogStatus
-from project_planner.core.domain.custom.SectionStatus import SectionStatus
-from project_planner.core.domain.custom.SectionType import SectionType
-from project_planner.core.domain.phases.PhaseStatus import PhaseStatus
-from project_planner.core.domain.projects.PlanningMethod import PlanningMethod
-from project_planner.core.domain.waterfall.WaterfallTaskStatus import WaterfallTaskStatus
+from project_planner.modules.planning.entities.BacklogPriority import BacklogPriority
+from project_planner.modules.planning.entities.BacklogStatus import BacklogStatus
+from project_planner.modules.planning.entities.PhaseStatus import PhaseStatus
+from project_planner.modules.planning.entities.SectionStatus import SectionStatus
+from project_planner.modules.planning.entities.SectionType import SectionType
+from project_planner.modules.planning.entities.WaterfallTaskStatus import WaterfallTaskStatus
+from project_planner.modules.projects.entities.PlanningMethod import PlanningMethod
+from project_planner.shared.settings.Settings import Settings
+from tests.support import build_test_services
 
 
-def build_planner() -> ApplicationContainer:
-    return build_container(Settings(Path(":memory:"), 1280, 800, 20))
+def build_planner() -> SimpleNamespace:
+    return build_test_services(Settings(Path(":memory:"), 1280, 800, 20))
 
 
 def test_agile_backlog_sprint_completion_and_history() -> None:

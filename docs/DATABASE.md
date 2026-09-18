@@ -6,7 +6,7 @@ migrations. SQLite remains the zero-configuration default, while `[database] url
 
 ## Migration and seed boundaries
 
-- `core/infrastructure/database/migrations/versions/` contains ordered, immutable structure
+- `shared/database/migrations/versions/` contains ordered, immutable structure
   changes. Startup upgrades the configured database to the current revision.
 - An existing prototype database without Alembic metadata is safely baselined at revision `0001`;
   subsequent migrations add phase metadata, contextual To-Dos, seed history, resource links, and
@@ -14,7 +14,8 @@ migrations. SQLite remains the zero-configuration default, while `[database] url
 - Revision `0008` repairs early prototype databases whose sprint-status constraint predates the
   `planned` state; existing sprint rows are preserved during the SQLite table rebuild.
 - Revision `0009` adds the local `application_issues` diagnostics log used by the Admin screen.
-- `core/infrastructure/database/seeds/` contains the idempotent seed contract and runner. Each seed
+- Revision `0010` adds normalized project categories and a nullable category reference on projects.
+- `shared/database/seeds/` contains the idempotent seed contract and runner. Each seed
   has its own class/file and is recorded in `seed_history` only after it succeeds.
 - Prototype 0.1 has no demo-data seed. Opening the application must never add sample projects to a
   user's local database.
@@ -28,7 +29,8 @@ The relational metadata schema conforms to third normal form:
 
 | Relation | Candidate key | Non-key dependencies |
 | --- | --- | --- |
-| `projects` | `id` | setup, ownership text, notes, status, method, parent and timestamps depend only on `id` |
+| `project_categories` | `id`; `name` | display order and timestamps depend only on the category |
+| `projects` | `id` | setup, ownership text, notes, status, method, category, parent and timestamps depend only on `id` |
 | `planning_sections` | `id` | project, model, order, optional dates and status depend only on the section |
 | `sprints` | `id` | project/context, dates, goal and lifecycle state depend only on the sprint |
 | `backlog_items` | `id` | project/context, optional sprint, work fields and order depend only on the item |
@@ -68,7 +70,8 @@ This preserves a simple aggregate boundary without denormalizing project metadat
 ## Transfer behavior
 
 `project-planner-db export` writes a versioned JSON document atomically. Import validates the
-format, merges projects before dependent rows, and performs the whole operation in one transaction.
+format, merges categories and projects before dependent rows, and performs the whole operation in
+one transaction.
 Dry-run is the default and always rolls that transaction back after constraints have been checked.
 `--apply` is required to commit. Import never removes records that are absent from the export.
 
