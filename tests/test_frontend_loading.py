@@ -2,6 +2,8 @@ from types import MethodType, SimpleNamespace
 
 from kivy.uix.textinput import TextInput
 from project_planner_frontend.projects.views.ProjectBrowser import ProjectBrowser
+from project_planner_frontend.projects.views.ProjectCategoryRow import ProjectCategoryRow
+from project_planner_frontend.projects.views.ProjectTreeRow import ProjectTreeRow
 from project_planner_frontend.shared.theme import style_input
 from project_planner_frontend.shell.ProjectPlannerRoot import ProjectPlannerRoot
 
@@ -67,6 +69,82 @@ def test_project_directory_groups_all_categories_from_one_project_read() -> None
         categorized,
         uncategorized,
     ]
+
+
+def test_project_directory_always_exposes_uncategorized_creation_target() -> None:
+    queries = ProjectQueryService(  # type: ignore[arg-type]
+        CountingProjectService(()),
+        EmptyCategoryService(),
+    )
+
+    directory = queries.list_directory()
+
+    assert len(directory) == 1
+    assert directory[0].category is None
+    assert directory[0].projects == ()
+
+
+def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
+    actions: list[str] = []
+    category = ProjectCategoryRow(
+        "Client work",
+        1,
+        False,
+        lambda: actions.append("select-category"),
+        lambda: actions.append("add-project"),
+        lambda: actions.append("rename-category"),
+        lambda: actions.append("delete-category"),
+    )
+    project = ProjectTreeRow(
+        "Website",
+        "active",
+        1,
+        False,
+        lambda: actions.append("select-project"),
+        lambda: actions.append("add-child"),
+        lambda: actions.append("archive-project"),
+        lambda: actions.append("delete-project"),
+    )
+
+    assert category.add_project_button.text == "+"
+    assert category.gear_button is not None
+    assert set(category.gear_button.action_buttons) == {"Rename"}
+    assert category.delete_button is not None
+    assert category.delete_button.__class__.__name__ == "BinButton"
+    assert set(project.gear_button.action_buttons) == {"Add child", "Archive"}
+    assert project.delete_button.__class__.__name__ == "BinButton"
+    category.add_project_button.dispatch("on_release")
+    category.gear_button.action_buttons["Rename"].dispatch("on_release")
+    category.delete_button.dispatch("on_release")
+    project.gear_button.action_buttons["Add child"].dispatch("on_release")
+    project.gear_button.action_buttons["Archive"].dispatch("on_release")
+    project.delete_button.dispatch("on_release")
+
+    assert actions == [
+        "add-project",
+        "rename-category",
+        "delete-category",
+        "add-child",
+        "archive-project",
+        "delete-project",
+    ]
+
+
+def test_archived_project_row_disables_its_archive_menu_action() -> None:
+    project = ProjectTreeRow(
+        "Completed website",
+        "archived",
+        1,
+        False,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+    )
+
+    archive_action = project.gear_button.action_buttons["Archived"]
+
+    assert archive_action.disabled
 
 
 def test_browser_selection_uses_cached_directory_metadata() -> None:

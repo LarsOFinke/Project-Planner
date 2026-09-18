@@ -6,6 +6,8 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.widget import Widget
 
+from project_planner_frontend.projects.views.BinButton import BinButton
+from project_planner_frontend.projects.views.GearMenuButton import GearMenuButton
 from project_planner_frontend.shared.theme import BORDER, RED, SLATE_200, style_button
 
 
@@ -19,6 +21,9 @@ class ProjectTreeRow(BoxLayout):
         depth: int,
         selected: bool,
         on_select: Callable[[], None],
+        on_add_child: Callable[[], None],
+        on_archive: Callable[[], None],
+        on_delete: Callable[[], None],
         **kwargs: object,
     ) -> None:
         super().__init__(size_hint_y=None, height=dp(58), spacing=dp(5), **kwargs)
@@ -47,6 +52,21 @@ class ProjectTreeRow(BoxLayout):
         )
         self.button.bind(on_release=lambda *_: on_select())
         self.add_widget(self.button)
+        archived = status == "archived"
+        archive_label = "Archived" if archived else "Archive"
+        self.gear_button = style_button(
+            GearMenuButton(
+                (
+                    ("Add child", on_add_child, "secondary", False),
+                    (archive_label, on_archive, "secondary", archived),
+                )
+            ),
+            "secondary",
+        )
+        self.add_widget(self.gear_button)
+        self.delete_button = style_button(BinButton(), "danger")
+        self.delete_button.bind(on_release=lambda *_: on_delete())
+        self.add_widget(self.delete_button)
         with self.canvas.before:
             self._branch_color = Color(*BORDER)
             self._branch_line = Line(points=[], width=1.1)

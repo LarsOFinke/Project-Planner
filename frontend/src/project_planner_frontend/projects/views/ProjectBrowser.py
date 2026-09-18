@@ -32,7 +32,6 @@ from project_planner_frontend.shared.theme import (
     BORDER,
     NAVY_800,
     caption_label,
-    empty_state_label,
     paint_background,
     section_label,
     style_button,
@@ -88,33 +87,11 @@ class ProjectBrowser(BoxLayout):
         self.add_widget(caption_label("Categories contain projects and their child hierarchy."))
         category_controls = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(7))
         add_category = style_button(Button(text="+ Category"), "secondary")
-        self._rename_category_button = style_button(Button(text="Rename"), "secondary")
-        self._remove_category_button = style_button(Button(text="− Category"), "danger")
         add_category.bind(on_release=lambda *_: self._create_category())
-        self._rename_category_button.bind(on_release=lambda *_: self._rename_category())
-        self._remove_category_button.bind(on_release=lambda *_: self._remove_category())
         category_controls.add_widget(add_category)
-        category_controls.add_widget(self._rename_category_button)
-        category_controls.add_widget(self._remove_category_button)
         self.add_widget(category_controls)
-        controls = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(7))
-        new_root = style_button(Button(text="+ Project"), "primary")
-        self._new_child_button = style_button(Button(text="+ Child"), "secondary")
-        new_root.bind(on_release=lambda *_: self._create(None))
-        self._new_child_button.bind(on_release=lambda *_: self._create(self.selected_id))
-        controls.add_widget(new_root)
-        controls.add_widget(self._new_child_button)
-        self.add_widget(controls)
-        lifecycle = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(7))
-        self._archive_project_button = style_button(Button(text="Archive"), "secondary")
-        self._delete_project_button = style_button(Button(text="Delete project"), "danger")
-        self._archive_project_button.bind(on_release=lambda *_: self._archive_project())
-        self._delete_project_button.bind(on_release=lambda *_: self._delete_project())
-        lifecycle.add_widget(self._archive_project_button)
-        lifecycle.add_widget(self._delete_project_button)
-        self.add_widget(lifecycle)
 
-    def _create(self, parent_id: str | None) -> None:
+    def _create(self, parent_id: str | None, category_id: str | None) -> None:
         def submit(
             title: str,
             description: str,
@@ -125,14 +102,14 @@ class ProjectBrowser(BoxLayout):
             assignee: str,
             custom_type: SectionType | None,
         ) -> None:
-            category_id = self.selected_category_id
+            selected_category_id = category_id
             if parent_id is not None:
-                category_id = self._queries.get_overview(parent_id).project.category_id
+                selected_category_id = self._queries.get_overview(parent_id).project.category_id
             project = self._workflows.create_project(
                 title,
                 description=description,
                 parent_id=parent_id,
-                category_id=category_id,
+                category_id=selected_category_id,
                 start_date=start_date,
                 target_date=target_date,
                 planning_method=method,
@@ -159,10 +136,8 @@ class ProjectBrowser(BoxLayout):
 
         open_text_dialog("New project category", "Category name", submit)
 
-    def _rename_category(self) -> None:
-        if self.selected_category_id is None:
-            return
-        category = self._categories.require(self.selected_category_id)
+    def _rename_category(self, category_id: str) -> None:
+        category = self._categories.require(category_id)
 
         def submit(name: str) -> None:
             self._categories.rename(category.id, name)
@@ -175,15 +150,18 @@ class ProjectBrowser(BoxLayout):
             initial=category.name,
         )
 
-    def _remove_category(self) -> None:
-        if self.selected_category_id is None:
-            return
-        category = self._categories.require(self.selected_category_id)
+    def _remove_category(self, category_id: str) -> None:
+        category = self._categories.require(category_id)
 
         def remove() -> None:
             self._categories.delete(category.id)
-            self.selected_category_id = None
+            if self.selected_category_id == category.id:
+                self.selected_category_id = None
             self.refresh()
+            if self.selected_id is not None:
+                self.selected_category_id = self._category_by_project_id.get(self.selected_id)
+                self.refresh(reload=False)
+                self._on_select(self.selected_id, True)
 
         open_confirmation_dialog(
             "Delete project category",
@@ -191,15 +169,16 @@ class ProjectBrowser(BoxLayout):
             remove,
         )
 
-    def _archive_project(self) -> None:
-        project = self._selected_project()
+    def _archive_project(self, project_id: str) -> None:
+        project = self._project_by_id.get(project_id)
         if project is None or project.status is ProjectStatus.ARCHIVED:
             return
 
         def archive() -> None:
             self._projects.archive(project.id)
             self.refresh()
-            self._on_select(project.id, True)
+            if self.selected_id == project.id:
+                self._on_select(project.id, True)
             show_confirmation(f"{project.title!r} archived.")
 
         open_confirmation_dialog(
@@ -210,19 +189,22 @@ class ProjectBrowser(BoxLayout):
             confirm_variant="primary",
         )
 
-    def _delete_project(self) -> None:
-        project = self._selected_project()
+    def _delete_project(self, project_id: str) -> None:
+        project = self._project_by_id.get(project_id)
         if project is None:
             return
 
         def delete() -> None:
             self._projects.delete(project.id)
-            self._on_select(None, True)
-            self.selected_id = None
+            deleted_selected_project = self.selected_id == project.id
+            if deleted_selected_project:
+                self._on_select(None, True)
+                self.selected_id = None
             self.refresh()
-            replacement_id = next(iter(self._project_by_id), None)
-            if replacement_id is not None:
-                self.select(replacement_id)
+            if deleted_selected_project:
+                replacement_id = next(iter(self._project_by_id), None)
+                if replacement_id is not None:
+                    self.select(replacement_id)
             show_confirmation(f"{project.title!r} deleted.")
 
         open_confirmation_dialog(
@@ -233,11 +215,6 @@ class ProjectBrowser(BoxLayout):
             ),
             delete,
         )
-
-    def _selected_project(self) -> Project | None:
-        if self.selected_id is None:
-            return None
-        return self._project_by_id.get(self.selected_id)
 
     def refresh(self, *, reload: bool = True) -> None:
         self._list.clear_widgets()
@@ -253,14 +230,6 @@ class ProjectBrowser(BoxLayout):
                 for section in self._directory
                 for item in section.projects
             }
-        self._sync_controls()
-
-        if not self._directory:
-            self._list.add_widget(
-                empty_state_label("No projects yet\nCreate a project to begin planning.", 92)
-            )
-            return
-
         for section in self._directory:
             category = section.category
             category_id = category.id if category is not None else None
@@ -270,6 +239,13 @@ class ProjectBrowser(BoxLayout):
                     len(section.projects),
                     category_id is not None and category_id == self.selected_category_id,
                     partial(self._select_category, category_id),
+                    partial(self._create, None, category_id),
+                    partial(self._rename_category, category_id)
+                    if category_id is not None
+                    else None,
+                    partial(self._remove_category, category_id)
+                    if category_id is not None
+                    else None,
                 )
             )
             for item in section.projects:
@@ -282,6 +258,9 @@ class ProjectBrowser(BoxLayout):
                         item.depth + 1,
                         selected,
                         partial(self.select, project.id),
+                        partial(self._create, project.id, category_id),
+                        partial(self._archive_project, project.id),
+                        partial(self._delete_project, project.id),
                     )
                 )
 
@@ -295,18 +274,3 @@ class ProjectBrowser(BoxLayout):
         self.selected_category_id = self._category_by_project_id.get(project_id)
         self.refresh(reload=False)
         self._on_select(project_id, False)
-
-    def _sync_controls(self) -> None:
-        project = self._selected_project()
-        self._new_child_button.disabled = project is None
-        self._archive_project_button.disabled = (
-            project is None or project.status is ProjectStatus.ARCHIVED
-        )
-        self._archive_project_button.text = (
-            "Archived"
-            if project is not None and project.status is ProjectStatus.ARCHIVED
-            else "Archive"
-        )
-        self._delete_project_button.disabled = project is None
-        self._rename_category_button.disabled = self.selected_category_id is None
-        self._remove_category_button.disabled = self.selected_category_id is None

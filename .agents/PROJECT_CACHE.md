@@ -8,7 +8,7 @@ Last refreshed: 2026-09-18
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 79 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
+- Current suite: 82 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -38,6 +38,8 @@ Last refreshed: 2026-09-18
 
 - category-based project directory with add/rename/remove controls, child hierarchy, and project
   status;
+- category rows own their add-project action, row-level gear menus hold Rename/Add child/Archive,
+  and deletable category/project rows expose compact red bin controls on the relevant item;
 - confirmed project Archive and Delete actions; archive retains data with archived status, while
   delete removes owned planning data and promotes child projects to roots;
 - overview metadata, timestamps, parent project, and planning method;

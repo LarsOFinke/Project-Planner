@@ -20,6 +20,7 @@ def main() -> None:
         from project_planner_frontend.bootstrap.clipboard_bootstrap import configure_clipboard
         from project_planner_frontend.bootstrap.input_bootstrap import configure_mouse_input
 
+        from project_planner.api.controller_builder import build_controllers
         from project_planner.shared.settings.Settings import Settings
 
         configure_clipboard()
@@ -37,6 +38,9 @@ def main() -> None:
             ui_scale=args.scale,
             fullscreen=False,
         )
+        projects, _planning, _collaboration, _artifacts, _system = build_controllers(settings)
+        category = projects.create_category("Smoke category")
+        projects.create_project("Smoke project", category_id=category.id)
         application = ProjectPlannerApp(settings)
         Clock.schedule_once(lambda _elapsed: application.stop(), 1.0)
         application.run()

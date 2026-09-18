@@ -55,8 +55,7 @@ class ProjectQueryService:
             for category in self._categories.list_all()
         ]
         uncategorized = tuple(projects_by_category.pop(None, ()))
-        if uncategorized:
-            sections.append(ProjectDirectorySection(None, self._tree_for(uncategorized)))
+        sections.append(ProjectDirectorySection(None, self._tree_for(uncategorized)))
         return tuple(sections)
 
     @staticmethod
