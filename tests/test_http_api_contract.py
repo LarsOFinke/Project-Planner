@@ -27,6 +27,8 @@ def test_openapi_exposes_versioned_typed_resources(tmp_path: Path) -> None:
     assert "/api/v1/projects" in schema["paths"]
     assert "/api/v1/projects/{project_id}/sprints" in schema["paths"]
     assert "/api/v1/projects/{project_id}/artifacts/{kind}" in schema["paths"]
+    assert "put" in schema["paths"]["/api/v1/project-categories/{category_id}"]
+    assert "post" in schema["paths"]["/api/v1/projects/{project_id}/archive"]
     assert "Project" in schema["components"]["schemas"]
     assert "Sprint" in schema["components"]["schemas"]
 

@@ -63,6 +63,12 @@ class ProjectController:
             status_code=http_status.HTTP_204_NO_CONTENT,
         )
         routes.add_api_route(
+            "/projects/{project_id}/archive",
+            self.archive_project,
+            methods=["POST"],
+            response_model=Project,
+        )
+        routes.add_api_route(
             "/projects/{project_id}/category",
             self.assign_category,
             methods=["PUT"],
@@ -119,6 +125,12 @@ class ProjectController:
         )
         routes.add_api_route(
             "/project-categories/{category_id}",
+            self.rename_category,
+            methods=["PUT"],
+            response_model=ProjectCategory,
+        )
+        routes.add_api_route(
+            "/project-categories/{category_id}",
             self.delete_category,
             methods=["DELETE"],
             status_code=http_status.HTTP_204_NO_CONTENT,
@@ -132,6 +144,9 @@ class ProjectController:
 
     def delete_project(self, project_id: str) -> None:
         self._projects.delete(project_id)
+
+    def archive_project(self, project_id: str):
+        return self._projects.archive(project_id)
 
     def assign_category(
         self,
@@ -220,6 +235,9 @@ class ProjectController:
 
     def get_category(self, category_id: str):
         return self._categories.require(category_id)
+
+    def rename_category(self, category_id: str, name: Annotated[str, Body(embed=True)]):
+        return self._categories.rename(category_id, name)
 
     def delete_category(self, category_id: str) -> None:
         self._categories.delete(category_id)

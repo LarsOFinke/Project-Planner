@@ -83,6 +83,47 @@ def test_categories_group_projects_without_owning_their_lifecycle(
     assert planner.project_queries.list_directory()[0].category is None
 
 
+def test_renames_category_without_changing_its_identity(planner: SimpleNamespace) -> None:
+    category = planner.project_categories.create("Client work")
+
+    renamed = planner.project_categories.rename(category.id, "Customer projects")
+
+    assert renamed.id == category.id
+    assert renamed.name == "Customer projects"
+    assert renamed.created_at == category.created_at
+    assert renamed.updated_at >= category.updated_at
+    assert planner.project_categories.require(category.id) == renamed
+
+
+def test_rejects_duplicate_category_name_when_renaming(planner: SimpleNamespace) -> None:
+    planner.project_categories.create("Internal")
+    category = planner.project_categories.create("External")
+
+    with pytest.raises(ValueError, match="already exists"):
+        planner.project_categories.rename(category.id, " internal ")
+
+
+def test_archives_project_without_deleting_its_data(planner: SimpleNamespace) -> None:
+    project = planner.projects.create("Keep the plan", description="Retained")
+
+    archived = planner.projects.archive(project.id)
+
+    assert archived.status is ProjectStatus.ARCHIVED
+    assert archived.description == "Retained"
+    assert planner.projects.require(project.id) == archived
+
+
+def test_deleting_parent_keeps_child_as_root_project(planner: SimpleNamespace) -> None:
+    parent = planner.projects.create("Parent")
+    child = planner.projects.create("Child", parent_id=parent.id)
+
+    planner.projects.delete(parent.id)
+
+    assert planner.projects.require(child.id).parent_id is None
+    with pytest.raises(LookupError, match="does not exist"):
+        planner.projects.require(parent.id)
+
+
 def test_edits_and_reorders_custom_phases(planner: SimpleNamespace) -> None:
     project = planner.projects.create("Custom")
     discovery = planner.phases.add(project.id, "Discovery")

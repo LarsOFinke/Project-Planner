@@ -26,6 +26,20 @@ class ProjectCategoryService:
             raise LookupError(f"Project category {category_id!r} does not exist")
         return category
 
+    def rename(self, category_id: str, name: str) -> ProjectCategory:
+        category = self.require(category_id)
+        normalized = name.strip()
+        if not normalized:
+            raise ValueError("Project category name must not be empty")
+        if any(
+            item.id != category_id and item.name.casefold() == normalized.casefold()
+            for item in self.list_all()
+        ):
+            raise ValueError(f"Project category {normalized!r} already exists")
+        updated = category.revise(name=normalized)
+        self._categories.save(updated)
+        return updated
+
     def list_all(self) -> Sequence[ProjectCategory]:
         return self._categories.list_all()
 

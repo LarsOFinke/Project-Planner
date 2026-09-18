@@ -160,3 +160,18 @@ The project directory projection is cached by the browser and reused while selec
 Selecting a project loads only the currently visible feature tab; other tabs load on first use and
 are cached for that project. Overview remains the explicit default. This keeps HTTP traffic and
 database reads proportional to what the user is viewing instead of eagerly hydrating every module.
+
+## AD-026 — Conventional desktop pointer input
+
+The desktop bootstrap disables Kivy's mouse-based multitouch emulation. Right and middle clicks
+therefore remain ordinary pointer actions and do not create persistent red touch markers. Text
+dialogs request focus after their modal-open event so the first field reliably accepts keyboard
+input. Custom input surfaces are inserted before Kivy's native cursor/foreground instructions so
+the theme cannot cover or recolor editable text.
+
+## AD-027 — Explicit project lifecycle actions
+
+Archive is a reversible data-preserving state change represented by the project's `archived`
+status. Delete is separately confirmed and permanently removes the selected project's owned data;
+children remain and become root projects through the existing foreign-key rule. The UI clears open
+editor state before choosing a remaining project so deleted artifacts cannot be autosaved again.

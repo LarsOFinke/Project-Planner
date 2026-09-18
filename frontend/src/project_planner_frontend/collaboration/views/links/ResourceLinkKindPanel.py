@@ -116,6 +116,14 @@ class ResourceLinkKindPanel(BoxLayout):
         self.disabled = False
         self.refresh()
 
+    def clear_project(self) -> None:
+        self._project_id = None
+        self.title_input.text = ""
+        self.target_input.text = ""
+        self.feedback.text = ""
+        self._rows.clear_widgets()
+        self.disabled = True
+
     def refresh(self) -> None:
         self._rows.clear_widgets()
         if self._project_id is None:

@@ -19,5 +19,13 @@ class ProjectCategoryClient:
     def list_all(self) -> Sequence[ProjectCategory]:
         return self._transport.model(list[ProjectCategory], "GET", "/project-categories")
 
+    def rename(self, category_id: str, name: str) -> ProjectCategory:
+        return self._transport.model(
+            ProjectCategory,
+            "PUT",
+            f"/project-categories/{category_id}",
+            payload={"name": name},
+        )
+
     def delete(self, category_id: str) -> None:
         self._transport.request("DELETE", f"/project-categories/{category_id}")

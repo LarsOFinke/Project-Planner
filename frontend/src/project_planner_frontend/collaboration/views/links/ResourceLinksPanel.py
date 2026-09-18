@@ -59,3 +59,9 @@ class ResourceLinksPanel(BoxLayout):
         self.web_panel.refresh()
         self.file_panel.refresh()
         self.todo_panel.refresh()
+
+    def clear_project(self) -> None:
+        self.web_panel.clear_project()
+        self.file_panel.clear_project()
+        self.todo_panel.clear_context()
+        self.disabled = True

@@ -94,6 +94,14 @@ class WorkspacePanel(BoxLayout):
         )
         self.disabled = False
 
+    def clear_project(self) -> None:
+        self._artifact = None
+        self._project_id = None
+        self._dirty = False
+        self.canvas_editor.clear_drawing(notify=False)
+        self.todo_panel.clear_context()
+        self.disabled = True
+
     def _add_shape(self, kind: str) -> None:
         self.canvas_editor.add_shape(kind)
 

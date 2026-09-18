@@ -1,6 +1,6 @@
 from typing import Any
 
-from kivy.graphics import Color, Line, RoundedRectangle
+from kivy.graphics import Color, InstructionGroup, Line, RoundedRectangle
 from kivy.metrics import dp, sp
 from kivy.uix.label import Label
 from kivy.uix.spinner import Spinner
@@ -90,19 +90,26 @@ def style_input(field: TextInput) -> TextInput:
     field.background_active = ""
     field.background_color = (0, 0, 0, 0)
     field.foreground_color = PEARL_GREY
+    field.disabled_foreground_color = (*SLATE_400[:3], 0.55)
     field.hint_text_color = SLATE_400
     field.cursor_color = GOLD_LIGHT
     field.selection_color = (*GOLD[:3], 0.45)
     field.padding = [dp(14), dp(11)]
     field.font_size = sp(15)
     if not hasattr(field, "_theme_input_shape"):
-        with field.canvas.before:
-            field._theme_input_color = Color(*NAVY_700)
-            field._theme_input_shape = RoundedRectangle(
-                pos=field.pos,
-                size=field.size,
-                radius=[dp(7)],
-            )
+        field._theme_input_background = InstructionGroup()
+        field._theme_input_color = Color(*NAVY_700)
+        field._theme_input_shape = RoundedRectangle(
+            pos=field.pos,
+            size=field.size,
+            radius=[dp(7)],
+        )
+        field._theme_input_background.add(field._theme_input_color)
+        field._theme_input_background.add(field._theme_input_shape)
+        # Kivy's TextInput rule leaves its foreground/cursor Color as the final
+        # canvas.before instruction. The custom surface must precede that rule;
+        # appending it would tint text navy and paint over the cursor.
+        field.canvas.before.insert(0, field._theme_input_background)
         with field.canvas.after:
             field._theme_input_border_color = Color(*BORDER)
             field._theme_input_border = Line(

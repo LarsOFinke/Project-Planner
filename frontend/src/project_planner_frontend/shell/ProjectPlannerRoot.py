@@ -51,6 +51,7 @@ class ProjectPlannerRoot(BoxLayout):
         self._build_header()
         body = BoxLayout(spacing=dp(14), padding=[dp(16), dp(14), dp(16), dp(16)])
         self.browser = ProjectBrowser(
+            clients.projects,
             clients.project_workflows,
             clients.project_queries,
             clients.project_categories,
@@ -206,9 +207,20 @@ class ProjectPlannerRoot(BoxLayout):
         tab_space = max(0, width - self.browser.width - dp(42))
         self.tabs.tab_width = max(dp(96), tab_space / len(self._tab_headers))
 
-    def _show_project(self, project_id: str) -> None:
+    def _show_project(self, project_id: str | None, refresh: bool = False) -> None:
+        if project_id is None:
+            self._selected_project_id = None
+            self._loaded_project_by_tab.clear()
+            self.overview.clear_project()
+            self.planning.clear_project()
+            self.links.clear_project()
+            self.diagram.clear_project()
+            self.workspace.clear_project()
+            return
         if project_id != self._selected_project_id:
             self._selected_project_id = project_id
+            self._loaded_project_by_tab.clear()
+        elif refresh:
             self._loaded_project_by_tab.clear()
         current = self.tabs.current_tab
         if current is not None:

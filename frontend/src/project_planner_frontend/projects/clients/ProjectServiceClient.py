@@ -17,6 +17,9 @@ class ProjectServiceClient:
     def delete(self, project_id: str) -> None:
         self._transport.request("DELETE", f"/projects/{project_id}")
 
+    def archive(self, project_id: str) -> Project:
+        return self._transport.model(Project, "POST", f"/projects/{project_id}/archive")
+
     def assign_category(self, project_id: str, category_id: str | None) -> Project:
         return self._transport.model(
             Project,

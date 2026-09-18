@@ -98,6 +98,12 @@ class ProjectService:
         self.require(project_id)
         self._projects.delete(project_id)
 
+    def archive(self, project_id: str) -> Project:
+        current = self.require(project_id)
+        archived = current.revise(status=ProjectStatus.ARCHIVED)
+        self._projects.save(archived)
+        return archived
+
     def assign_category(self, project_id: str, category_id: str | None) -> Project:
         current = self.require(project_id)
         self._validate_category(category_id)

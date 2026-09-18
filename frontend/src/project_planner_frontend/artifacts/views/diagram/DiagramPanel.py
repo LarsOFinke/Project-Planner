@@ -83,6 +83,13 @@ class DiagramPanel(BoxLayout):
         )
         self.disabled = False
 
+    def clear_project(self) -> None:
+        self._artifact = None
+        self._dirty = False
+        self.canvas_editor.clear_diagram(notify=False)
+        self.todo_panel.clear_context()
+        self.disabled = True
+
     def _add_node(self, *_: object) -> None:
         self.canvas_editor.add_node()
 

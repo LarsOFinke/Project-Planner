@@ -67,6 +67,12 @@ class TodoPanel(BoxLayout):
         self.disabled = False
         self.refresh()
 
+    def clear_context(self) -> None:
+        self._project_id = None
+        self._phase_id = None
+        self._rows.clear_widgets()
+        self.disabled = True
+
     def refresh(self) -> None:
         self._rows.clear_widgets()
         if self._project_id is None:

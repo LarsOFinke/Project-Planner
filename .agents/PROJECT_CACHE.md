@@ -8,7 +8,7 @@ Last refreshed: 2026-09-18
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 66 tests.
+- Current suite: 72 tests.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -35,7 +35,10 @@ Last refreshed: 2026-09-18
 
 ## Implemented workflows
 
-- category-based project directory with add/remove controls, child hierarchy, and project status;
+- category-based project directory with add/rename/remove controls, child hierarchy, and project
+  status;
+- confirmed project Archive and Delete actions; archive retains data with archived status, while
+  delete removes owned planning data and promotes child projects to roots;
 - overview metadata, timestamps, parent project, and planning method;
 - Agile backlog, multiple planned sprints, completed work, and simple sprint history;
 - Roadmap views preserve completed sections in sequence; Agile keeps planned and completed sprints
@@ -141,6 +144,8 @@ Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environmen
 - Startup forces Kivy's bundled SDL2 clipboard. A narrow log filter suppresses only Kivy 2.3.1's
   failed optional X11 cutbuffer probe when `xclip`/`xsel` are absent; real clipboard/window
   failures remain visible.
+- Desktop mouse input disables Kivy's right/middle-click multitouch emulation, preventing simulated
+  touch markers from appearing during conventional pointer use.
 - Kivy schedules some layout work after `build()`. Always exercise the event loop for UI work.
 
 ## Cache refresh triggers

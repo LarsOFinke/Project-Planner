@@ -196,6 +196,23 @@ class OverviewPanel(BoxLayout):
             f"Updated {project.updated_at:%Y-%m-%d %H:%M}"
         )
 
+    def clear_project(self) -> None:
+        self._project = None
+        self._parent_ids = {"No parent": None}
+        self.title_input.text = ""
+        self.description_input.text = ""
+        self.status.text = ""
+        self.method.text = ""
+        self.start_date.text = ""
+        self.target_date.text = ""
+        self.owner.text = ""
+        self.assignee.text = ""
+        self.notes.text = ""
+        self.parent_spinner.text = "No parent"
+        self.parent_spinner.values = ["No parent"]
+        self.metadata.text = ""
+        self.disabled = True
+
     def _save(self, *_: object) -> None:
         if self._project is None:
             return

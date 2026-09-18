@@ -108,6 +108,9 @@ def open_confirmation_dialog(
     title: str,
     message: str,
     on_confirm: Callable[[], None],
+    *,
+    confirm_text: str = "Delete",
+    confirm_variant: str = "danger",
 ) -> None:
     content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(12))
     paint_background(content, NAVY_800)
@@ -120,7 +123,7 @@ def open_confirmation_dialog(
     )
     details.bind(size=lambda widget, size: setattr(widget, "text_size", size))
     actions = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
-    confirm = style_button(Button(text="Delete"), "danger")
+    confirm = style_button(Button(text=confirm_text), confirm_variant)
     cancel = style_button(Button(text="Cancel"), "secondary")
     actions.add_widget(confirm)
     actions.add_widget(cancel)
@@ -152,7 +155,7 @@ def open_text_dialog(
     hint: str,
     on_submit: Callable[[str], None],
     initial: str = "",
-) -> None:
+) -> Popup:
     content = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
     paint_background(content, NAVY_800)
     value = style_input(
@@ -193,8 +196,18 @@ def open_text_dialog(
     cancel.bind(on_release=lambda *_: popup.dismiss())
     submit.bind(on_release=accept)
     value.bind(on_text_validate=accept)
+
+    def focus_value(*_: object) -> None:
+        def apply_focus(_elapsed: float) -> None:
+            value.focus = True
+            if initial:
+                value.select_all()
+
+        Clock.schedule_once(apply_focus, 0)
+
+    popup.bind(on_open=focus_value)
     popup.open()
-    value.focus = True
+    return popup
 
 
 def open_image_dialog(on_submit: Callable[[str], None]) -> None:

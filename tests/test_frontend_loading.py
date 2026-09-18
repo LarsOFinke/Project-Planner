@@ -1,6 +1,8 @@
 from types import MethodType, SimpleNamespace
 
+from kivy.uix.textinput import TextInput
 from project_planner_frontend.projects.views.ProjectBrowser import ProjectBrowser
+from project_planner_frontend.shared.theme import style_input
 from project_planner_frontend.shell.ProjectPlannerRoot import ProjectPlannerRoot
 
 from project_planner.api.projects.queries.ProjectQueryService import ProjectQueryService
@@ -27,6 +29,13 @@ class EmptyCategoryService:
 
     def list_all(self) -> tuple[object, ...]:
         return self._categories
+
+
+def test_styled_input_background_precedes_kivy_text_and_cursor_instructions() -> None:
+    field = style_input(TextInput(text="Visible project title"))
+
+    assert field.canvas.before.children[0] is field._theme_input_background
+    assert field.foreground_color != field._theme_input_color.rgba
 
 
 def test_project_overview_uses_one_project_read() -> None:
@@ -62,20 +71,20 @@ def test_project_directory_groups_all_categories_from_one_project_read() -> None
 
 def test_browser_selection_uses_cached_directory_metadata() -> None:
     refreshes: list[bool] = []
-    selections: list[str] = []
+    selections: list[tuple[str | None, bool]] = []
     browser = SimpleNamespace(
         selected_id=None,
         selected_category_id=None,
         _category_by_project_id={"project-1": "category-1"},
         refresh=lambda *, reload=True: refreshes.append(reload),
-        _on_select=selections.append,
+        _on_select=lambda project_id, refresh: selections.append((project_id, refresh)),
     )
 
     ProjectBrowser.select(browser, "project-1")
 
     assert browser.selected_category_id == "category-1"
     assert refreshes == [False]
-    assert selections == ["project-1"]
+    assert selections == [("project-1", False)]
 
 
 def test_project_switch_loads_only_the_active_tab() -> None:
@@ -103,3 +112,22 @@ def test_project_switch_loads_only_the_active_tab() -> None:
         ("Diagram", "project-1"),
         ("Diagram", "project-2"),
     ]
+
+
+def test_clearing_project_resets_every_project_panel() -> None:
+    cleared: list[str] = []
+    root = SimpleNamespace(
+        _selected_project_id="project-1",
+        _loaded_project_by_tab={"Overview": "project-1"},
+        overview=SimpleNamespace(clear_project=lambda: cleared.append("Overview")),
+        planning=SimpleNamespace(clear_project=lambda: cleared.append("Plan Roadmap")),
+        links=SimpleNamespace(clear_project=lambda: cleared.append("Links")),
+        diagram=SimpleNamespace(clear_project=lambda: cleared.append("Diagram")),
+        workspace=SimpleNamespace(clear_project=lambda: cleared.append("Workspace")),
+    )
+
+    ProjectPlannerRoot._show_project(root, None, True)
+
+    assert root._selected_project_id is None
+    assert root._loaded_project_by_tab == {}
+    assert cleared == ["Overview", "Plan Roadmap", "Links", "Diagram", "Workspace"]

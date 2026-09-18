@@ -66,6 +66,10 @@ class PlanningPanel(BoxLayout):
         if self._project_id:
             self.show_project(self._project_id)
 
+    def clear_project(self) -> None:
+        self._project_id = None
+        self._show_empty("Select a project to open its roadmap.")
+
     def _show_empty(self, message: str) -> None:
         self.clear_widgets()
         self.add_widget(empty_state_label(message, 96))
