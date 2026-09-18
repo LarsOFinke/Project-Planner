@@ -45,6 +45,8 @@ class ProjectPlannerRoot(BoxLayout):
         self._ui_scale = ui_scale
         self._fullscreen = fullscreen
         self._on_fullscreen_change = on_fullscreen_change
+        self._selected_project_id: str | None = None
+        self._loaded_project_by_tab: dict[str, str] = {}
         paint_background(self, NAVY_950)
         self._build_header()
         body = BoxLayout(spacing=dp(14), padding=[dp(16), dp(14), dp(16), dp(16)])
@@ -105,7 +107,15 @@ class ProjectPlannerRoot(BoxLayout):
         self._add_tab(self.tabs, "Workspace", self.workspace)
         self._add_tab(self.tabs, "Links", self.links)
         self._add_tab(self.tabs, "Admin", self.admin)
-        self.tabs.bind(current_tab=self._style_tabs)
+        self._project_loaders = {
+            "Overview": self.overview.show_project,
+            "Plan Roadmap": self.planning.show_project,
+            "Diagram": self.diagram.show_project,
+            "Workspace": self.workspace.show_project,
+            "Links": self.links.show_project,
+        }
+        self.tabs.bind(current_tab=self._on_tab_changed)
+        self.tabs.switch_to(self._tab_headers[0])
         body.add_widget(self.browser)
         body.add_widget(self.tabs)
         self.add_widget(body)
@@ -181,10 +191,15 @@ class ProjectPlannerRoot(BoxLayout):
         tabs.add_widget(tab)
         self._tab_headers.append(tab)
 
-    def _style_tabs(self, tabs: TabbedPanel, current: TabbedPanelItem) -> None:
+    def _style_tabs(self, tabs: TabbedPanel, current: TabbedPanelItem | None) -> None:
         for header in self._tab_headers:
             selected = header is current
             style_button(header, "selected" if selected else "quiet")
+
+    def _on_tab_changed(self, tabs: TabbedPanel, current: TabbedPanelItem | None) -> None:
+        self._style_tabs(tabs, current)
+        if current is not None:
+            self._load_tab(current.text)
 
     def _update_scale(self, _widget: BoxLayout, width: float) -> None:
         self.browser.width = min(width * 0.34, max(dp(170), width * 0.24))
@@ -192,17 +207,30 @@ class ProjectPlannerRoot(BoxLayout):
         self.tabs.tab_width = max(dp(96), tab_space / len(self._tab_headers))
 
     def _show_project(self, project_id: str) -> None:
-        self.overview.show_project(project_id)
-        self.planning.show_project(project_id)
-        self.links.show_project(project_id)
-        self.diagram.show_project(project_id)
-        self.workspace.show_project(project_id)
+        if project_id != self._selected_project_id:
+            self._selected_project_id = project_id
+            self._loaded_project_by_tab.clear()
+        current = self.tabs.current_tab
+        if current is not None:
+            self._load_tab(current.text)
+
+    def _load_tab(self, title: str) -> None:
+        project_id = self._selected_project_id
+        loader = self._project_loaders.get(title)
+        if (
+            project_id is None
+            or loader is None
+            or self._loaded_project_by_tab.get(title) == project_id
+        ):
+            return
+        loader(project_id)
+        self._loaded_project_by_tab[title] = project_id
 
     def _project_saved(self, project_id: str) -> None:
         self.browser.selected_id = project_id
         self.browser.refresh()
-        self.planning.show_project(project_id)
-        self.links.show_project(project_id)
+        self._selected_project_id = project_id
+        self._loaded_project_by_tab = {"Overview": project_id}
 
     def _navigate_to_project(self, project_id: str) -> None:
         self.browser.select(project_id)

@@ -8,7 +8,7 @@ Last refreshed: 2026-09-18
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 62 tests.
+- Current suite: 66 tests.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -30,6 +30,8 @@ Last refreshed: 2026-09-18
   business modules contain no transport DTO directories.
 - Visual system: shared low-glare palette, rounded controls, bordered surfaces, section hierarchy,
   and whole-row directory indentation with branch guides.
+- Project switching reuses the loaded directory projection and loads only the visible feature tab;
+  each tab is fetched once per selected project until its data is invalidated.
 
 ## Implemented workflows
 

@@ -60,6 +60,8 @@ class ProjectBrowser(BoxLayout):
         self._on_exit = on_exit
         self.selected_id: str | None = None
         self.selected_category_id: str | None = None
+        self._directory = ()
+        self._category_by_project_id: dict[str, str | None] = {}
         paint_background(self, NAVY_800, 10, BORDER)
         self._list = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
         self._list.bind(minimum_height=self._list.setter("height"))
@@ -155,19 +157,25 @@ class ProjectBrowser(BoxLayout):
             remove,
         )
 
-    def refresh(self) -> None:
+    def refresh(self, *, reload: bool = True) -> None:
         self._list.clear_widgets()
         self._new_child_button.disabled = self.selected_id is None
         self._remove_category_button.disabled = self.selected_category_id is None
-        directory = self._queries.list_directory()
+        if reload:
+            self._directory = self._queries.list_directory()
+            self._category_by_project_id = {
+                item.project.id: section.category.id if section.category is not None else None
+                for section in self._directory
+                for item in section.projects
+            }
 
-        if not directory:
+        if not self._directory:
             self._list.add_widget(
                 empty_state_label("No projects yet\nCreate a project to begin planning.", 92)
             )
             return
 
-        for section in directory:
+        for section in self._directory:
             category = section.category
             category_id = category.id if category is not None else None
             self._list.add_widget(
@@ -194,10 +202,10 @@ class ProjectBrowser(BoxLayout):
     def _select_category(self, category_id: str | None) -> None:
         self.selected_id = None
         self.selected_category_id = category_id
-        self.refresh()
+        self.refresh(reload=False)
 
     def select(self, project_id: str) -> None:
         self.selected_id = project_id
-        self.selected_category_id = self._queries.get_overview(project_id).project.category_id
-        self.refresh()
+        self.selected_category_id = self._category_by_project_id.get(project_id)
+        self.refresh(reload=False)
         self._on_select(project_id)

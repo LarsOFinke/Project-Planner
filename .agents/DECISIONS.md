@@ -153,3 +153,10 @@ under `dtos/`. Business modules do not import the API. Persisted Diagram/Workspa
 named documents, and database transfer results are internal models, because neither is an HTTP
 transport contract. API-specific query projection services may depend inward on business services
 and repository protocols.
+
+## AD-025 — Lazy project-view loading
+
+The project directory projection is cached by the browser and reused while selection changes.
+Selecting a project loads only the currently visible feature tab; other tabs load on first use and
+are cached for that project. Overview remains the explicit default. This keeps HTTP traffic and
+database reads proportional to what the user is viewing instead of eagerly hydrating every module.

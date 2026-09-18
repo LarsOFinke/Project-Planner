@@ -22,8 +22,10 @@ class ProjectQueryService:
         self._categories = categories
 
     def get_overview(self, project_id: str) -> ProjectOverview:
-        project = self._projects.require(project_id)
         projects = tuple(self._projects.list_all())
+        project = next((item for item in projects if item.id == project_id), None)
+        if project is None:
+            raise LookupError(f"Project {project_id!r} does not exist")
         excluded_ids = self._descendant_ids(project_id, projects) | {project_id}
         candidates = tuple(candidate for candidate in projects if candidate.id not in excluded_ids)
         return ProjectOverview(
@@ -42,16 +44,17 @@ class ProjectQueryService:
 
     def list_directory(self) -> tuple[ProjectDirectorySection, ...]:
         projects = tuple(self._projects.list_all())
+        projects_by_category: dict[str | None, list[Project]] = {}
+        for project in projects:
+            projects_by_category.setdefault(project.category_id, []).append(project)
         sections = [
             ProjectDirectorySection(
                 category,
-                self._tree_for(
-                    tuple(project for project in projects if project.category_id == category.id)
-                ),
+                self._tree_for(tuple(projects_by_category.pop(category.id, ()))),
             )
             for category in self._categories.list_all()
         ]
-        uncategorized = tuple(project for project in projects if project.category_id is None)
+        uncategorized = tuple(projects_by_category.pop(None, ()))
         if uncategorized:
             sections.append(ProjectDirectorySection(None, self._tree_for(uncategorized)))
         return tuple(sections)
