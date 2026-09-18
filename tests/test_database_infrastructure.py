@@ -38,7 +38,7 @@ def test_migrations_create_versioned_normalized_schema(tmp_path: Path) -> None:
         "project_categories",
     } <= set(inspector.get_table_names())
     with database.engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0010"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0011"
     assert "category_id" in {column["name"] for column in inspector.get_columns("projects")}
 
     todo_foreign_tables = {
@@ -102,8 +102,70 @@ def test_migration_repairs_legacy_sprint_status_constraint(tmp_path: Path) -> No
                 "'2026-09-14', '', 'planned', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
             )
         )
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0010"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0011"
         assert connection.scalar(text("SELECT status FROM sprints")) == "planned"
+
+
+def test_migration_repairs_phase_project_cascade_without_losing_children(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "legacy-phase-cascade.sqlite3"
+    with sqlite3.connect(path) as connection:
+        connection.executescript(
+            """
+            PRAGMA foreign_keys = ON;
+            CREATE TABLE alembic_version (
+                version_num VARCHAR(32) NOT NULL PRIMARY KEY
+            );
+            INSERT INTO alembic_version (version_num) VALUES ('0010');
+            CREATE TABLE projects (id VARCHAR PRIMARY KEY);
+            CREATE TABLE planning_sections (id VARCHAR PRIMARY KEY);
+            CREATE TABLE phases (
+                id VARCHAR PRIMARY KEY,
+                project_id VARCHAR NOT NULL REFERENCES projects(id),
+                section_id VARCHAR REFERENCES planning_sections(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                position INTEGER NOT NULL,
+                status VARCHAR(32) NOT NULL,
+                start_date DATE,
+                end_date DATE,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL
+            );
+            CREATE TABLE todos (
+                id VARCHAR PRIMARY KEY,
+                project_id VARCHAR NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                phase_id VARCHAR REFERENCES phases(id) ON DELETE CASCADE
+            );
+            CREATE TABLE waterfall_tasks (
+                id VARCHAR PRIMARY KEY,
+                phase_id VARCHAR NOT NULL REFERENCES phases(id) ON DELETE CASCADE
+            );
+            INSERT INTO projects (id) VALUES ('project');
+            INSERT INTO phases (
+                id, project_id, name, position, status, created_at, updated_at
+            ) VALUES (
+                'phase', 'project', 'Delivery', 0, 'not_started',
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            );
+            INSERT INTO todos (id, project_id, phase_id)
+                VALUES ('todo', 'project', 'phase');
+            INSERT INTO waterfall_tasks (id, phase_id) VALUES ('task', 'phase');
+            """
+        )
+
+    database = Database(path)
+    with database.engine.begin() as connection:
+        phase_foreign_keys = connection.execute(text("PRAGMA foreign_key_list(phases)")).all()
+        project_key = next(key for key in phase_foreign_keys if key[3] == "project_id")
+        assert project_key[6] == "CASCADE"
+        assert connection.scalar(text("SELECT count(*) FROM todos")) == 1
+        assert connection.scalar(text("SELECT count(*) FROM waterfall_tasks")) == 1
+        connection.execute(text("DELETE FROM projects WHERE id = 'project'"))
+        assert connection.scalar(text("SELECT count(*) FROM phases")) == 0
+        assert connection.scalar(text("SELECT count(*) FROM todos")) == 0
+        assert connection.scalar(text("SELECT count(*) FROM waterfall_tasks")) == 0
 
 
 def test_todos_are_shared_by_module_and_cascade_with_project(tmp_path: Path) -> None:

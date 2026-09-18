@@ -11,6 +11,7 @@ from project_planner.modules.planning.repositories.SQLAlchemyPhaseRepository imp
 )
 from project_planner.modules.projects.entities.PlanningMethod import PlanningMethod
 from project_planner.modules.projects.entities.ProjectStatus import ProjectStatus
+from project_planner.modules.todos.entities.TodoModule import TodoModule
 from project_planner.shared.database.Database import Database
 from project_planner.shared.settings.Settings import Settings
 from tests.support import build_test_services
@@ -105,12 +106,16 @@ def test_rejects_duplicate_category_name_when_renaming(planner: SimpleNamespace)
 
 def test_archives_project_without_deleting_its_data(planner: SimpleNamespace) -> None:
     project = planner.projects.create("Keep the plan", description="Retained")
+    phase = planner.phases.add(project.id, "Delivery")
+    task = planner.waterfall_tasks.add(phase.id, "Retained task")
 
     archived = planner.projects.archive(project.id)
 
     assert archived.status is ProjectStatus.ARCHIVED
     assert archived.description == "Retained"
     assert planner.projects.require(project.id) == archived
+    assert planner.phases.list_for_project(project.id) == [phase]
+    assert planner.waterfall_tasks.list_for_phase(phase.id) == [task]
 
 
 def test_deleting_parent_keeps_child_as_root_project(planner: SimpleNamespace) -> None:
@@ -122,6 +127,24 @@ def test_deleting_parent_keeps_child_as_root_project(planner: SimpleNamespace) -
     assert planner.projects.require(child.id).parent_id is None
     with pytest.raises(LookupError, match="does not exist"):
         planner.projects.require(parent.id)
+
+
+def test_deleting_project_cascades_phase_owned_data(planner: SimpleNamespace) -> None:
+    project = planner.projects.create("Delivery")
+    phase = planner.phases.add(project.id, "Build")
+    planner.waterfall_tasks.add(phase.id, "Package release")
+    planner.todos.add(
+        project.id,
+        "Review build",
+        module=TodoModule.PHASES,
+        phase_id=phase.id,
+    )
+
+    planner.projects.delete(project.id)
+
+    assert planner.phases.list_for_project(project.id) == []
+    assert planner.waterfall_tasks.list_for_phase(phase.id) == []
+    assert planner.todos.list_for_project(project.id) == []
 
 
 def test_edits_and_reorders_custom_phases(planner: SimpleNamespace) -> None:

@@ -175,3 +175,10 @@ Archive is a reversible data-preserving state change represented by the project'
 status. Delete is separately confirmed and permanently removes the selected project's owned data;
 children remain and become root projects through the existing foreign-key rule. The UI clears open
 editor state before choosing a remaining project so deleted artifacts cannot be autosaved again.
+
+## AD-028 — Database-enforced project cleanup
+
+Project deletion relies on database cascades for owned planning records and `SET NULL` for child
+projects. Migration 0011 repairs the legacy SQLite phase foreign key while temporarily preserving
+phase To-Dos and tasks during the required table rebuild. This keeps deletion atomic and avoids
+embedding cross-module cleanup knowledge in the Projects repository.

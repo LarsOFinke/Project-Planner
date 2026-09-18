@@ -15,6 +15,8 @@ migrations. SQLite remains the zero-configuration default, while `[database] url
   `planned` state; existing sprint rows are preserved during the SQLite table rebuild.
 - Revision `0009` adds the local `application_issues` diagnostics log used by the Admin screen.
 - Revision `0010` adds normalized project categories and a nullable category reference on projects.
+- Revision `0011` repairs the phase-to-project cascade rule in existing SQLite databases so
+  deleting a project removes its phases, phase tasks, and phase To-Dos atomically.
 - `shared/database/seeds/` contains the idempotent seed contract and runner. Each seed
   has its own class/file and is recorded in `seed_history` only after it succeeds.
 - Prototype 0.1 has no demo-data seed. Opening the application must never add sample projects to a

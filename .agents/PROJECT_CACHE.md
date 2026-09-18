@@ -8,7 +8,7 @@ Last refreshed: 2026-09-18
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 72 tests.
+- Current suite: 74 tests.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -86,7 +86,7 @@ Last refreshed: 2026-09-18
 - Diagram JSON version: `1`.
 - Workspace JSON version: `4`.
 - Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation.
-- Migration head: `0010`; database export format: `5`.
+- Migration head: `0011`; database export format: `5`.
 - Phase rows persist dates, description, normalized lifecycle status, optional Custom section,
   created timestamp, and updated timestamp; older phase rows are preserved and mapped forward.
 - Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
