@@ -65,6 +65,8 @@ entities <- services -> protocols <- repositories -> SQLAlchemy models
 
 `artifacts/views/diagram/`, `artifacts/views/workspace/`
 : Node/edge and free-form editors for persisted artifact documents.
+  Managed images use portable document references and are materialized through the HTTP client
+  into a client-local cache before Kivy rendering.
 
 `shared/`
 : Kivy-only theme tokens, dialog helpers, layouts, and reusable controls. White is intentionally

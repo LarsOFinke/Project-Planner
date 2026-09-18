@@ -103,6 +103,8 @@ def build_controllers(
         ArtifactController(
             ArtifactService(SQLAlchemyArtifactRepository(database)),
             ImageAssetService(resolved.data_directory),
+            project_service,
+            resolved.max_image_bytes,
         ),
         SystemController(
             issue_service,

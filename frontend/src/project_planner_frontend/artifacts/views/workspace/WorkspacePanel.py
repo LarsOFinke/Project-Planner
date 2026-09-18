@@ -84,7 +84,8 @@ class WorkspacePanel(BoxLayout):
         self._project_id = project_id
         self._artifact = self._artifacts.get_or_create(project_id, ArtifactKind.WORKSPACE)
         self.canvas_editor.load_document(
-            self._documents.decode(self._artifacts.read_json(self._artifact))
+            self._documents.decode(self._artifacts.read_json(self._artifact)),
+            lambda source: str(self._images.materialize(project_id, source)),
         )
         self._dirty = False
         self.todo_panel.show_context(
@@ -112,8 +113,9 @@ class WorkspacePanel(BoxLayout):
     def _import_image(self, source: str) -> None:
         if self._project_id is None:
             return
-        managed = self._images.import_image(self._project_id, source)
-        self.canvas_editor.add_image(str(managed))
+        uploaded = self._images.upload_image(self._project_id, source)
+        managed = self._images.materialize(self._project_id, uploaded.reference)
+        self.canvas_editor.add_image(uploaded.reference, render_source=str(managed))
 
     def _delete_selected(self, *_: object) -> None:
         self.canvas_editor.delete_selected()

@@ -107,6 +107,11 @@ Imported workspace images are copied below `~/.project_planner/data` by default.
 that location with `PROJECT_PLANNER_DATA_DIR` or `[storage] data_directory` in the `.cfg`.
 PNG, JPEG, GIF, BMP, and WebP imports are supported; deleting a canvas object does not delete
 its managed source file, protecting imported data from accidental loss.
+Workspace documents store portable `managed://images/<filename>` references. Clients materialize
+those assets through the API into their local cache, so workspaces also render when the API runs
+on another machine. Legacy documents containing existing local file paths remain readable.
+Uploads are content-checked and limited to 20 MiB by default; configure
+`PROJECT_PLANNER_MAX_IMAGE_BYTES` or `[storage] max_image_bytes` to change that limit.
 
 ### HTTP API and alternate frontends
 
@@ -120,9 +125,11 @@ project-planner-api --host 127.0.0.1 --port 8000
 
 Set `PROJECT_PLANNER_API_URL=http://127.0.0.1:8000/api/v1` (or `[api] url`) to connect Kivy to that
 server instead of starting the embedded host. Browser origins for a future Vue deployment can be
-allowed explicitly with comma-separated `PROJECT_PLANNER_API_CORS_ORIGINS` values. Do not expose
-the prototype API to an untrusted network yet; authentication and authorization are intentionally
-outside prototype 0.1.
+allowed explicitly with comma-separated `PROJECT_PLANNER_API_CORS_ORIGINS` values. Set
+`PROJECT_PLANNER_API_TOKEN` (or `[api] token`) on both the server and Kivy client to require a
+bearer token. The standalone command refuses a non-loopback bind unless a token is configured.
+TLS remains the deployment boundary's responsibility; do not send the token over untrusted plain
+HTTP.
 
 On Linux, startup explicitly selects Kivy's bundled SDL2 clipboard. Kivy 2.3.1 also probes the
 optional X11 primary-selection tools `xclip` and `xsel`; Project Planner suppresses only that known
@@ -160,6 +167,12 @@ Run the repository-wide lint, formatting, test, compilation, and script checks b
 ```bash
 make validate
 ```
+
+This includes real one-second Kivy event loops at the 200% laptop and 100% Full-HD profiles.
+Dependencies are exactly pinned in `pyproject.toml`; `pylock.toml` pins and hashes the transitive
+Python 3.13 Linux x86-64 graph used by CI and matching setup environments. Other supported
+platforms retain the exact direct pins. Refresh the lock intentionally with `make lock` after
+dependency updates.
 
 ## Architectural shape
 

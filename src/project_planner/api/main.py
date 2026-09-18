@@ -1,4 +1,5 @@
 import argparse
+import ipaddress
 
 import uvicorn
 
@@ -12,6 +13,12 @@ def main() -> None:
     parser.add_argument("--port", default=8000, type=int)
     args = parser.parse_args()
     settings = load_settings()
+    try:
+        loopback = ipaddress.ip_address(args.host).is_loopback
+    except ValueError:
+        loopback = args.host.lower() == "localhost"
+    if not loopback and settings.api_token is None:
+        parser.error("PROJECT_PLANNER_API_TOKEN is required for a non-loopback host")
     uvicorn.run(
         create_app(settings, cors_origins=settings.api_cors_origins),
         host=args.host,

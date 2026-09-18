@@ -15,10 +15,11 @@ class DraggableImage(Widget):
         on_select: Callable[[str], None],
         on_change: Callable[[], None],
         source: str,
+        render_source: str | None = None,
         rotation_degrees: float = 0,
         **kwargs: object,
     ) -> None:
-        texture = CoreImage(source).texture
+        texture = CoreImage(render_source or source).texture
         initial_width = dp(180)
         initial_height = (
             initial_width * texture.height / texture.width if texture.width else dp(120)

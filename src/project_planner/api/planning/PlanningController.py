@@ -1,21 +1,20 @@
 from collections.abc import Sequence
-from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Query, Response
 
+from project_planner.api.planning.dtos.BacklogItemWrite import BacklogItemWrite
+from project_planner.api.planning.dtos.PhaseWrite import PhaseWrite
+from project_planner.api.planning.dtos.SectionItemWrite import SectionItemWrite
+from project_planner.api.planning.dtos.SectionWrite import SectionWrite
+from project_planner.api.planning.dtos.SprintCreate import SprintCreate
+from project_planner.api.planning.dtos.WaterfallTaskWrite import WaterfallTaskWrite
 from project_planner.modules.planning.entities.BacklogItem import BacklogItem
-from project_planner.modules.planning.entities.BacklogPriority import BacklogPriority
-from project_planner.modules.planning.entities.BacklogStatus import BacklogStatus
 from project_planner.modules.planning.entities.Phase import Phase
-from project_planner.modules.planning.entities.PhaseStatus import PhaseStatus
 from project_planner.modules.planning.entities.PlanningSection import PlanningSection
 from project_planner.modules.planning.entities.SectionItem import SectionItem
-from project_planner.modules.planning.entities.SectionStatus import SectionStatus
-from project_planner.modules.planning.entities.SectionType import SectionType
 from project_planner.modules.planning.entities.Sprint import Sprint
 from project_planner.modules.planning.entities.WaterfallTask import WaterfallTask
-from project_planner.modules.planning.entities.WaterfallTaskStatus import WaterfallTaskStatus
 from project_planner.modules.planning.services.AgilePlanningService import AgilePlanningService
 from project_planner.modules.planning.services.PhaseService import PhaseService
 from project_planner.modules.planning.services.SectionService import SectionService
@@ -197,36 +196,32 @@ class PlanningController:
     def list_backlog_items(self, project_id: str, section_id: str | None = None):
         return self._agile.list_items(project_id, section_id)
 
-    def add_backlog_item(
-        self,
-        project_id: str,
-        title: Annotated[str, Body()],
-        description: Annotated[str, Body()] = "",
-        priority: Annotated[BacklogPriority, Body()] = BacklogPriority.MEDIUM,
-        assignee: Annotated[str, Body()] = "",
-        section_id: Annotated[str | None, Body()] = None,
-    ):
-        return self._agile.add_item(project_id, title, description, priority, assignee, section_id)
+    def add_backlog_item(self, project_id: str, item: BacklogItemWrite):
+        return self._agile.add_item(
+            project_id,
+            item.title,
+            item.description,
+            item.priority,
+            item.assignee,
+            item.section_id,
+        )
 
     def update_backlog_item(
         self,
         project_id: str,
         item_id: str,
-        title: Annotated[str, Body()],
-        description: Annotated[str, Body()],
-        priority: Annotated[BacklogPriority, Body()],
-        item_status: Annotated[BacklogStatus, Body(alias="status")],
-        assignee: Annotated[str, Body()],
-        section_id: Annotated[str | None, Body()] = None,
+        item_data: BacklogItemWrite,
     ):
-        item = self._find(self._agile.list_items(project_id, section_id), item_id, "Backlog item")
+        item = self._find(
+            self._agile.list_items(project_id, item_data.section_id), item_id, "Backlog item"
+        )
         return self._agile.update_item(
             item,
-            title=title,
-            description=description,
-            priority=priority,
-            status=item_status,
-            assignee=assignee,
+            title=item_data.title,
+            description=item_data.description,
+            priority=item_data.priority,
+            status=item_data.status,
+            assignee=item_data.assignee,
         )
 
     def move_backlog_item(
@@ -258,18 +253,15 @@ class PlanningController:
     def list_sprint_items(self, project_id: str, sprint_id: str, section_id: str | None = None):
         return self._agile.list_sprint_items(project_id, sprint_id, section_id)
 
-    def add_sprint(
-        self,
-        project_id: str,
-        name: Annotated[str, Body()],
-        start_date: Annotated[date, Body()],
-        end_date: Annotated[date, Body()],
-        goal: Annotated[str, Body()],
-        selected_item_ids: Annotated[list[str], Body()],
-        section_id: Annotated[str | None, Body()] = None,
-    ):
+    def add_sprint(self, project_id: str, sprint: SprintCreate):
         return self._agile.add_sprint(
-            project_id, name, start_date, end_date, goal, selected_item_ids, section_id
+            project_id,
+            sprint.name,
+            sprint.start_date,
+            sprint.end_date,
+            sprint.goal,
+            sprint.selected_item_ids,
+            sprint.section_id,
         )
 
     def complete_sprint(
@@ -284,32 +276,31 @@ class PlanningController:
     def list_phases(self, project_id: str, section_id: str | None = None):
         return self._phases.list_for_context(project_id, section_id)
 
-    def add_phase(
-        self,
-        project_id: str,
-        name: Annotated[str, Body()],
-        description: Annotated[str, Body()] = "",
-        phase_status: Annotated[PhaseStatus, Body(alias="status")] = PhaseStatus.NOT_STARTED,
-        start_date: Annotated[date | None, Body()] = None,
-        end_date: Annotated[date | None, Body()] = None,
-        section_id: Annotated[str | None, Body()] = None,
-    ):
+    def add_phase(self, project_id: str, phase: PhaseWrite):
         return self._phases.add(
-            project_id, name, description, phase_status, start_date, end_date, section_id
+            project_id,
+            phase.name,
+            phase.description,
+            phase.status,
+            phase.start_date,
+            phase.end_date,
+            phase.section_id,
         )
 
     def update_phase(
         self,
         project_id: str,
         phase_id: str,
-        name: Annotated[str, Body()],
-        description: Annotated[str, Body()],
-        phase_status: Annotated[PhaseStatus | None, Body(alias="status")] = None,
-        start_date: Annotated[date | None, Body()] = None,
-        end_date: Annotated[date | None, Body()] = None,
+        phase: PhaseWrite,
     ):
         return self._phases.update(
-            phase_id, project_id, name, description, phase_status, start_date, end_date
+            phase_id,
+            project_id,
+            phase.name,
+            phase.description,
+            phase.status,
+            phase.start_date,
+            phase.end_date,
         )
 
     def move_phase(
@@ -338,16 +329,15 @@ class PlanningController:
     def list_sections(self, project_id: str):
         return self._sections.list_for_project(project_id)
 
-    def add_section(
-        self,
-        project_id: str,
-        name: Annotated[str, Body()],
-        section_type: Annotated[SectionType, Body()],
-        description: Annotated[str, Body()] = "",
-        start_date: Annotated[date | None, Body()] = None,
-        end_date: Annotated[date | None, Body()] = None,
-    ):
-        return self._sections.add(project_id, name, section_type, description, start_date, end_date)
+    def add_section(self, project_id: str, section: SectionWrite):
+        return self._sections.add(
+            project_id,
+            section.name,
+            section.section_type,
+            section.description,
+            section.start_date,
+            section.end_date,
+        )
 
     def get_section(self, section_id: str):
         return self._sections.require(section_id)
@@ -355,21 +345,16 @@ class PlanningController:
     def update_section(
         self,
         section_id: str,
-        name: Annotated[str, Body()],
-        description: Annotated[str, Body()],
-        section_type: Annotated[SectionType, Body()],
-        section_status: Annotated[SectionStatus, Body(alias="status")] = SectionStatus.NOT_STARTED,
-        start_date: Annotated[date | None, Body()] = None,
-        end_date: Annotated[date | None, Body()] = None,
+        section: SectionWrite,
     ):
         return self._sections.update(
             section_id,
-            name=name,
-            description=description,
-            section_type=section_type,
-            start_date=start_date,
-            end_date=end_date,
-            status=section_status,
+            name=section.name,
+            description=section.description,
+            section_type=section.section_type,
+            start_date=section.start_date,
+            end_date=section.end_date,
+            status=section.status,
         )
 
     def move_section(
@@ -388,37 +373,30 @@ class PlanningController:
     def list_section_items(self, section_id: str):
         return self._sections.list_items(section_id)
 
-    def add_section_item(
-        self,
-        section_id: str,
-        title: Annotated[str, Body()],
-        description: Annotated[str, Body()] = "",
-        assignee: Annotated[str, Body()] = "",
-        item_status: Annotated[SectionStatus, Body(alias="status")] = SectionStatus.NOT_STARTED,
-        item_date: Annotated[date | None, Body()] = None,
-    ):
+    def add_section_item(self, section_id: str, item: SectionItemWrite):
         return self._sections.add_item(
-            section_id, title, description, assignee, item_status, item_date
+            section_id,
+            item.title,
+            item.description,
+            item.assignee,
+            item.status,
+            item.item_date,
         )
 
     def update_section_item(
         self,
         section_id: str,
         item_id: str,
-        title: Annotated[str, Body()],
-        description: Annotated[str, Body()],
-        assignee: Annotated[str, Body()],
-        item_status: Annotated[SectionStatus, Body(alias="status")],
-        item_date: Annotated[date | None, Body()] = None,
+        item_data: SectionItemWrite,
     ):
         item = self._find(self._sections.list_items(section_id), item_id, "Section item")
         return self._sections.update_item(
             item,
-            title=title,
-            description=description,
-            assignee=assignee,
-            status=item_status,
-            item_date=item_date,
+            title=item_data.title,
+            description=item_data.description,
+            assignee=item_data.assignee,
+            status=item_data.status,
+            item_date=item_data.item_date,
         )
 
     def move_section_item(
@@ -437,20 +415,15 @@ class PlanningController:
     def list_tasks(self, phase_id: str):
         return self._tasks.list_for_phase(phase_id)
 
-    def add_task(
-        self,
-        phase_id: str,
-        title: Annotated[str, Body()],
-        description: Annotated[str, Body()] = "",
-        assignee: Annotated[str, Body()] = "",
-        start_date: Annotated[date | None, Body()] = None,
-        due_date: Annotated[date | None, Body()] = None,
-        task_status: Annotated[
-            WaterfallTaskStatus, Body(alias="status")
-        ] = WaterfallTaskStatus.NOT_STARTED,
-    ):
+    def add_task(self, phase_id: str, task: WaterfallTaskWrite):
         return self._tasks.add(
-            phase_id, title, description, assignee, start_date, due_date, task_status
+            phase_id,
+            task.title,
+            task.description,
+            task.assignee,
+            task.start_date,
+            task.due_date,
+            task.status,
         )
 
     def get_task(self, task_id: str):
@@ -459,23 +432,16 @@ class PlanningController:
     def update_task(
         self,
         task_id: str,
-        title: Annotated[str, Body()],
-        description: Annotated[str, Body()],
-        assignee: Annotated[str, Body()],
-        task_status: Annotated[
-            WaterfallTaskStatus, Body(alias="status")
-        ] = WaterfallTaskStatus.NOT_STARTED,
-        start_date: Annotated[date | None, Body()] = None,
-        due_date: Annotated[date | None, Body()] = None,
+        task: WaterfallTaskWrite,
     ):
         return self._tasks.update(
             task_id,
-            title=title,
-            description=description,
-            assignee=assignee,
-            start_date=start_date,
-            due_date=due_date,
-            status=task_status,
+            title=task.title,
+            description=task.description,
+            assignee=task.assignee,
+            start_date=task.start_date,
+            due_date=task.due_date,
+            status=task.status,
         )
 
     def remove_task(self, task_id: str) -> Response:

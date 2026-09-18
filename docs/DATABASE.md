@@ -78,6 +78,7 @@ Dry-run is the default and always rolls that transaction back after constraints 
 `--apply` is required to commit. Import never removes records that are absent from the export.
 
 The export covers database rows only. Workspace image binaries live in the configured data
-directory and require a separate filesystem backup. Local application diagnostics are deliberately
-excluded from project exports because they describe the running installation rather than project
-content.
+directory and require a separate filesystem backup. Workspace documents store portable managed
+image references rather than absolute server paths, but database export intentionally does not
+embed the referenced binaries. Local application diagnostics are deliberately excluded from
+project exports because they describe the running installation rather than project content.

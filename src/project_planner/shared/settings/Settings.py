@@ -14,3 +14,5 @@ class Settings:
     database_url: str | None = None
     api_url: str | None = None
     api_cors_origins: tuple[str, ...] = ()
+    api_token: str | None = None
+    max_image_bytes: int = 20 * 1024 * 1024

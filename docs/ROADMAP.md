@@ -33,9 +33,11 @@ implemented. Text objects, grouping, infinite pan/zoom, and undo remain follow-u
 
 ### M5 — Connections and polish
 
-Linked projects, backlinks, transactional database export/import, recoverable UI errors, and local
-health diagnostics are implemented. Search/filtering, recent projects, archive, complete managed
-asset backups, keyboard navigation, accessibility, and recovery from autosaved revisions remain.
+Linked projects, backlinks, transactional database export/import, recoverable UI errors, local
+health diagnostics, project archiving, portable managed-image references, bounded image uploads,
+and authenticated remote API access are implemented. Search/filtering, recent projects, complete
+managed-asset backups, keyboard navigation, accessibility, and recovery from autosaved revisions
+remain.
 
 ## Explicit non-goals for the first release
 

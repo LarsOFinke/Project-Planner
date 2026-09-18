@@ -16,4 +16,4 @@ class WorkspaceDocument:
     strokes: tuple[WorkspaceStroke, ...] = ()
     shapes: tuple[WorkspaceShape, ...] = ()
     images: tuple[WorkspaceImage, ...] = ()
-    version: int = 4
+    version: int = 5

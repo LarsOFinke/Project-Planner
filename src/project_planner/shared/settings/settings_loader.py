@@ -42,6 +42,10 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
     cors_origins = os.environ.get(
         "PROJECT_PLANNER_API_CORS_ORIGINS", parser["api"].get("cors_origins", "")
     )
+    api_token = os.environ.get("PROJECT_PLANNER_API_TOKEN", parser["api"].get("token", "")).strip()
+    max_image_bytes = os.environ.get(
+        "PROJECT_PLANNER_MAX_IMAGE_BYTES", parser["storage"].get("max_image_bytes", "20971520")
+    )
     return Settings(
         database_path=Path(database).expanduser(),
         window_width=width,
@@ -55,6 +59,8 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         api_cors_origins=tuple(
             origin.strip() for origin in cors_origins.split(",") if origin.strip()
         ),
+        api_token=api_token or None,
+        max_image_bytes=_positive_int(max_image_bytes, "maximum image size"),
     )
 
 

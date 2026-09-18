@@ -94,6 +94,7 @@ class FreehandCanvas(StencilView, FloatLayout):
         size: tuple[float, float] | None = None,
         rotation: float = 0,
         notify: bool = True,
+        render_source: str | None = None,
     ) -> str:
         resolved_id = element_id or str(uuid4())
         default_position = self._next_position(40)
@@ -102,6 +103,7 @@ class FreehandCanvas(StencilView, FloatLayout):
             self._select,
             self._on_change,
             source=source,
+            render_source=render_source,
             rotation_degrees=rotation,
             pos=pos or default_position,
         )
@@ -204,11 +206,15 @@ class FreehandCanvas(StencilView, FloatLayout):
         if notify:
             self._on_change()
 
-    def load_document(self, document: WorkspaceDocument) -> None:
+    def load_document(
+        self,
+        document: WorkspaceDocument,
+        image_resolver: Callable[[str], str] | None = None,
+    ) -> None:
         self.clear_drawing(notify=False)
         self._load_strokes(document.strokes)
         self._load_shapes(document.shapes)
-        self._load_images(document.images)
+        self._load_images(document.images, image_resolver)
         self._select_none()
 
     def _load_strokes(self, strokes: tuple[WorkspaceStroke, ...]) -> None:
@@ -232,8 +238,13 @@ class FreehandCanvas(StencilView, FloatLayout):
                 notify=False,
             )
 
-    def _load_images(self, images: tuple[WorkspaceImage, ...]) -> None:
+    def _load_images(
+        self,
+        images: tuple[WorkspaceImage, ...],
+        image_resolver: Callable[[str], str] | None,
+    ) -> None:
         for image in images:
+            render_source = image_resolver(image.source) if image_resolver is not None else None
             self.add_image(
                 image.source,
                 element_id=image.element_id,
@@ -241,6 +252,7 @@ class FreehandCanvas(StencilView, FloatLayout):
                 size=(image.width, image.height),
                 rotation=image.rotation,
                 notify=False,
+                render_source=render_source,
             )
 
     def to_document(self) -> WorkspaceDocument:

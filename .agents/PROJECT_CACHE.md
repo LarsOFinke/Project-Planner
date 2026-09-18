@@ -8,10 +8,11 @@ Last refreshed: 2026-09-18
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 74 tests.
+- Current suite: 79 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
+- Remote API: optional bearer token; standalone non-loopback binding requires one.
 - Database: SQLAlchemy ORM with Alembic migrations; SQLite default at
   `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
@@ -84,14 +85,17 @@ Last refreshed: 2026-09-18
 - `project_links` stores project relationships; `resource_links` stores web/file targets.
 - Projects, phases, links, and artifacts cascade from project deletion as defined by SQLite.
 - Diagram JSON version: `1`.
-- Workspace JSON version: `4`.
-- Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation.
+- Workspace JSON version: `5`.
+- Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation;
+  managed images use portable `managed://images/<filename>` references.
 - Migration head: `0011`; database export format: `5`.
 - Phase rows persist dates, description, normalized lifecycle status, optional Custom section,
   created timestamp, and updated timestamp; older phase rows are preserved and mapped forward.
 - Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
 - Deleting an image object does not delete its managed source file.
 - Image location: `<data_directory>/projects/<project-id>/images/<uuid>.<ext>`.
+- Remote clients materialize managed images below `~/.cache/project_planner/images/<project-id>/`.
+- Image uploads default to a 20 MiB limit and validate supported file signatures.
 
 ## Configuration precedence
 
@@ -112,6 +116,8 @@ Important overrides:
 - `PROJECT_PLANNER_UI_SCALE`
 - `PROJECT_PLANNER_API_URL`
 - `PROJECT_PLANNER_API_CORS_ORIGINS`
+- `PROJECT_PLANNER_API_TOKEN`
+- `PROJECT_PLANNER_MAX_IMAGE_BYTES`
 
 `PROJECT_PLANNER_UI_SCALE` accepts `auto` or a numeric value from `0.05` through `5.00`.
 Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environment overrides win.
@@ -147,6 +153,8 @@ Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environmen
 - Desktop mouse input disables Kivy's right/middle-click multitouch emulation, preventing simulated
   touch markers from appearing during conventional pointer use.
 - Kivy schedules some layout work after `build()`. Always exercise the event loop for UI work.
+- `pyproject.toml` pins direct dependencies exactly; `pylock.toml` pins and hashes the transitive
+  Python 3.13 Linux graph. Refresh intentionally with `make lock`.
 
 ## Cache refresh triggers
 

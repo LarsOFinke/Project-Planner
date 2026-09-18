@@ -182,3 +182,23 @@ Project deletion relies on database cascades for owned planning records and `SET
 projects. Migration 0011 repairs the legacy SQLite phase foreign key while temporarily preserving
 phase To-Dos and tasks during the required table rebuild. This keeps deletion atomic and avoids
 embedding cross-module cleanup knowledge in the Projects repository.
+
+## AD-029 — Portable managed-image references
+
+Workspace documents store `managed://images/<filename>` references instead of API-host filesystem
+paths. The artifact API remains the source of the binary, while each frontend materializes the
+asset into a local cache for rendering. Version-5 workspace documents retain support for existing
+version-1 through version-4 local paths.
+
+## AD-030 — Authenticated remote API boundary
+
+Loopback desktop hosting remains zero-configuration. A configured bearer token protects all
+`/api/v1` resources, and the standalone API refuses non-loopback binding without one. Image
+uploads are project-bound, size-limited, and content-checked. TLS remains an external deployment
+concern rather than application-managed certificate infrastructure.
+
+## AD-031 — Reproducible validation environment
+
+Direct dependencies are exactly pinned and the transitive Python 3.13 Linux graph is recorded with
+artifact hashes in `pylock.toml`. Bootstrap and CI install that lock. Canonical validation includes
+real Kivy event-loop smoke runs at both supported density profiles.

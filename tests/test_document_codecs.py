@@ -78,9 +78,23 @@ def test_workspace_codec_migrates_legacy_data_and_filters_missing_images(
     assert len(document.shapes) == 1
     assert document.shapes[0].color == "#D7DDE5"
     assert [entry.element_id for entry in document.images] == ["kept"]
-    assert codec.encode(document)["version"] == 4
+    assert codec.encode(document)["version"] == 5
     with pytest.raises(ValueError, match="Unsupported workspace"):
-        codec.decode({"version": 5})
+        codec.decode({"version": 6})
+
+
+def test_workspace_codec_preserves_portable_managed_image_references() -> None:
+    codec = WorkspaceDocumentCodec()
+
+    document = codec.decode(
+        {
+            "version": 5,
+            "images": [{"id": "managed", "source": "managed://images/image.png"}],
+        }
+    )
+
+    assert document.images[0].source == "managed://images/image.png"
+    assert codec.encode(document)["images"][0]["source"] == "managed://images/image.png"
 
 
 def test_workspace_codec_round_trips_stroke_and_shape_colors() -> None:

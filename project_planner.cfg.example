@@ -25,6 +25,8 @@ scale = auto
 [storage]
 # Environment override: PROJECT_PLANNER_DATA_DIR
 data_directory = ~/.project_planner/data
+# Environment override: PROJECT_PLANNER_MAX_IMAGE_BYTES
+max_image_bytes = 20971520
 
 [api]
 # Optional remote API base including /api/v1. Empty starts the embedded localhost API.
@@ -33,3 +35,6 @@ url =
 # Comma-separated browser origins permitted by a separately hosted API.
 # Environment override: PROJECT_PLANNER_API_CORS_ORIGINS
 cors_origins =
+# Optional bearer token; required for non-loopback standalone API binding.
+# Environment override: PROJECT_PLANNER_API_TOKEN
+token =

@@ -1,3 +1,5 @@
+import asyncio
+from dataclasses import replace
 from pathlib import Path
 
 import httpx
@@ -77,3 +79,67 @@ def test_project_client_uses_http_contract_and_decodes_project() -> None:
         transport.close()
 
     assert result == project
+
+
+def test_asgi_project_and_managed_image_round_trip(tmp_path: Path) -> None:
+    application = create_app(_settings(tmp_path))
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=application)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            created = await client.post("/api/v1/projects", json={"title": "Integrated"})
+            assert created.status_code == 201
+            project_id = created.json()["id"]
+
+            phase = await client.post(
+                f"/api/v1/projects/{project_id}/phases",
+                json={"name": "Delivery", "status": "in_progress"},
+            )
+            assert phase.status_code == 201
+            assert phase.json()["name"] == "Delivery"
+
+            uploaded = await client.post(
+                f"/api/v1/projects/{project_id}/images",
+                files={"image": ("pixel.png", b"\x89PNG\r\n\x1a\ncontent", "image/png")},
+            )
+            assert uploaded.status_code == 201
+            reference = uploaded.json()["reference"]
+            assert reference.startswith("managed://images/")
+
+            filename = reference.removeprefix("managed://images/")
+            downloaded = await client.get(f"/api/v1/projects/{project_id}/images/{filename}")
+            assert downloaded.status_code == 200
+            assert downloaded.content == b"\x89PNG\r\n\x1a\ncontent"
+
+    asyncio.run(scenario())
+
+
+def test_asgi_authentication_upload_limits_and_project_ownership(tmp_path: Path) -> None:
+    settings = replace(_settings(tmp_path), api_token="secret", max_image_bytes=12)
+
+    async def scenario() -> None:
+        transport = httpx.ASGITransport(app=create_app(settings))
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            assert (await client.get("/api/v1/projects")).status_code == 401
+            headers = {"Authorization": "Bearer secret"}
+            created = await client.post(
+                "/api/v1/projects", json={"title": "Secured"}, headers=headers
+            )
+            assert created.status_code == 201
+            project_id = created.json()["id"]
+
+            oversized = await client.post(
+                f"/api/v1/projects/{project_id}/images",
+                files={"image": ("large.png", b"\x89PNG\r\n\x1a\n12345", "image/png")},
+                headers=headers,
+            )
+            assert oversized.status_code == 413
+
+            missing = await client.post(
+                "/api/v1/projects/missing/images",
+                files={"image": ("pixel.png", b"\x89PNG\r\n\x1a\n", "image/png")},
+                headers=headers,
+            )
+            assert missing.status_code == 404
+
+    asyncio.run(scenario())

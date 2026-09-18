@@ -29,6 +29,8 @@ def test_cfg_values_can_be_overridden_by_environment(monkeypatch, tmp_path: Path
     monkeypatch.setenv("PROJECT_PLANNER_FULLSCREEN", "true")
     monkeypatch.setenv("PROJECT_PLANNER_UI_SCALE", "1.45")
     monkeypatch.setenv("PROJECT_PLANNER_DATA_DIR", str(tmp_path / "assets"))
+    monkeypatch.setenv("PROJECT_PLANNER_API_TOKEN", "test-token")
+    monkeypatch.setenv("PROJECT_PLANNER_MAX_IMAGE_BYTES", "4096")
 
     settings = load_settings(config)
 
@@ -40,6 +42,8 @@ def test_cfg_values_can_be_overridden_by_environment(monkeypatch, tmp_path: Path
     assert settings.autosave_seconds == 30
     assert settings.ui_scale == 1.45
     assert settings.data_directory == tmp_path / "assets"
+    assert settings.api_token == "test-token"
+    assert settings.max_image_bytes == 4096
 
 
 def test_auto_scale_keeps_laptop_profile_readable(tmp_path: Path) -> None:

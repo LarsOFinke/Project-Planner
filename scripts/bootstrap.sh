@@ -47,7 +47,13 @@ case "$venv_version" in
         ;;
 esac
 
-.venv/bin/python -m pip install -e '.[dev]'
+if [[ "$venv_version" == "3.13" && "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
+    .venv/bin/python -m pip install -r pylock.toml
+    .venv/bin/python -m pip install --no-deps -e .
+else
+    echo "No platform lock for this interpreter; installing exact direct project pins."
+    .venv/bin/python -m pip install -e '.[dev]'
+fi
 .venv/bin/python -m pytest -q
 
 echo

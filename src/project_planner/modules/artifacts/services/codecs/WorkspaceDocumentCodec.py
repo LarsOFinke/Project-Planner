@@ -17,7 +17,7 @@ from project_planner.modules.artifacts.documents.WorkspaceStroke import (
 
 
 class WorkspaceDocumentCodec:
-    CURRENT_VERSION = 4
+    CURRENT_VERSION = 5
     SHAPE_KINDS = {"rectangle", "ellipse", "line", "arrow"}
     DEFAULT_COLOR = "#D7DDE5"
 
@@ -99,7 +99,7 @@ class WorkspaceDocumentCodec:
             if not isinstance(entry, dict):
                 continue
             source = str(entry.get("source", ""))
-            if not Path(source).is_file():
+            if not source.startswith("managed://images/") and not Path(source).is_file():
                 continue
             try:
                 image = WorkspaceImage(

@@ -9,14 +9,16 @@ if [[ ! -x .venv/bin/python ]]; then
     exit 1
 fi
 
-.venv/bin/ruff check src frontend/src tests
-.venv/bin/ruff format --check src frontend/src tests
+.venv/bin/ruff check src frontend/src tests .agents/scripts/kivy-event-loop-smoke.py
+.venv/bin/ruff format --check src frontend/src tests .agents/scripts/kivy-event-loop-smoke.py
 .venv/bin/python -m pytest -q
-.venv/bin/python -m compileall -q src frontend/src tests
+.venv/bin/python -m compileall -q src frontend/src tests .agents/scripts/kivy-event-loop-smoke.py
 bash -n scripts/bootstrap.sh
 bash -n .agents/scripts/doctor.sh
 bash -n .agents/scripts/check-all.sh
 bash -n .agents/scripts/collect-diagnostics.sh
+bash -n .agents/scripts/kivy-event-loop-smoke.sh
+bash .agents/scripts/kivy-event-loop-smoke.sh
 
 long_lines="$(awk 'length($0) > 100 { print FILENAME ":" FNR }' $(rg --files -g '*.py'))"
 if [[ -n "$long_lines" ]]; then

@@ -2,7 +2,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Annotated
 
-from fastapi import APIRouter, Body, File, Request, UploadFile
+from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
 from project_planner.api.artifacts.dtos.ImageUploadResult import ImageUploadResult
@@ -10,12 +10,21 @@ from project_planner.modules.artifacts.entities.Artifact import Artifact
 from project_planner.modules.artifacts.entities.ArtifactKind import ArtifactKind
 from project_planner.modules.artifacts.services.ArtifactService import ArtifactService
 from project_planner.modules.assets.services.ImageAssetService import ImageAssetService
+from project_planner.modules.projects.services.ProjectService import ProjectService
 
 
 class ArtifactController:
-    def __init__(self, artifacts: ArtifactService, images: ImageAssetService) -> None:
+    def __init__(
+        self,
+        artifacts: ArtifactService,
+        images: ImageAssetService,
+        projects: ProjectService,
+        max_image_bytes: int,
+    ) -> None:
         self._artifacts = artifacts
         self._images = images
+        self._projects = projects
+        self._max_image_bytes = max_image_bytes
         self.router = APIRouter(tags=["artifacts"])
         self._register_routes()
 
@@ -61,6 +70,7 @@ class ArtifactController:
         )
 
     def get_artifact(self, project_id: str, kind: ArtifactKind):
+        self._projects.require(project_id)
         return self._artifacts.get_or_create(project_id, kind)
 
     def save_artifact(
@@ -69,10 +79,12 @@ class ArtifactController:
         kind: ArtifactKind,
         content: Annotated[object, Body(embed=True)],
     ):
+        self._projects.require(project_id)
         artifact = self._artifacts.get_or_create(project_id, kind)
         return self._artifacts.save_json(artifact, content)
 
     def read_artifact(self, project_id: str, kind: ArtifactKind) -> object:
+        self._projects.require(project_id)
         artifact = self._artifacts.get_or_create(project_id, kind)
         return self._artifacts.read_json(artifact)
 
@@ -82,17 +94,29 @@ class ArtifactController:
         request: Request,
         image: Annotated[UploadFile, File()],
     ) -> ImageUploadResult:
+        self._projects.require(project_id)
         suffix = Path(image.filename or "image").suffix
         with NamedTemporaryFile(suffix=suffix) as temporary:
-            temporary.write(image.file.read())
+            size = 0
+            while chunk := image.file.read(1024 * 1024):
+                size += len(chunk)
+                if size > self._max_image_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Image exceeds the {self._max_image_bytes}-byte upload limit",
+                    )
+                temporary.write(chunk)
             temporary.flush()
             imported = self._images.import_image(project_id, temporary.name)
+        reference = self._images.reference(imported.name)
         return ImageUploadResult(
-            path=str(imported),
+            reference=reference,
+            path=reference,
             url=str(
                 request.url_for("get_managed_image", project_id=project_id, filename=imported.name)
             ),
         )
 
     def get_managed_image(self, project_id: str, filename: str) -> FileResponse:
+        self._projects.require(project_id)
         return FileResponse(self._images.get_image(project_id, filename))

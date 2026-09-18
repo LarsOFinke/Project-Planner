@@ -47,9 +47,9 @@ class ProjectPlannerApi:
     health: HealthClient
 
     @classmethod
-    def connect(cls, base_url: str) -> "ProjectPlannerApi":
+    def connect(cls, base_url: str, api_token: str | None = None) -> "ProjectPlannerApi":
         configure_http_logging()
-        transport = ApiTransport(base_url)
+        transport = ApiTransport(base_url, api_token=api_token)
         return cls(
             transport=transport,
             agile=AgileClient(transport),
