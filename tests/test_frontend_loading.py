@@ -312,6 +312,7 @@ def test_project_drop_resolves_category_and_parent_targets() -> None:
         _category_by_project_id={target.project_id: "category-1"},
         _parent_by_project_id={target.project_id: None},
         _drop_target_widget=None,
+        _drop_target_placement=None,
         _move_project=lambda project_id, parent_id, category_id: moves.append(
             (project_id, parent_id, category_id)
         ),
@@ -329,6 +330,12 @@ def test_project_drop_resolves_category_and_parent_targets() -> None:
     ProjectBrowser._drag_project(browser, "source-project", target.center)
     assert category._drop_target_color.a == 0
     assert target._drop_target_color.a == 1
+    assert target._child_drop_target_color.a > 0
+
+    ProjectBrowser._drag_project(browser, "source-project", (target.center_x, target.top - 1))
+    assert target._drop_target_color.a == 0
+    assert target._insert_target_color.a == 1
+    assert target._insert_target_line.points[1] == target.top
 
     browser._parent_by_project_id[target.project_id] = "source-project"
     assert ProjectBrowser._drop_target_at(browser, "source-project", target.center) is None

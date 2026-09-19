@@ -2,7 +2,7 @@ from collections.abc import Callable
 from math import hypot
 
 from kivy.core.window import Window
-from kivy.graphics import Color, Line, PopMatrix, PushMatrix, Translate
+from kivy.graphics import Color, Line, PopMatrix, PushMatrix, RoundedRectangle, Translate
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -112,11 +112,19 @@ class ProjectTreeRow(BoxLayout):
             self._branch_color = Color(*BORDER)
             self._branch_line = Line(points=[], width=1.1)
         with self.canvas.after:
+            self._child_drop_target_color = Color(*GOLD_LIGHT[:3], 0)
+            self._child_drop_target_surface = RoundedRectangle(
+                pos=(0, 0),
+                size=(0, 0),
+                radius=[dp(7)],
+            )
             self._drop_target_color = Color(*GOLD_LIGHT[:3], 0)
             self._drop_target_outline = Line(
                 rounded_rectangle=(0, 0, 0, 0, dp(7)),
                 width=dp(1.6),
             )
+            self._insert_target_color = Color(*GOLD_LIGHT[:3], 0)
+            self._insert_target_line = Line(points=[], width=dp(3))
             PopMatrix()
         self.bind(pos=self._sync_visuals, size=self._sync_visuals)
         self._sync_visuals()
@@ -178,8 +186,29 @@ class ProjectTreeRow(BoxLayout):
             return (touch.sx * Window.width, touch.sy * Window.height)
         return touch.pos
 
-    def set_drop_target(self, active: bool) -> None:
-        self._drop_target_color.a = 1 if active else 0
+    def set_drop_target(self, placement: str | bool | None) -> None:
+        mode = "child" if placement is True else placement
+        is_child = mode == "child"
+        is_insertion = mode in {"before", "after"}
+        self._child_drop_target_color.a = 0.16 if is_child else 0
+        self._drop_target_color.a = 1 if is_child else 0
+        self._insert_target_color.a = 1 if is_insertion else 0
+        if mode == "before":
+            self._insert_target_line.points = [
+                self.x + dp(3),
+                self.top,
+                self.right - dp(3),
+                self.top,
+            ]
+        elif mode == "after":
+            self._insert_target_line.points = [
+                self.x + dp(3),
+                self.y,
+                self.right - dp(3),
+                self.y,
+            ]
+        else:
+            self._insert_target_line.points = []
 
     def _sync_visuals(self, *_: object) -> None:
         self._sync_branch()
@@ -190,6 +219,11 @@ class ProjectTreeRow(BoxLayout):
             max(0, self.width - inset * 2),
             max(0, self.height - inset * 2),
             dp(7),
+        )
+        self._child_drop_target_surface.pos = (self.x + inset, self.y + inset)
+        self._child_drop_target_surface.size = (
+            max(0, self.width - inset * 2),
+            max(0, self.height - inset * 2),
         )
 
     def _sync_branch(self, *_: object) -> None:

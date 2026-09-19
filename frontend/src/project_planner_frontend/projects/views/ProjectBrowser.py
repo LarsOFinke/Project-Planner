@@ -74,6 +74,7 @@ class ProjectBrowser(BoxLayout):
         self._category_by_project_id: dict[str, str | None] = {}
         self._parent_by_project_id: dict[str, str | None] = {}
         self._drop_target_widget: ProjectCategoryRow | ProjectTreeRow | None = None
+        self._drop_target_placement: str | None = None
         paint_background(self, NAVY_800, 10, BORDER)
         self._list = BoxLayout(
             orientation="vertical",
@@ -242,6 +243,7 @@ class ProjectBrowser(BoxLayout):
         if self._drop_target_widget is not None:
             self._drop_target_widget.set_drop_target(False)
             self._drop_target_widget = None
+            self._drop_target_placement = None
         self._list.clear_widgets()
         if reload:
             self._directory = self._queries.list_directory()
@@ -321,15 +323,19 @@ class ProjectBrowser(BoxLayout):
         target_widget = (
             target if isinstance(target, ProjectCategoryRow) else target[0] if target else None
         )
+        placement = target[1] if isinstance(target, tuple) else "category" if target else None
         if position is not None:
             self._auto_scroll(position)
-        if target_widget is self._drop_target_widget:
+        if target_widget is self._drop_target_widget and placement == self._drop_target_placement:
             return
         if self._drop_target_widget is not None:
             self._drop_target_widget.set_drop_target(False)
         self._drop_target_widget = target_widget
+        self._drop_target_placement = placement
         if target_widget is not None:
-            target_widget.set_drop_target(True)
+            target_widget.set_drop_target(
+                placement if isinstance(target_widget, ProjectTreeRow) else True
+            )
 
     def _drop_target_at(
         self,
