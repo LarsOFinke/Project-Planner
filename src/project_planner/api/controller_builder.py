@@ -54,6 +54,9 @@ from project_planner.modules.todos.repositories.SQLAlchemyTodoRepository import 
     SQLAlchemyTodoRepository,
 )
 from project_planner.modules.todos.services.TodoService import TodoService
+from project_planner.modules.transfer.gateways.DatabaseTransferGateway import (
+    DatabaseTransferGateway,
+)
 from project_planner.shared.database.Database import Database
 from project_planner.shared.database.seeds.SeedRunner import SeedRunner
 from project_planner.shared.settings.Settings import Settings
@@ -109,5 +112,6 @@ def build_controllers(
         SystemController(
             issue_service,
             SystemHealthService(database, issue_service),
+            DatabaseTransferGateway(database),
         ),
     )

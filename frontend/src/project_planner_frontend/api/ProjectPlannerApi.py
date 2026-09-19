@@ -21,6 +21,7 @@ from project_planner_frontend.projects.clients.ProjectCategoryClient import Proj
 from project_planner_frontend.projects.clients.ProjectQueryClient import ProjectQueryClient
 from project_planner_frontend.projects.clients.ProjectServiceClient import ProjectServiceClient
 from project_planner_frontend.projects.clients.ProjectWorkflowClient import ProjectWorkflowClient
+from project_planner_frontend.system.clients.DatabaseTransferClient import DatabaseTransferClient
 from project_planner_frontend.system.clients.HealthClient import HealthClient
 from project_planner_frontend.system.clients.IssueClient import IssueClient
 
@@ -43,6 +44,7 @@ class ProjectPlannerApi:
     diagram_documents: DiagramDocumentCodec
     workspace_documents: WorkspaceDocumentCodec
     images: ImageAssetClient
+    database_transfer: DatabaseTransferClient
     issues: IssueClient
     health: HealthClient
 
@@ -67,6 +69,7 @@ class ProjectPlannerApi:
             diagram_documents=DiagramDocumentCodec(),
             workspace_documents=WorkspaceDocumentCodec(),
             images=ImageAssetClient(transport),
+            database_transfer=DatabaseTransferClient(transport),
             issues=IssueClient(transport),
             health=HealthClient(transport),
         )

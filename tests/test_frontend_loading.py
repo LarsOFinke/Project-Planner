@@ -88,6 +88,7 @@ def test_project_directory_always_exposes_uncategorized_creation_target() -> Non
 def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
     actions: list[str] = []
     category = ProjectCategoryRow(
+        "category-1",
         "Client work",
         1,
         False,
@@ -99,6 +100,7 @@ def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
         lambda: actions.append("delete-category"),
     )
     project = ProjectTreeRow(
+        "project-1",
         "Website",
         "active",
         1,
@@ -106,6 +108,7 @@ def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
         True,
         True,
         lambda: actions.append("select-project"),
+        lambda _position: actions.append("drop-project"),
         lambda: actions.append("toggle-project"),
         lambda: actions.append("add-child"),
         lambda: actions.append("archive-project"),
@@ -147,6 +150,7 @@ def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
 
 def test_archived_project_row_disables_its_archive_menu_action() -> None:
     project = ProjectTreeRow(
+        "project-1",
         "Completed website",
         "archived",
         1,
@@ -154,6 +158,7 @@ def test_archived_project_row_disables_its_archive_menu_action() -> None:
         False,
         True,
         lambda: None,
+        lambda _position: None,
         lambda: None,
         lambda: None,
         lambda: None,
@@ -163,6 +168,98 @@ def test_archived_project_row_disables_its_archive_menu_action() -> None:
     archive_action = project.gear_button.action_buttons["Archived"]
 
     assert archive_action.disabled
+
+
+def test_project_row_drag_dispatches_drop_instead_of_selection() -> None:
+    actions: list[object] = []
+    project = ProjectTreeRow(
+        "project-1",
+        "Website",
+        "active",
+        1,
+        False,
+        False,
+        True,
+        lambda: actions.append("select"),
+        lambda position: actions.append(position),
+        lambda: None,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+    )
+    project.size = (500, 54)
+    project.do_layout()
+    touch = SimpleNamespace(
+        pos=project.drag_handle.center,
+        x=project.drag_handle.center_x,
+        y=project.drag_handle.center_y,
+        button="left",
+        grab_current=None,
+    )
+    touch.grab = lambda widget: setattr(touch, "grab_current", widget)
+    touch.ungrab = lambda _widget: setattr(touch, "grab_current", None)
+
+    assert project.on_touch_down(touch)
+    touch.x += 20
+    touch.pos = (touch.x, touch.y)
+    assert project.on_touch_move(touch)
+    assert project.on_touch_up(touch)
+
+    assert actions == [touch.pos]
+    assert project.drag_handle.opacity == 1
+
+
+def test_project_drop_resolves_category_and_parent_targets() -> None:
+    moves: list[tuple[str, str | None, str | None]] = []
+    category = ProjectCategoryRow(
+        "category-1",
+        "Client work",
+        1,
+        False,
+        True,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+    )
+    target = ProjectTreeRow(
+        "target-project",
+        "Target",
+        "active",
+        1,
+        False,
+        False,
+        True,
+        lambda: None,
+        lambda _position: None,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+        lambda: None,
+    )
+    category.pos = (0, 60)
+    category.size = (500, 40)
+    target.pos = (0, 0)
+    target.size = (500, 54)
+    browser = SimpleNamespace(
+        _list=SimpleNamespace(
+            children=[category, target],
+            to_widget=lambda x, y: (x, y),
+        ),
+        _category_by_project_id={target.project_id: "category-1"},
+        _move_project=lambda project_id, parent_id, category_id: moves.append(
+            (project_id, parent_id, category_id)
+        ),
+    )
+
+    ProjectBrowser._drop_project(browser, "source-project", category.center)
+    ProjectBrowser._drop_project(browser, "source-project", target.center)
+
+    assert moves == [
+        ("source-project", None, "category-1"),
+        ("source-project", "target-project", "category-1"),
+    ]
 
 
 def test_collapsed_project_hides_only_its_descendants() -> None:

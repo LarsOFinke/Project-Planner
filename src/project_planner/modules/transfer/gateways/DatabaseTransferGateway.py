@@ -55,8 +55,23 @@ class DatabaseTransferGateway:
     def export_to(self, destination: str | Path) -> Path:
         path = Path(destination).expanduser().resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
+        payload = self.export_document()
+        handle, temporary_name = tempfile.mkstemp(
+            prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+        )
+        try:
+            with os.fdopen(handle, "w", encoding="utf-8") as export_file:
+                json.dump(payload, export_file, indent=2, sort_keys=True)
+                export_file.write("\n")
+            os.replace(temporary_name, path)
+        except Exception:
+            Path(temporary_name).unlink(missing_ok=True)
+            raise
+        return path
+
+    def export_document(self) -> dict[str, Any]:
         with self._database.session() as session:
-            payload = {
+            return {
                 "format": _FORMAT,
                 "version": _VERSION,
                 "exported_at": datetime.now(UTC).isoformat(),
@@ -75,21 +90,22 @@ class DatabaseTransferGateway:
                     "waterfall_tasks": self._rows(session, WaterfallTaskModel),
                 },
             }
-        handle, temporary_name = tempfile.mkstemp(
-            prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
-        )
-        try:
-            with os.fdopen(handle, "w", encoding="utf-8") as export_file:
-                json.dump(payload, export_file, indent=2, sort_keys=True)
-                export_file.write("\n")
-            os.replace(temporary_name, path)
-        except Exception:
-            Path(temporary_name).unlink(missing_ok=True)
-            raise
-        return path
 
-    def import_from(self, source: str | Path, *, dry_run: bool = True) -> ImportReport:
+    def import_from(self, source: str | Path) -> ImportReport:
         payload = json.loads(Path(source).expanduser().read_text(encoding="utf-8"))
+        return self.import_document(payload)
+
+    def validate_import(self, source: str | Path) -> ImportReport:
+        payload = json.loads(Path(source).expanduser().read_text(encoding="utf-8"))
+        return self.validate_document(payload)
+
+    def import_document(self, payload: object) -> ImportReport:
+        return self._merge_document(payload, dry_run=False)
+
+    def validate_document(self, payload: object) -> ImportReport:
+        return self._merge_document(payload, dry_run=True)
+
+    def _merge_document(self, payload: object, *, dry_run: bool) -> ImportReport:
         tables = self._validated_tables(payload)
         session = self._database.new_session()
         try:

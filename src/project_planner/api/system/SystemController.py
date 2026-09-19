@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Query
 
@@ -6,18 +6,29 @@ from project_planner.modules.health.entities.ApplicationIssue import Application
 from project_planner.modules.health.entities.SystemHealth import SystemHealth
 from project_planner.modules.health.services.IssueLogService import IssueLogService
 from project_planner.modules.health.services.SystemHealthService import SystemHealthService
+from project_planner.modules.transfer.gateways.DatabaseTransferGateway import (
+    DatabaseTransferGateway,
+)
+from project_planner.modules.transfer.models.ImportReport import ImportReport
 
 
 class SystemController:
-    def __init__(self, issues: IssueLogService, health: SystemHealthService) -> None:
+    def __init__(
+        self,
+        issues: IssueLogService,
+        health: SystemHealthService,
+        database_transfer: DatabaseTransferGateway,
+    ) -> None:
         self._issues = issues
         self._health = health
+        self._database_transfer = database_transfer
         self.router = APIRouter(tags=["system"])
         self._register_routes()
 
     def _register_routes(self) -> None:
         self._register_health_routes()
         self._register_issue_routes()
+        self._register_database_routes()
 
     def _register_health_routes(self) -> None:
         self.router.add_api_route(
@@ -36,6 +47,25 @@ class SystemController:
             methods=["POST"],
             status_code=201,
             response_model=ApplicationIssue,
+        )
+
+    def _register_database_routes(self) -> None:
+        self.router.add_api_route(
+            "/database/export",
+            self.export_database,
+            methods=["GET"],
+        )
+        self.router.add_api_route(
+            "/database/import",
+            self.import_database,
+            methods=["POST"],
+            response_model=ImportReport,
+        )
+        self.router.add_api_route(
+            "/database/import/dry-run",
+            self.dry_run_database_import,
+            methods=["POST"],
+            response_model=ImportReport,
         )
 
     def health(self):
@@ -59,3 +89,18 @@ class SystemController:
 
     def record_exception(self, error: Exception, source: str | None = None):
         return self._issues.record_exception(error, source)
+
+    def export_database(self) -> dict[str, Any]:
+        return self._database_transfer.export_document()
+
+    def import_database(
+        self,
+        document: Annotated[dict[str, Any], Body()],
+    ) -> ImportReport:
+        return self._database_transfer.import_document(document)
+
+    def dry_run_database_import(
+        self,
+        document: Annotated[dict[str, Any], Body()],
+    ) -> ImportReport:
+        return self._database_transfer.validate_document(document)

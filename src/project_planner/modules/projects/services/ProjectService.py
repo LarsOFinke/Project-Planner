@@ -35,7 +35,7 @@ class ProjectService:
         notes: str = "",
     ) -> Project:
         if parent_id is not None:
-            self.require(parent_id)
+            category_id = self.require(parent_id).category_id
         self._validate_category(category_id)
         project = Project(
             title=title.strip(),
@@ -70,19 +70,27 @@ class ProjectService:
     ) -> Project:
         current = self.require(project_id)
         self._validate_parent(project_id, parent_id)
+        category_id = current.category_id
+        if parent_id is not None:
+            category_id = self.require(parent_id).category_id
         updated = current.revise(
             title=title.strip(),
             description=description.strip(),
             status=status,
             planning_method=planning_method,
             parent_id=parent_id,
+            category_id=category_id,
             start_date=start_date,
             target_date=target_date,
             owner=owner.strip(),
             assignee=assignee.strip(),
             notes=notes.strip(),
         )
-        self._projects.save(updated)
+        if category_id == current.category_id:
+            self._projects.save(updated)
+        else:
+            projects = tuple(self._projects.list_all())
+            self._projects.save_all(self._subtree_updates(updated, projects))
         return updated
 
     def require(self, project_id: str) -> Project:
@@ -104,12 +112,37 @@ class ProjectService:
         self._projects.save(archived)
         return archived
 
-    def assign_category(self, project_id: str, category_id: str | None) -> Project:
+    def move(
+        self,
+        project_id: str,
+        *,
+        parent_id: str | None,
+        category_id: str | None,
+    ) -> Project:
         current = self.require(project_id)
+        self._validate_parent(project_id, parent_id)
+        if parent_id is not None:
+            category_id = self.require(parent_id).category_id
         self._validate_category(category_id)
-        updated = current.revise(category_id=category_id)
-        self._projects.save(updated)
-        return updated
+        projects = tuple(self._projects.list_all())
+        moved = current.revise(parent_id=parent_id, category_id=category_id)
+        self._projects.save_all(self._subtree_updates(moved, projects))
+        return moved
+
+    @classmethod
+    def _subtree_updates(
+        cls,
+        root: Project,
+        projects: Sequence[Project],
+    ) -> list[Project]:
+        descendant_ids = cls._descendant_ids(root.id, projects)
+        updates = [root]
+        updates.extend(
+            project.revise(category_id=root.category_id)
+            for project in projects
+            if project.id in descendant_ids and project.category_id != root.category_id
+        )
+        return updates
 
     def _validate_category(self, category_id: str | None) -> None:
         if category_id is not None and self._categories.get(category_id) is None:
@@ -123,3 +156,19 @@ class ProjectService:
                 raise ValueError("Project hierarchy must not contain a cycle")
             visited.add(current_id)
             current_id = self.require(current_id).parent_id
+
+    @staticmethod
+    def _descendant_ids(project_id: str, projects: Sequence[Project]) -> set[str]:
+        children_by_parent: dict[str, list[str]] = {}
+        for project in projects:
+            if project.parent_id is not None:
+                children_by_parent.setdefault(project.parent_id, []).append(project.id)
+        descendants: set[str] = set()
+        pending = [project_id]
+        while pending:
+            parent_id = pending.pop()
+            for child_id in children_by_parent.get(parent_id, []):
+                if child_id not in descendants:
+                    descendants.add(child_id)
+                    pending.append(child_id)
+        return descendants

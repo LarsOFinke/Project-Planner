@@ -8,7 +8,7 @@ Last refreshed: 2026-09-19
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 84 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
+- Current suite: 89 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -20,6 +20,8 @@ Last refreshed: 2026-09-19
 - Window: native fullscreen by default; cfg/env can opt into windowed mode.
 - Fullscreen exit: persistent bottom-left Exit button; shutdown flushes editor autosaves.
 - Window mode: persistent top-right Windowed/Fullscreen toggle beside the scale selector.
+- General management: the top-right Admin button opens database transfer, runtime health, and
+  recorded issue tools in a responsive overlay rather than a project workspace tab.
 - Diagnostics: unexpected Kivy event errors are recovered, stored in SQLite, and visible in Admin.
 - Class modules: exact PascalCase class filenames; non-class helper modules remain snake_case.
 - Architecture boundaries are enforced by AST tests; the cleanup standard is documented in
@@ -42,6 +44,8 @@ Last refreshed: 2026-09-19
   and deletable category/project rows expose compact red bin controls on the relevant item;
 - categories and projects with descendants have independent disclosure controls; selecting a
   hidden project through another view automatically expands its category and ancestor chain;
+- project rows can be dragged onto categories or other projects; moves reject hierarchy cycles,
+  preserve descendants, and atomically move the full subtree into the target category;
 - confirmed project Archive and Delete actions; archive retains data with archived status, while
   delete removes owned planning data and promotes child projects to roots;
 - overview metadata, timestamps, parent project, and planning method;
@@ -75,7 +79,8 @@ Last refreshed: 2026-09-19
 - Links separates Web URLs, Local Files, and contextual To-Dos into dedicated nested tabs while
   retaining one normalized resource-link persistence model;
 - save confirmations and direct navigation from real project links;
-- versioned database JSON export/import with rollback-backed dry-run by default.
+- top-right Admin database tools for atomic JSON export, explicit rollback-backed dry runs, and
+  confirmed direct imports with automatic UI refresh after a successful merge.
 
 ## Persistence facts
 

@@ -52,6 +52,14 @@ def main() -> None:
             category_id=category.id,
         )
         application = ProjectPlannerApp(settings)
+
+        def show_admin(_elapsed: float) -> None:
+            planner = application._host._planner_root
+            if planner is None:
+                raise AssertionError("Project Planner root was not built")
+            planner.admin_button.dispatch("on_release")
+
+        Clock.schedule_once(show_admin, 0.25)
         Clock.schedule_once(lambda _elapsed: application.stop(), 1.0)
         application.run()
 

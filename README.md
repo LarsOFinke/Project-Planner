@@ -5,7 +5,7 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 
 ## Prototype 0.1
 
-- category-based project directory with explicit add/remove controls and nested child projects
+- collapsible category/project directory with row actions and drag-and-drop hierarchy management
 - shared project setup with dates, owner, assignee, notes, status, and planning model
 - project relationships and backlinks managed directly from Overview
 - web URLs and local file links in the dedicated Links module
@@ -17,7 +17,7 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 - Custom planning with ordered Free, Agile, and Waterfall sections that can be mixed freely
 - shared calendar date picker backed by framework-independent calendar-module logic
 - SQLAlchemy persistence with SQLite as the local default and ordered Alembic migrations
-- recoverable UI errors with a local diagnostics log and Admin health view
+- top-right Admin management panel with database export, dry run/import, and local diagnostics
 - modular Kivy desktop UI with project browser and tabbed planning levels
 - shared low-glare visual system with structural tree indentation, rounded controls, and clear
   section hierarchy
@@ -138,19 +138,10 @@ all other Kivy critical errors remain visible.
 
 ### Database export and import
 
-Export all relational project data to a versioned JSON document:
-
-```bash
-project-planner-db export planner-backup.json
-```
-
-Import is a transactional dry run by default. It validates and flushes the records, then rolls the
-transaction back so the database remains untouched:
-
-```bash
-project-planner-db import planner-backup.json --dry-run
-project-planner-db import planner-backup.json --apply
-```
+Open **Admin** and use **Export database** to save all relational project data as a versioned JSON
+document. **Dry run** validates a selected backup in a rolled-back transaction and reports the
+records it would create or update. **Import database** is the direct merge action and requires
+explicit confirmation before applying changes.
 
 Import merges records by primary key and does not delete unrelated local records. Managed image
 files are outside the database and therefore must be backed up from the configured data directory

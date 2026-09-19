@@ -69,8 +69,8 @@ class ProjectController:
             response_model=Project,
         )
         routes.add_api_route(
-            "/projects/{project_id}/category",
-            self.assign_category,
+            "/projects/{project_id}/move",
+            self.move_project,
             methods=["PUT"],
             response_model=Project,
         )
@@ -148,12 +148,17 @@ class ProjectController:
     def archive_project(self, project_id: str):
         return self._projects.archive(project_id)
 
-    def assign_category(
+    def move_project(
         self,
         project_id: str,
-        category_id: Annotated[str | None, Body(embed=True)] = None,
+        parent_id: Annotated[str | None, Body()] = None,
+        category_id: Annotated[str | None, Body()] = None,
     ):
-        return self._projects.assign_category(project_id, category_id)
+        return self._projects.move(
+            project_id,
+            parent_id=parent_id,
+            category_id=category_id,
+        )
 
     def create_project(
         self,

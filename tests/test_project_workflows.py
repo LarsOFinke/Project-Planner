@@ -84,6 +84,52 @@ def test_categories_group_projects_without_owning_their_lifecycle(
     assert planner.project_queries.list_directory()[0].category is None
 
 
+def test_moving_project_preserves_its_subtree_and_rejects_cycles(
+    planner: SimpleNamespace,
+) -> None:
+    source_category = planner.project_categories.create("Source")
+    target_category = planner.project_categories.create("Target")
+    parent = planner.projects.create("Parent", category_id=source_category.id)
+    child = planner.projects.create(
+        "Child",
+        parent_id=parent.id,
+        category_id=source_category.id,
+    )
+    grandchild = planner.projects.create(
+        "Grandchild",
+        parent_id=child.id,
+        category_id=target_category.id,
+    )
+    target = planner.projects.create("Target parent", category_id=target_category.id)
+
+    moved = planner.projects.move(
+        parent.id,
+        parent_id=target.id,
+        category_id=source_category.id,
+    )
+
+    assert moved.parent_id == target.id
+    assert moved.category_id == target_category.id
+    assert grandchild.category_id == source_category.id
+    assert planner.projects.require(child.id).category_id == target_category.id
+    assert planner.projects.require(grandchild.id).category_id == target_category.id
+
+    planner.projects.move(parent.id, parent_id=None, category_id=source_category.id)
+    revised = planner.projects.update(
+        parent.id,
+        title="Revised parent",
+        description=parent.description,
+        status=parent.status,
+        planning_method=parent.planning_method,
+        parent_id=target.id,
+    )
+
+    assert revised.category_id == target_category.id
+    assert planner.projects.require(child.id).category_id == target_category.id
+    with pytest.raises(ValueError, match="cycle"):
+        planner.projects.move(target.id, parent_id=grandchild.id, category_id=target_category.id)
+
+
 def test_renames_category_without_changing_its_identity(planner: SimpleNamespace) -> None:
     category = planner.project_categories.create("Client work")
 

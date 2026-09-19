@@ -25,13 +25,15 @@ entities <- services -> protocols <- repositories -> SQLAlchemy models
 
 `src/project_planner/modules/transfer/gateways/`
 : Explicit database import/export boundary. It is a gateway—not a repository—because it transfers
-  a complete relational snapshot rather than managing one aggregate.
+  a complete relational snapshot rather than managing one aggregate. The System API transports
+  snapshot documents; the desktop System client owns local file selection and atomic writes.
 
 `src/project_planner/modules/projects/`
 : Project/category entities, repository protocols, workflows, persistence repositories, and
   entity/ORM mappers. API-specific directory and overview projections live under `api/projects`.
   Categories organize projects without owning their lifecycle; deleting a category moves its
-  projects to Uncategorized.
+  projects to Uncategorized. Tree moves update parent/category placement together and carry the
+  full descendant subtree into the target category.
 
 `src/project_planner/modules/planning/`
 : One cohesive planning capability containing Agile backlog/sprints, Custom sections, and

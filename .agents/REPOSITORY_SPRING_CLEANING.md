@@ -13,7 +13,6 @@ src/project_planner/
 │   └── <feature>/
 │       ├── <Feature>Controller.py  # route-owning controller at module root
 │       └── dtos/                   # transport/read contracts
-├── cli/                            # command-line clients
 ├── config/                         # packaged defaults
 ├── modules/                        # feature-first business modules
 │   └── <feature>/
@@ -89,3 +88,11 @@ remove `.venv`, configured databases, managed assets, migrations, or user diagno
 - Added dependency-boundary/import-cycle enforcement and complete formatting verification.
 - Confirmed class/file invariants, migration continuity, dependencies, configuration, and scripts.
 - Consolidated planning strategies and mirrored API feature boundaries in the Kivy client.
+
+## 2026-09-19 follow-up audit
+
+- Removed the superseded database-transfer CLI package and entry point; Admin is the supported UI.
+- Consolidated category and parent changes behind one cycle-safe, transactional subtree move path.
+- Removed generated caches and checked for stale CLI/category-assignment references and empty source
+  directories.
+- Reconfirmed dependency boundaries, class/file invariants, documentation, and both UI scales.

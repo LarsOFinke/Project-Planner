@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from kivy.clock import Clock
@@ -260,23 +260,30 @@ def open_image_dialog(on_submit: Callable[[str], None]) -> None:
     popup.open()
 
 
-def open_file_dialog(on_submit: Callable[[str], None]) -> None:
+def open_file_dialog(
+    on_submit: Callable[[str], None],
+    *,
+    title: str = "Choose file link",
+    action_text: str = "Use selected file",
+    filters: Sequence[str] = (),
+) -> None:
     content = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
     paint_background(content, NAVY_800)
     chooser = FileChooserListView(
         path=str(Path.home()),
+        filters=list(filters),
         multiselect=False,
         dirselect=False,
     )
     actions = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
     cancel = style_button(Button(text="Cancel"), "secondary")
-    select = style_button(Button(text="Use selected file"), "primary")
+    select = style_button(Button(text=action_text), "primary")
     actions.add_widget(cancel)
     actions.add_widget(select)
     content.add_widget(chooser)
     content.add_widget(actions)
     popup = Popup(
-        title="Choose file link",
+        title=title,
         title_color=PEARL_GREY,
         title_size="18sp",
         separator_color=GOLD,
@@ -294,4 +301,64 @@ def open_file_dialog(on_submit: Callable[[str], None]) -> None:
 
     cancel.bind(on_release=lambda *_: popup.dismiss())
     select.bind(on_release=accept)
+    popup.open()
+
+
+def open_save_file_dialog(
+    title: str,
+    suggested_name: str,
+    on_submit: Callable[[str], None],
+) -> None:
+    content = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+    paint_background(content, NAVY_800)
+    chooser = FileChooserListView(
+        path=str(Path.home()),
+        multiselect=False,
+        dirselect=True,
+    )
+    filename = style_input(
+        TextInput(
+            text=suggested_name,
+            hint_text="File name",
+            multiline=False,
+            size_hint_y=None,
+            height=dp(48),
+        )
+    )
+    actions = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
+    cancel = style_button(Button(text="Cancel"), "secondary")
+    save = style_button(Button(text="Export"), "primary")
+    actions.add_widget(cancel)
+    actions.add_widget(save)
+    content.add_widget(chooser)
+    content.add_widget(filename)
+    content.add_widget(actions)
+    popup = Popup(
+        title=title,
+        title_color=PEARL_GREY,
+        title_size="18sp",
+        separator_color=GOLD,
+        background_color=NAVY_800,
+        content=content,
+        size_hint=(None, None),
+        width=min(Window.width * 0.9, dp(1000)),
+        height=min(Window.height * 0.9, dp(760)),
+    )
+
+    def accept(*_: object) -> None:
+        selected_name = filename.text.strip()
+        if not selected_name:
+            filename.hint_text = "A file name is required"
+            return
+        directory = Path(chooser.path)
+        if chooser.selection:
+            selected = Path(chooser.selection[0])
+            if selected.is_dir():
+                directory = selected
+        on_submit(str(directory / selected_name))
+        popup.dismiss()
+
+    cancel.bind(on_release=lambda *_: popup.dismiss())
+    save.bind(on_release=accept)
+    filename.bind(on_text_validate=accept)
     popup.open()

@@ -230,14 +230,14 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     target_path = tmp_path / "target.sqlite3"
     target_database = Database(target_path)
     transfer = DatabaseTransferGateway(target_database)
-    dry_run = transfer.import_from(export_path)
+    dry_run = transfer.validate_import(export_path)
     target = build_test_services(Settings(target_path, 1280, 800, 20))
 
     assert dry_run.dry_run is True
     assert dry_run.created == 10
     assert target.projects.list_all() == []
 
-    applied = transfer.import_from(export_path, dry_run=False)
+    applied = transfer.import_from(export_path)
     restored = build_test_services(Settings(target_path, 1280, 800, 20))
 
     assert applied.dry_run is False
@@ -267,7 +267,7 @@ def test_import_rejects_unknown_export_version_without_changes(tmp_path: Path) -
     database = Database(tmp_path / "target.sqlite3")
 
     try:
-        DatabaseTransferGateway(database).import_from(path, dry_run=False)
+        DatabaseTransferGateway(database).import_from(path)
     except ValueError as error:
         assert "Unsupported" in str(error)
     else:

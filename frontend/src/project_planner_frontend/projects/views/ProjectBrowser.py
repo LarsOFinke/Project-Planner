@@ -28,6 +28,7 @@ from project_planner_frontend.shared.dialogs import (
     open_confirmation_dialog,
     open_text_dialog,
     show_confirmation,
+    show_error,
 )
 from project_planner_frontend.shared.theme import (
     BORDER,
@@ -89,7 +90,9 @@ class ProjectBrowser(BoxLayout):
     def _build_header(self) -> None:
         self.add_widget(section_label("Project directory"))
         self.add_widget(
-            caption_label("Expand categories and projects to navigate their hierarchy.")
+            caption_label(
+                "Expand the hierarchy, or use ↕ to move a project onto a category or project."
+            )
         )
         category_controls = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(7))
         add_category = style_button(Button(text="+ Category"), "secondary")
@@ -254,6 +257,7 @@ class ProjectBrowser(BoxLayout):
             category_expanded = category_id not in self._collapsed_category_ids
             self._list.add_widget(
                 ProjectCategoryRow(
+                    category_id,
                     category.name if category is not None else "Uncategorized",
                     len(section.projects),
                     category_id is not None and category_id == self.selected_category_id,
@@ -276,6 +280,7 @@ class ProjectBrowser(BoxLayout):
                 selected = project.id == self.selected_id
                 self._list.add_widget(
                     ProjectTreeRow(
+                        project.id,
                         project.title,
                         project.status.value,
                         item.depth + 1,
@@ -283,12 +288,50 @@ class ProjectBrowser(BoxLayout):
                         has_children,
                         project.id not in self._collapsed_project_ids,
                         partial(self.select, project.id),
+                        partial(self._drop_project, project.id),
                         partial(self._toggle_project, project.id),
                         partial(self._create, project.id, category_id),
                         partial(self._archive_project, project.id),
                         partial(self._delete_project, project.id),
                     )
                 )
+
+    def _drop_project(self, project_id: str, position: tuple[float, float]) -> None:
+        list_position = self._list.to_widget(*position)
+        for widget in self._list.children:
+            if not widget.collide_point(*list_position):
+                continue
+            if isinstance(widget, ProjectCategoryRow):
+                self._move_project(project_id, None, widget.category_id)
+                return
+            if isinstance(widget, ProjectTreeRow) and widget.project_id != project_id:
+                category_id = self._category_by_project_id.get(widget.project_id)
+                self._move_project(project_id, widget.project_id, category_id)
+                return
+
+    def _move_project(
+        self,
+        project_id: str,
+        parent_id: str | None,
+        category_id: str | None,
+    ) -> None:
+        try:
+            project = self._projects.move(
+                project_id,
+                parent_id=parent_id,
+                category_id=category_id,
+            )
+        except ValueError as error:
+            show_error(f"Project could not be moved:\n{error}")
+            return
+        self._collapsed_category_ids.discard(project.category_id)
+        if parent_id is not None:
+            self._collapsed_project_ids.discard(parent_id)
+        self.refresh()
+        if self.selected_id is not None:
+            self._on_select(self.selected_id, True)
+        target = "the selected category" if parent_id is None else "its new parent"
+        show_confirmation(f"{project.title!r} moved to {target}.")
 
     def _visible_project_items(
         self,

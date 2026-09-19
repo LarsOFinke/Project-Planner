@@ -71,11 +71,11 @@ This preserves a simple aggregate boundary without denormalizing project metadat
 
 ## Transfer behavior
 
-`project-planner-db export` writes a versioned JSON document atomically. Import validates the
-format, merges categories and projects before dependent rows, and performs the whole operation in
-one transaction.
-Dry-run is the default and always rolls that transaction back after constraints have been checked.
-`--apply` is required to commit. Import never removes records that are absent from the export.
+The Admin panel's **Export database** action writes a versioned JSON document atomically. **Dry
+run** validates the format and constraints, calculates create/update counts, and rolls the
+transaction back. **Import database** directly merges categories and projects before dependent
+rows in one transaction after explicit confirmation. Import never removes records that are absent
+from the export.
 
 The export covers database rows only. Workspace image binaries live in the configured data
 directory and require a separate filesystem backup. Workspace documents store portable managed

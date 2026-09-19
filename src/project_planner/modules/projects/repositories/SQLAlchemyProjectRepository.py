@@ -16,6 +16,11 @@ class SQLAlchemyProjectRepository:
         with self._database.session() as session:
             session.merge(ProjectMapper.to_model(project))
 
+    def save_all(self, projects: Sequence[Project]) -> None:
+        with self._database.session() as session:
+            for project in projects:
+                session.merge(ProjectMapper.to_model(project))
+
     def get(self, project_id: str) -> Project | None:
         with self._database.session() as session:
             model = session.get(ProjectModel, project_id)

@@ -14,6 +14,7 @@ from project_planner_frontend.shared.theme import GOLD_LIGHT, SLATE_400, style_b
 class ProjectCategoryRow(BoxLayout):
     def __init__(
         self,
+        category_id: str | None,
         name: str,
         project_count: int,
         selected: bool,
@@ -26,6 +27,7 @@ class ProjectCategoryRow(BoxLayout):
         **kwargs: object,
     ) -> None:
         super().__init__(size_hint_y=None, height=dp(40), spacing=dp(4), **kwargs)
+        self.category_id = category_id
         self.disclosure_button = None
         if project_count:
             self.disclosure_button = style_button(DisclosureButton(expanded), "quiet")

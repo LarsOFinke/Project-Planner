@@ -202,3 +202,19 @@ concern rather than application-managed certificate infrastructure.
 Direct dependencies are exactly pinned and the transitive Python 3.13 Linux graph is recorded with
 artifact hashes in `pylock.toml`. Bootstrap and CI install that lock. Canonical validation includes
 real Kivy event-loop smoke runs at both supported density profiles.
+
+## AD-032 — GUI-owned database transfer
+
+Database backup and restore are Admin-panel workflows rather than a separate CLI product surface.
+The authenticated System API transfers versioned JSON documents and never assumes that a path on
+the desktop exists on a remote API host. The desktop client writes exports atomically and reads the
+user-selected import locally. Dry run is a separate rollback-backed validation action that reports
+create/update counts. Direct import does not implicitly dry-run; it requires confirmation and then
+applies the transactional merge.
+
+## AD-033 — Directory-owned hierarchy organization
+
+The project directory is the primary visual organizer for project hierarchy. Dragging a project
+onto a category makes it a root there; dragging it onto another project makes it a child and adopts
+the target category. The backend validates cycles and persists the moved project plus any descendant
+category changes in one transaction, so a subtree cannot be split across directory sections.

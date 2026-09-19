@@ -5,6 +5,7 @@ from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 from kivy.uix.spinner import Spinner
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 
@@ -92,7 +93,22 @@ class ProjectPlannerRoot(BoxLayout):
             clients.todos,
             autosave_seconds,
         )
-        self.admin = AdminPanel(clients.health, clients.issues)
+        self.admin = AdminPanel(
+            clients.health,
+            clients.issues,
+            clients.database_transfer,
+            self._database_imported,
+        )
+        self._admin_popup = Popup(
+            title="General management",
+            title_color=PEARL_GREY,
+            title_size="18sp",
+            separator_color=GOLD_LIGHT,
+            background_color=NAVY_900,
+            overlay_color=(0, 0, 0, 0.45),
+            content=self.admin,
+            size_hint=(0.92, 0.9),
+        )
         self.tabs = TabbedPanel(
             do_default_tab=False,
             tab_width=dp(128),
@@ -107,7 +123,6 @@ class ProjectPlannerRoot(BoxLayout):
         self._add_tab(self.tabs, "Diagram", self.diagram)
         self._add_tab(self.tabs, "Workspace", self.workspace)
         self._add_tab(self.tabs, "Links", self.links)
-        self._add_tab(self.tabs, "Admin", self.admin)
         self._project_loaders = {
             "Overview": self.overview.show_project,
             "Plan Roadmap": self.planning.show_project,
@@ -168,10 +183,20 @@ class ProjectPlannerRoot(BoxLayout):
             "secondary",
         )
         self.fullscreen_button.bind(on_release=self._toggle_fullscreen)
+        self.admin_button = style_button(
+            Button(text="Admin", size_hint_x=None, width=dp(108)),
+            "secondary",
+        )
+        self.admin_button.bind(on_release=self._open_admin)
         header.add_widget(identity)
         header.add_widget(self.fullscreen_button)
         header.add_widget(scale)
+        header.add_widget(self.admin_button)
         self.add_widget(header)
+
+    def _open_admin(self, *_: object) -> None:
+        self.admin.refresh()
+        self._admin_popup.open()
 
     def _change_scale(self, _spinner: Spinner, value: str) -> None:
         percent = int(value.removeprefix("Scale ").removesuffix("%"))
@@ -226,6 +251,11 @@ class ProjectPlannerRoot(BoxLayout):
         if current is not None:
             self._load_tab(current.text)
 
+    def _database_imported(self) -> None:
+        self.browser.refresh()
+        if self._selected_project_id is not None:
+            self._show_project(self._selected_project_id, True)
+
     def _load_tab(self, title: str) -> None:
         project_id = self._selected_project_id
         loader = self._project_loaders.get(title)
@@ -252,6 +282,8 @@ class ProjectPlannerRoot(BoxLayout):
                 return
 
     def dispose(self) -> None:
+        if self._admin_popup.parent is not None:
+            self._admin_popup.dismiss()
         self.diagram.dispose()
         self.workspace.dispose()
 
