@@ -108,6 +108,7 @@ def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
         True,
         True,
         lambda: actions.append("select-project"),
+        lambda _position: None,
         lambda _position: actions.append("drop-project"),
         lambda: actions.append("toggle-project"),
         lambda: actions.append("add-child"),
@@ -159,6 +160,7 @@ def test_archived_project_row_disables_its_archive_menu_action() -> None:
         True,
         lambda: None,
         lambda _position: None,
+        lambda _position: None,
         lambda: None,
         lambda: None,
         lambda: None,
@@ -172,6 +174,7 @@ def test_archived_project_row_disables_its_archive_menu_action() -> None:
 
 def test_project_row_drag_dispatches_drop_instead_of_selection() -> None:
     actions: list[object] = []
+    drag_events: list[object] = []
     project = ProjectTreeRow(
         "project-1",
         "Website",
@@ -181,6 +184,7 @@ def test_project_row_drag_dispatches_drop_instead_of_selection() -> None:
         False,
         True,
         lambda: actions.append("select"),
+        lambda position: drag_events.append(position),
         lambda position: actions.append(position),
         lambda: None,
         lambda: None,
@@ -190,9 +194,9 @@ def test_project_row_drag_dispatches_drop_instead_of_selection() -> None:
     project.size = (500, 54)
     project.do_layout()
     touch = SimpleNamespace(
-        pos=project.drag_handle.center,
-        x=project.drag_handle.center_x,
-        y=project.drag_handle.center_y,
+        pos=project.button.center,
+        x=project.button.center_x,
+        y=project.button.center_y,
         button="left",
         grab_current=None,
     )
@@ -206,7 +210,8 @@ def test_project_row_drag_dispatches_drop_instead_of_selection() -> None:
     assert project.on_touch_up(touch)
 
     assert actions == [touch.pos]
-    assert project.drag_handle.opacity == 1
+    assert drag_events == [touch.pos, None]
+    assert project.opacity == 1
 
 
 def test_project_drop_resolves_category_and_parent_targets() -> None:
@@ -233,6 +238,7 @@ def test_project_drop_resolves_category_and_parent_targets() -> None:
         True,
         lambda: None,
         lambda _position: None,
+        lambda _position: None,
         lambda: None,
         lambda: None,
         lambda: None,
@@ -242,20 +248,48 @@ def test_project_drop_resolves_category_and_parent_targets() -> None:
     category.size = (500, 40)
     target.pos = (0, 0)
     target.size = (500, 54)
+    scroll = SimpleNamespace(
+        x=0,
+        y=0,
+        width=500,
+        height=100,
+        top=100,
+        scroll_y=1.0,
+        collide_point=lambda x, y: 0 <= x <= 500 and 0 <= y <= 100,
+    )
     browser = SimpleNamespace(
         _list=SimpleNamespace(
             children=[category, target],
+            height=100,
             to_widget=lambda x, y: (x, y),
         ),
+        _scroll=scroll,
         _category_by_project_id={target.project_id: "category-1"},
+        _parent_by_project_id={target.project_id: None},
+        _drop_target_widget=None,
         _move_project=lambda project_id, parent_id, category_id: moves.append(
             (project_id, parent_id, category_id)
         ),
     )
+    browser._drop_target_at = MethodType(ProjectBrowser._drop_target_at, browser)
+    browser._drag_project = MethodType(ProjectBrowser._drag_project, browser)
+    browser._would_create_cycle = MethodType(ProjectBrowser._would_create_cycle, browser)
+    browser._auto_scroll = MethodType(ProjectBrowser._auto_scroll, browser)
+
+    ProjectBrowser._drag_project(browser, "source-project", category.center)
+    assert category._drop_target_color.a == 1
+    ProjectBrowser._drag_project(browser, "source-project", target.center)
+    assert category._drop_target_color.a == 0
+    assert target._drop_target_color.a == 1
+
+    browser._parent_by_project_id[target.project_id] = "source-project"
+    assert ProjectBrowser._drop_target_at(browser, "source-project", target.center) is None
+    browser._parent_by_project_id[target.project_id] = None
 
     ProjectBrowser._drop_project(browser, "source-project", category.center)
     ProjectBrowser._drop_project(browser, "source-project", target.center)
 
+    assert target._drop_target_color.a == 0
     assert moves == [
         ("source-project", None, "category-1"),
         ("source-project", "target-project", "category-1"),

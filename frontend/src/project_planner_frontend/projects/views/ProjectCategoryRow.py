@@ -1,5 +1,6 @@
 from collections.abc import Callable
 
+from kivy.graphics import Color, Line
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -72,3 +73,24 @@ class ProjectCategoryRow(BoxLayout):
             self.delete_button = style_button(BinButton(), "danger")
             self.delete_button.bind(on_release=lambda *_: on_delete())
             self.add_widget(self.delete_button)
+        with self.canvas.after:
+            self._drop_target_color = Color(*GOLD_LIGHT[:3], 0)
+            self._drop_target_outline = Line(
+                rounded_rectangle=(0, 0, 0, 0, dp(7)),
+                width=dp(1.6),
+            )
+        self.bind(pos=self._sync_drop_target_outline, size=self._sync_drop_target_outline)
+        self._sync_drop_target_outline()
+
+    def set_drop_target(self, active: bool) -> None:
+        self._drop_target_color.a = 1 if active else 0
+
+    def _sync_drop_target_outline(self, *_: object) -> None:
+        inset = dp(1)
+        self._drop_target_outline.rounded_rectangle = (
+            self.x + inset,
+            self.y + inset,
+            max(0, self.width - inset * 2),
+            max(0, self.height - inset * 2),
+            dp(7),
+        )

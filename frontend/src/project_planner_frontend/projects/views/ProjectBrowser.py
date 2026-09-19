@@ -73,13 +73,18 @@ class ProjectBrowser(BoxLayout):
         self._project_by_id: dict[str, Project] = {}
         self._category_by_project_id: dict[str, str | None] = {}
         self._parent_by_project_id: dict[str, str | None] = {}
+        self._drop_target_widget: ProjectCategoryRow | ProjectTreeRow | None = None
         paint_background(self, NAVY_800, 10, BORDER)
         self._list = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
         self._list.bind(minimum_height=self._list.setter("height"))
         self._build_header()
-        scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
-        scroll.add_widget(self._list)
-        self.add_widget(scroll)
+        self._scroll = ScrollView(
+            do_scroll_x=False,
+            bar_width=dp(7),
+            scroll_type=["bars"],
+        )
+        self._scroll.add_widget(self._list)
+        self.add_widget(self._scroll)
         self.exit_button = style_button(
             Button(text="Exit", size_hint_y=None, height=dp(46)), "danger"
         )
@@ -90,9 +95,7 @@ class ProjectBrowser(BoxLayout):
     def _build_header(self) -> None:
         self.add_widget(section_label("Project directory"))
         self.add_widget(
-            caption_label(
-                "Expand the hierarchy, or use ↕ to move a project onto a category or project."
-            )
+            caption_label("Expand the hierarchy, or drag a project row onto a category or project.")
         )
         category_controls = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(7))
         add_category = style_button(Button(text="+ Category"), "secondary")
@@ -227,6 +230,9 @@ class ProjectBrowser(BoxLayout):
         )
 
     def refresh(self, *, reload: bool = True) -> None:
+        if self._drop_target_widget is not None:
+            self._drop_target_widget.set_drop_target(False)
+            self._drop_target_widget = None
         self._list.clear_widgets()
         if reload:
             self._directory = self._queries.list_directory()
@@ -288,6 +294,7 @@ class ProjectBrowser(BoxLayout):
                         has_children,
                         project.id not in self._collapsed_project_ids,
                         partial(self.select, project.id),
+                        partial(self._drag_project, project.id),
                         partial(self._drop_project, project.id),
                         partial(self._toggle_project, project.id),
                         partial(self._create, project.id, category_id),
@@ -296,18 +303,70 @@ class ProjectBrowser(BoxLayout):
                     )
                 )
 
-    def _drop_project(self, project_id: str, position: tuple[float, float]) -> None:
+    def _drag_project(
+        self,
+        project_id: str,
+        position: tuple[float, float] | None,
+    ) -> None:
+        target = None if position is None else self._drop_target_at(project_id, position)
+        if position is not None:
+            self._auto_scroll(position)
+        if target is self._drop_target_widget:
+            return
+        if self._drop_target_widget is not None:
+            self._drop_target_widget.set_drop_target(False)
+        self._drop_target_widget = target
+        if target is not None:
+            target.set_drop_target(True)
+
+    def _drop_target_at(
+        self,
+        project_id: str,
+        position: tuple[float, float],
+    ) -> ProjectCategoryRow | ProjectTreeRow | None:
+        if not self._scroll.collide_point(*position):
+            return None
         list_position = self._list.to_widget(*position)
         for widget in self._list.children:
             if not widget.collide_point(*list_position):
                 continue
             if isinstance(widget, ProjectCategoryRow):
-                self._move_project(project_id, None, widget.category_id)
-                return
-            if isinstance(widget, ProjectTreeRow) and widget.project_id != project_id:
-                category_id = self._category_by_project_id.get(widget.project_id)
-                self._move_project(project_id, widget.project_id, category_id)
-                return
+                return widget
+            if (
+                isinstance(widget, ProjectTreeRow)
+                and widget.project_id != project_id
+                and not self._would_create_cycle(project_id, widget.project_id)
+            ):
+                return widget
+        return None
+
+    def _would_create_cycle(self, project_id: str, target_id: str) -> bool:
+        current_id: str | None = target_id
+        visited: set[str] = set()
+        while current_id is not None and current_id not in visited:
+            if current_id == project_id:
+                return True
+            visited.add(current_id)
+            current_id = self._parent_by_project_id.get(current_id)
+        return False
+
+    def _auto_scroll(self, position: tuple[float, float]) -> None:
+        if self._list.height <= self._scroll.height:
+            return
+        margin = min(dp(48), self._scroll.height * 0.2)
+        if position[1] <= self._scroll.y + margin:
+            self._scroll.scroll_y = max(0, self._scroll.scroll_y - 0.035)
+        elif position[1] >= self._scroll.top - margin:
+            self._scroll.scroll_y = min(1, self._scroll.scroll_y + 0.035)
+
+    def _drop_project(self, project_id: str, position: tuple[float, float]) -> None:
+        target = self._drop_target_at(project_id, position)
+        self._drag_project(project_id, None)
+        if isinstance(target, ProjectCategoryRow):
+            self._move_project(project_id, None, target.category_id)
+        elif isinstance(target, ProjectTreeRow):
+            category_id = self._category_by_project_id.get(target.project_id)
+            self._move_project(project_id, target.project_id, category_id)
 
     def _move_project(
         self,

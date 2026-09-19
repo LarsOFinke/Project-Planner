@@ -1,7 +1,8 @@
 from collections.abc import Callable
 from math import hypot
 
-from kivy.graphics import Color, Line
+from kivy.core.window import Window
+from kivy.graphics import Color, Line, PopMatrix, PushMatrix, Translate
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -10,7 +11,13 @@ from kivy.uix.widget import Widget
 from project_planner_frontend.projects.views.BinButton import BinButton
 from project_planner_frontend.projects.views.DisclosureButton import DisclosureButton
 from project_planner_frontend.projects.views.GearMenuButton import GearMenuButton
-from project_planner_frontend.shared.theme import BORDER, RED, SLATE_200, style_button
+from project_planner_frontend.shared.theme import (
+    BORDER,
+    GOLD_LIGHT,
+    RED,
+    SLATE_200,
+    style_button,
+)
 
 
 class ProjectTreeRow(BoxLayout):
@@ -26,6 +33,7 @@ class ProjectTreeRow(BoxLayout):
         has_children: bool,
         expanded: bool,
         on_select: Callable[[], None],
+        on_drag: Callable[[tuple[float, float] | None], None],
         on_drop: Callable[[tuple[float, float]], None],
         on_toggle: Callable[[], None],
         on_add_child: Callable[[], None],
@@ -35,7 +43,10 @@ class ProjectTreeRow(BoxLayout):
     ) -> None:
         super().__init__(size_hint_y=None, height=dp(54), spacing=dp(4), **kwargs)
         self.project_id = project_id
+        self._on_select = on_select
+        self._on_drag = on_drag
         self._on_drop = on_drop
+        self._drag_touch: object | None = None
         self._drag_origin: tuple[float, float] | None = None
         self._dragging = False
         self._depth = max(0, depth)
@@ -49,17 +60,6 @@ class ProjectTreeRow(BoxLayout):
             self.add_widget(self.disclosure_button)
         else:
             self.add_widget(Widget(size_hint_x=None, width=dp(34)))
-        self.drag_handle = style_button(
-            Button(
-                text="↕",
-                size_hint=(None, None),
-                size=(dp(34), dp(34)),
-                pos_hint={"center_y": 0.5},
-                font_size="17sp",
-            ),
-            "quiet",
-        )
-        self.add_widget(self.drag_handle)
         self.button = style_button(
             Button(
                 text=f"{title}\n{status.replace('_', ' ').title()}",
@@ -97,41 +97,90 @@ class ProjectTreeRow(BoxLayout):
         self.delete_button.bind(on_release=lambda *_: on_delete())
         self.add_widget(self.delete_button)
         with self.canvas.before:
+            PushMatrix()
+            self._drag_translation = Translate(0, 0)
             self._branch_color = Color(*BORDER)
             self._branch_line = Line(points=[], width=1.1)
-        self.bind(pos=self._sync_branch, size=self._sync_branch)
-        self._sync_branch()
+        with self.canvas.after:
+            self._drop_target_color = Color(*GOLD_LIGHT[:3], 0)
+            self._drop_target_outline = Line(
+                rounded_rectangle=(0, 0, 0, 0, dp(7)),
+                width=dp(1.6),
+            )
+            PopMatrix()
+        self.bind(pos=self._sync_visuals, size=self._sync_visuals)
+        self._sync_visuals()
 
     def on_touch_down(self, touch: object) -> bool:
-        if getattr(touch, "button", "left") == "left" and self.drag_handle.collide_point(
-            *touch.pos
+        action_controls = [self.gear_button, self.delete_button]
+        if self.disclosure_button is not None:
+            action_controls.append(self.disclosure_button)
+        touches_action = any(control.collide_point(*touch.pos) for control in action_controls)
+        if (
+            getattr(touch, "button", "left") == "left"
+            and self.collide_point(*touch.pos)
+            and not touches_action
         ):
-            self._drag_origin = touch.pos
+            self._drag_touch = touch
+            self._drag_origin = self._window_position(touch)
             self._dragging = False
-            self.drag_handle.state = "down"
+            self.button.state = "down"
             touch.grab(self)
             return True
         return super().on_touch_down(touch)
 
     def on_touch_move(self, touch: object) -> bool:
-        if touch.grab_current is self and self._drag_origin is not None:
-            if hypot(touch.x - self._drag_origin[0], touch.y - self._drag_origin[1]) >= dp(8):
+        if touch is self._drag_touch and self._drag_origin is not None:
+            position = self._window_position(touch)
+            if hypot(
+                position[0] - self._drag_origin[0],
+                position[1] - self._drag_origin[1],
+            ) >= dp(8):
                 self._dragging = True
-                self.drag_handle.opacity = 0.65
+            if self._dragging:
+                self.opacity = 0.68
+                self._drag_translation.y = position[1] - self._drag_origin[1]
+                self._on_drag(position)
             return True
         return super().on_touch_move(touch)
 
     def on_touch_up(self, touch: object) -> bool:
-        if touch.grab_current is self:
+        if touch is self._drag_touch:
+            position = self._window_position(touch)
             touch.ungrab(self)
-            self.drag_handle.state = "normal"
-            self.drag_handle.opacity = 1
+            self.button.state = "normal"
+            self.opacity = 1
+            self._drag_translation.y = 0
             if self._dragging:
-                self._on_drop(touch.pos)
+                self._on_drag(None)
+                self._on_drop(position)
+            else:
+                self._on_select()
+            self._drag_touch = None
             self._drag_origin = None
             self._dragging = False
             return True
         return super().on_touch_up(touch)
+
+    @staticmethod
+    def _window_position(touch: object) -> tuple[float, float]:
+        if hasattr(touch, "sx") and hasattr(touch, "sy"):
+            return (touch.sx * Window.width, touch.sy * Window.height)
+        return touch.pos
+
+    def set_drop_target(self, active: bool) -> None:
+        self._drop_target_color.a = 1 if active else 0
+
+    def _sync_visuals(self, *_: object) -> None:
+        self._sync_branch()
+        inset = dp(1)
+        self._drop_target_outline.rounded_rectangle = (
+            self.x + inset,
+            self.y + inset,
+            max(0, self.width - inset * 2),
+            max(0, self.height - inset * 2),
+            dp(7),
+        )
 
     def _sync_branch(self, *_: object) -> None:
         if self._depth == 0:
