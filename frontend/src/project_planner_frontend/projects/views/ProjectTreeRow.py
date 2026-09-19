@@ -7,6 +7,7 @@ from kivy.uix.button import Button
 from kivy.uix.widget import Widget
 
 from project_planner_frontend.projects.views.BinButton import BinButton
+from project_planner_frontend.projects.views.DisclosureButton import DisclosureButton
 from project_planner_frontend.projects.views.GearMenuButton import GearMenuButton
 from project_planner_frontend.shared.theme import BORDER, RED, SLATE_200, style_button
 
@@ -20,17 +21,27 @@ class ProjectTreeRow(BoxLayout):
         status: str,
         depth: int,
         selected: bool,
+        has_children: bool,
+        expanded: bool,
         on_select: Callable[[], None],
+        on_toggle: Callable[[], None],
         on_add_child: Callable[[], None],
         on_archive: Callable[[], None],
         on_delete: Callable[[], None],
         **kwargs: object,
     ) -> None:
-        super().__init__(size_hint_y=None, height=dp(58), spacing=dp(5), **kwargs)
+        super().__init__(size_hint_y=None, height=dp(54), spacing=dp(4), **kwargs)
         self._depth = max(0, depth)
-        self._indent_width = dp(18 * min(self._depth, 8))
+        self._indent_width = dp(12 * min(self._depth, 6))
         branch = Widget(size_hint_x=None, width=self._indent_width)
         self.add_widget(branch)
+        self.disclosure_button = None
+        if has_children:
+            self.disclosure_button = style_button(DisclosureButton(expanded), "quiet")
+            self.disclosure_button.bind(on_release=lambda *_: on_toggle())
+            self.add_widget(self.disclosure_button)
+        else:
+            self.add_widget(Widget(size_hint_x=None, width=dp(34)))
         self.button = style_button(
             Button(
                 text=f"{title}\n{status.replace('_', ' ').title()}",
@@ -77,7 +88,7 @@ class ProjectTreeRow(BoxLayout):
         if self._depth == 0:
             self._branch_line.points = []
             return
-        anchor_x = self.x + self._indent_width - dp(9)
+        anchor_x = self.x + self._indent_width - dp(6)
         self._branch_line.points = [
             anchor_x,
             self.y,

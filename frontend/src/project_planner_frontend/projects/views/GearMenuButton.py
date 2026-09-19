@@ -1,4 +1,5 @@
 from collections.abc import Callable, Sequence
+from math import cos, pi, sin
 
 from kivy.graphics import Color, Line
 from kivy.metrics import dp
@@ -14,7 +15,10 @@ class GearMenuButton(Button):
     def __init__(self, actions: Sequence[MenuAction], **kwargs: object) -> None:
         if not actions:
             raise ValueError("A gear menu requires at least one action")
-        super().__init__(text="", size_hint_x=None, width=dp(42), **kwargs)
+        kwargs.setdefault("size_hint", (None, None))
+        kwargs.setdefault("size", (dp(34), dp(34)))
+        kwargs.setdefault("pos_hint", {"center_y": 0.5})
+        super().__init__(text="", **kwargs)
         self.menu = DropDown(auto_width=False, width=dp(180), max_height=dp(240))
         self.action_buttons: dict[str, Button] = {}
         for label, callback, variant, disabled in actions:
@@ -28,12 +32,8 @@ class GearMenuButton(Button):
         self.bind(on_release=lambda *_: self.menu.open(self))
         with self.canvas.after:
             Color(*PEARL_GREY)
-            self._outer = Line(circle=(0, 0, 0), width=1.3)
-            self._inner = Line(circle=(0, 0, 0), width=1.3)
-            self._horizontal = Line(points=[], width=1.3)
-            self._vertical = Line(points=[], width=1.3)
-            self._rising = Line(points=[], width=1.3)
-            self._falling = Line(points=[], width=1.3)
+            self._gear = Line(points=[], close=True, width=dp(1.35), joint="round")
+            self._inner = Line(circle=(0, 0, 0), width=dp(1.35))
         self.bind(pos=self._sync_icon, size=self._sync_icon)
         self._sync_icon()
 
@@ -46,23 +46,14 @@ class GearMenuButton(Button):
 
     def _sync_icon(self, *_: object) -> None:
         center_x, center_y = self.center
-        inner = min(self.width, self.height) * 0.10
-        outer = min(self.width, self.height) * 0.24
-        tooth = min(self.width, self.height) * 0.32
-        diagonal = tooth * 0.71
-        self._outer.circle = (center_x, center_y, outer)
+        size = min(self.width, self.height)
+        inner = size * 0.10
+        root = size * 0.22
+        tooth = size * 0.30
+        points: list[float] = []
+        for index in range(24):
+            angle = -pi / 2 + index * pi / 12
+            radius = tooth if index % 3 == 0 else root
+            points.extend((center_x + cos(angle) * radius, center_y + sin(angle) * radius))
+        self._gear.points = points
         self._inner.circle = (center_x, center_y, inner)
-        self._horizontal.points = [center_x - tooth, center_y, center_x + tooth, center_y]
-        self._vertical.points = [center_x, center_y - tooth, center_x, center_y + tooth]
-        self._rising.points = [
-            center_x - diagonal,
-            center_y - diagonal,
-            center_x + diagonal,
-            center_y + diagonal,
-        ]
-        self._falling.points = [
-            center_x - diagonal,
-            center_y + diagonal,
-            center_x + diagonal,
-            center_y - diagonal,
-        ]

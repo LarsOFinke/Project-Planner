@@ -1,6 +1,6 @@
 # Project cache
 
-Last refreshed: 2026-09-18
+Last refreshed: 2026-09-19
 
 ## Hot context
 
@@ -8,7 +8,7 @@ Last refreshed: 2026-09-18
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 82 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
+- Current suite: 84 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -30,7 +30,7 @@ Last refreshed: 2026-09-18
 - API feature modules keep their controller at the module root and transport DTOs in `dtos/`;
   business modules contain no transport DTO directories.
 - Visual system: shared low-glare palette, rounded controls, bordered surfaces, section hierarchy,
-  and whole-row directory indentation with branch guides.
+  and a collapsible project directory with compact scale-aware icon controls and branch guides.
 - Project switching reuses the loaded directory projection and loads only the visible feature tab;
   each tab is fetched once per selected project until its data is invalidated.
 
@@ -40,6 +40,8 @@ Last refreshed: 2026-09-18
   status;
 - category rows own their add-project action, row-level gear menus hold Rename/Add child/Archive,
   and deletable category/project rows expose compact red bin controls on the relevant item;
+- categories and projects with descendants have independent disclosure controls; selecting a
+  hidden project through another view automatically expands its category and ancestor chain;
 - confirmed project Archive and Delete actions; archive retains data with archived status, while
   delete removes owned planning data and promotes child projects to roots;
 - overview metadata, timestamps, parent project, and planning method;

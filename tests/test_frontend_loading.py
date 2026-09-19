@@ -7,6 +7,7 @@ from project_planner_frontend.projects.views.ProjectTreeRow import ProjectTreeRo
 from project_planner_frontend.shared.theme import style_input
 from project_planner_frontend.shell.ProjectPlannerRoot import ProjectPlannerRoot
 
+from project_planner.api.projects.dtos.ProjectTreeItem import ProjectTreeItem
 from project_planner.api.projects.queries.ProjectQueryService import ProjectQueryService
 from project_planner.modules.projects.entities.Project import Project
 from project_planner.modules.projects.entities.ProjectCategory import ProjectCategory
@@ -90,7 +91,9 @@ def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
         "Client work",
         1,
         False,
+        True,
         lambda: actions.append("select-category"),
+        lambda: actions.append("toggle-category"),
         lambda: actions.append("add-project"),
         lambda: actions.append("rename-category"),
         lambda: actions.append("delete-category"),
@@ -100,30 +103,42 @@ def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
         "active",
         1,
         False,
+        True,
+        True,
         lambda: actions.append("select-project"),
+        lambda: actions.append("toggle-project"),
         lambda: actions.append("add-child"),
         lambda: actions.append("archive-project"),
         lambda: actions.append("delete-project"),
     )
 
     assert category.add_project_button.text == "+"
+    assert category.disclosure_button is not None
     assert category.gear_button is not None
     assert set(category.gear_button.action_buttons) == {"Rename"}
     assert category.delete_button is not None
     assert category.delete_button.__class__.__name__ == "BinButton"
     assert set(project.gear_button.action_buttons) == {"Add child", "Archive"}
+    assert project.disclosure_button is not None
+    assert project._indent_width > 0
     assert project.delete_button.__class__.__name__ == "BinButton"
+    assert category.add_project_button.width == category.gear_button.width
+    assert category.gear_button.width == category.delete_button.width
+    category.disclosure_button.dispatch("on_release")
     category.add_project_button.dispatch("on_release")
     category.gear_button.action_buttons["Rename"].dispatch("on_release")
     category.delete_button.dispatch("on_release")
+    project.disclosure_button.dispatch("on_release")
     project.gear_button.action_buttons["Add child"].dispatch("on_release")
     project.gear_button.action_buttons["Archive"].dispatch("on_release")
     project.delete_button.dispatch("on_release")
 
     assert actions == [
+        "toggle-category",
         "add-project",
         "rename-category",
         "delete-category",
+        "toggle-project",
         "add-child",
         "archive-project",
         "delete-project",
@@ -136,6 +151,9 @@ def test_archived_project_row_disables_its_archive_menu_action() -> None:
         "archived",
         1,
         False,
+        False,
+        True,
+        lambda: None,
         lambda: None,
         lambda: None,
         lambda: None,
@@ -147,6 +165,44 @@ def test_archived_project_row_disables_its_archive_menu_action() -> None:
     assert archive_action.disabled
 
 
+def test_collapsed_project_hides_only_its_descendants() -> None:
+    root = Project("Root")
+    child = Project("Child", parent_id=root.id)
+    grandchild = Project("Grandchild", parent_id=child.id)
+    sibling = Project("Sibling")
+    items = (
+        ProjectTreeItem(root, 0),
+        ProjectTreeItem(child, 1),
+        ProjectTreeItem(grandchild, 2),
+        ProjectTreeItem(sibling, 0),
+    )
+    browser = SimpleNamespace(_collapsed_project_ids={root.id})
+
+    visible = ProjectBrowser._visible_project_items(browser, items)
+
+    assert [(item.project.title, has_children) for item, has_children in visible] == [
+        ("Root", True),
+        ("Sibling", False),
+    ]
+
+
+def test_directory_disclosure_toggles_rebuild_without_reloading() -> None:
+    refreshes: list[bool] = []
+    browser = SimpleNamespace(
+        _collapsed_category_ids=set(),
+        _collapsed_project_ids=set(),
+        refresh=lambda *, reload=True: refreshes.append(reload),
+    )
+
+    ProjectBrowser._toggle_category(browser, "category-1")
+    ProjectBrowser._toggle_project(browser, "project-1")
+    ProjectBrowser._toggle_category(browser, "category-1")
+
+    assert browser._collapsed_category_ids == set()
+    assert browser._collapsed_project_ids == {"project-1"}
+    assert refreshes == [False, False, False]
+
+
 def test_browser_selection_uses_cached_directory_metadata() -> None:
     refreshes: list[bool] = []
     selections: list[tuple[str | None, bool]] = []
@@ -154,6 +210,9 @@ def test_browser_selection_uses_cached_directory_metadata() -> None:
         selected_id=None,
         selected_category_id=None,
         _category_by_project_id={"project-1": "category-1"},
+        _parent_by_project_id={"project-1": "parent-1", "parent-1": None},
+        _collapsed_category_ids={"category-1"},
+        _collapsed_project_ids={"parent-1"},
         refresh=lambda *, reload=True: refreshes.append(reload),
         _on_select=lambda project_id, refresh: selections.append((project_id, refresh)),
     )
@@ -161,6 +220,8 @@ def test_browser_selection_uses_cached_directory_metadata() -> None:
     ProjectBrowser.select(browser, "project-1")
 
     assert browser.selected_category_id == "category-1"
+    assert browser._collapsed_category_ids == set()
+    assert browser._collapsed_project_ids == set()
     assert refreshes == [False]
     assert selections == [("project-1", False)]
 

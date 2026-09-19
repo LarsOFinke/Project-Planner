@@ -40,7 +40,17 @@ def main() -> None:
         )
         projects, _planning, _collaboration, _artifacts, _system = build_controllers(settings)
         category = projects.create_category("Smoke category")
-        projects.create_project("Smoke project", category_id=category.id)
+        project = projects.create_project("Smoke project", category_id=category.id)
+        child = projects.create_project(
+            "Nested smoke project",
+            parent_id=project.id,
+            category_id=category.id,
+        )
+        projects.create_project(
+            "Deep smoke project",
+            parent_id=child.id,
+            category_id=category.id,
+        )
         application = ProjectPlannerApp(settings)
         Clock.schedule_once(lambda _elapsed: application.stop(), 1.0)
         application.run()

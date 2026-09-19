@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from datetime import date
 from functools import partial
+from typing import Any
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -65,9 +66,12 @@ class ProjectBrowser(BoxLayout):
         self._on_exit = on_exit
         self.selected_id: str | None = None
         self.selected_category_id: str | None = None
+        self._collapsed_category_ids: set[str | None] = set()
+        self._collapsed_project_ids: set[str] = set()
         self._directory = ()
         self._project_by_id: dict[str, Project] = {}
         self._category_by_project_id: dict[str, str | None] = {}
+        self._parent_by_project_id: dict[str, str | None] = {}
         paint_background(self, NAVY_800, 10, BORDER)
         self._list = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
         self._list.bind(minimum_height=self._list.setter("height"))
@@ -84,7 +88,9 @@ class ProjectBrowser(BoxLayout):
 
     def _build_header(self) -> None:
         self.add_widget(section_label("Project directory"))
-        self.add_widget(caption_label("Categories contain projects and their child hierarchy."))
+        self.add_widget(
+            caption_label("Expand categories and projects to navigate their hierarchy.")
+        )
         category_controls = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(7))
         add_category = style_button(Button(text="+ Category"), "secondary")
         add_category.bind(on_release=lambda *_: self._create_category())
@@ -155,6 +161,7 @@ class ProjectBrowser(BoxLayout):
 
         def remove() -> None:
             self._categories.delete(category.id)
+            self._collapsed_category_ids.discard(category.id)
             if self.selected_category_id == category.id:
                 self.selected_category_id = None
             self.refresh()
@@ -230,15 +237,29 @@ class ProjectBrowser(BoxLayout):
                 for section in self._directory
                 for item in section.projects
             }
+            self._parent_by_project_id = {
+                item.project.id: item.project.parent_id
+                for section in self._directory
+                for item in section.projects
+            }
+            project_ids = set(self._project_by_id)
+            category_ids = {
+                section.category.id for section in self._directory if section.category is not None
+            }
+            self._collapsed_project_ids.intersection_update(project_ids)
+            self._collapsed_category_ids.intersection_update({None, *category_ids})
         for section in self._directory:
             category = section.category
             category_id = category.id if category is not None else None
+            category_expanded = category_id not in self._collapsed_category_ids
             self._list.add_widget(
                 ProjectCategoryRow(
                     category.name if category is not None else "Uncategorized",
                     len(section.projects),
                     category_id is not None and category_id == self.selected_category_id,
+                    category_expanded,
                     partial(self._select_category, category_id),
+                    partial(self._toggle_category, category_id),
                     partial(self._create, None, category_id),
                     partial(self._rename_category, category_id)
                     if category_id is not None
@@ -248,7 +269,9 @@ class ProjectBrowser(BoxLayout):
                     else None,
                 )
             )
-            for item in section.projects:
+            if not category_expanded:
+                continue
+            for item, has_children in self._visible_project_items(section.projects):
                 project = item.project
                 selected = project.id == self.selected_id
                 self._list.add_widget(
@@ -257,20 +280,62 @@ class ProjectBrowser(BoxLayout):
                         project.status.value,
                         item.depth + 1,
                         selected,
+                        has_children,
+                        project.id not in self._collapsed_project_ids,
                         partial(self.select, project.id),
+                        partial(self._toggle_project, project.id),
                         partial(self._create, project.id, category_id),
                         partial(self._archive_project, project.id),
                         partial(self._delete_project, project.id),
                     )
                 )
 
+    def _visible_project_items(
+        self,
+        items: tuple[Any, ...],
+    ) -> tuple[tuple[Any, bool], ...]:
+        visible: list[tuple[Any, bool]] = []
+        hidden_below_depth: int | None = None
+        for index, item in enumerate(items):
+            if hidden_below_depth is not None:
+                if item.depth > hidden_below_depth:
+                    continue
+                hidden_below_depth = None
+            has_children = index + 1 < len(items) and items[index + 1].depth > item.depth
+            visible.append((item, has_children))
+            if has_children and item.project.id in self._collapsed_project_ids:
+                hidden_below_depth = item.depth
+        return tuple(visible)
+
+    def _toggle_category(self, category_id: str | None) -> None:
+        if category_id in self._collapsed_category_ids:
+            self._collapsed_category_ids.remove(category_id)
+        else:
+            self._collapsed_category_ids.add(category_id)
+        self.refresh(reload=False)
+
+    def _toggle_project(self, project_id: str) -> None:
+        if project_id in self._collapsed_project_ids:
+            self._collapsed_project_ids.remove(project_id)
+        else:
+            self._collapsed_project_ids.add(project_id)
+        self.refresh(reload=False)
+
     def _select_category(self, category_id: str | None) -> None:
         self.selected_id = None
         self.selected_category_id = category_id
         self.refresh(reload=False)
+        self._on_select(None, True)
 
     def select(self, project_id: str) -> None:
         self.selected_id = project_id
         self.selected_category_id = self._category_by_project_id.get(project_id)
+        self._collapsed_category_ids.discard(self.selected_category_id)
+        ancestor_id = self._parent_by_project_id.get(project_id)
+        visited: set[str] = set()
+        while ancestor_id is not None and ancestor_id not in visited:
+            visited.add(ancestor_id)
+            self._collapsed_project_ids.discard(ancestor_id)
+            ancestor_id = self._parent_by_project_id.get(ancestor_id)
         self.refresh(reload=False)
         self._on_select(project_id, False)
