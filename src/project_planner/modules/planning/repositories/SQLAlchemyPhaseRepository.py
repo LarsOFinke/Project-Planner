@@ -39,6 +39,7 @@ class SQLAlchemyPhaseRepository:
                         start_date=phase.start_date,
                         end_date=phase.end_date,
                         section_id=phase.section_id,
+                        parallel_group=phase.parallel_group,
                         created_at=phase.created_at,
                         updated_at=phase.updated_at,
                     )
@@ -62,6 +63,7 @@ class SQLAlchemyPhaseRepository:
                     start_date=model.start_date,
                     end_date=model.end_date,
                     section_id=model.section_id,
+                    parallel_group=model.parallel_group,
                     created_at=model.created_at,
                     updated_at=model.updated_at,
                 )

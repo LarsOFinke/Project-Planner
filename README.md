@@ -13,7 +13,8 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
   inside Diagram and Workspace
 - Agile planning with an ordered backlog, a collection of planned sprints, completion handling,
   and history
-- Waterfall planning with editable ordered phases, phase tasks, and a simple chronological timeline
+- Waterfall planning with editable ordered phases, optional named parallel-work groups, phase tasks,
+  and a simple chronological timeline
 - Custom planning with ordered Free, Agile, and Waterfall sections that can be mixed freely
 - shared calendar date picker backed by framework-independent calendar-module logic
 - SQLAlchemy persistence with SQLite as the local default and ordered Alembic migrations
@@ -68,20 +69,11 @@ Do not recreate the environment with `python3 -m venv .venv` on a machine whose 
 is 3.14; that command ignores `.python-version` and puts the incompatible interpreter back.
 Use `make setup` whenever the environment needs to be rebuilt.
 
-`uv` is not an application dependency and is not required when Python 3.11–3.13 is installed.
-If a target system only provides Python 3.14 or newer, it can optionally bootstrap a compatible
-interpreter; install it in an isolated environment with `pipx`:
-
-```bash
-pipx install uv
-make setup
-```
-
-If `uv` is not immediately available, run `pipx ensurepath`, start a new shell, and retry.
-`make setup` asks `uv` for Python 3.13, creates the project `.venv` with that interpreter,
-installs the application, and runs the test suite. Do not manually create `.venv` with the newer
-system `python3`. See the [official uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
-for alternative platforms and installation methods.
+`make setup` uses a system-installed Python 3.11, 3.12, or 3.13 when one is available. On Linux
+x86-64 systems that only provide Python 3.14 or newer, it downloads a checksum-verified,
+project-local CPython 3.13 runtime into ignored `.tools/python/`, then creates the normal `.venv`
+from that runtime. It never installs another system Python and does not use `uv`. Do not manually
+create `.venv` with the newer system `python3`.
 
 By default the database is created at `~/.project_planner/project_planner.sqlite3`.
 Configuration is read in this order: packaged defaults, `./project_planner.cfg`,

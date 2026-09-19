@@ -3,10 +3,17 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 
+from project_planner.modules.planning.entities.Phase import Phase
 from project_planner_frontend.planning.clients.PhaseClient import PhaseClient
 from project_planner_frontend.planning.clients.WaterfallTaskClient import WaterfallTaskClient
 from project_planner_frontend.shared.date_parser import format_optional_date
-from project_planner_frontend.shared.theme import NAVY_900, PEARL_GREY, SLATE_400, paint_background
+from project_planner_frontend.shared.theme import (
+    NAVY_900,
+    PEARL_GREY,
+    SLATE_400,
+    paint_background,
+    section_label,
+)
 
 
 class WaterfallTimelinePanel(BoxLayout):
@@ -47,18 +54,32 @@ class WaterfallTimelinePanel(BoxLayout):
                     height=dp(54),
                 )
             )
+        lanes: dict[str | None, list[Phase]] = {}
         for phase in phases:
-            tasks = list(self._tasks.list_for_phase(phase.id))
-            task_names = ", ".join(task.title for task in tasks) or "No tasks"
-            start = format_optional_date(phase.start_date) or "No start"
-            end = format_optional_date(phase.end_date) or "No end"
-            self._rows.add_widget(
-                Label(
-                    text=f"{phase.name}  ·  {start} → {end}\nTasks: {task_names}",
-                    color=PEARL_GREY,
-                    halign="left",
-                    valign="middle",
-                    size_hint_y=None,
-                    height=dp(64),
+            lanes.setdefault(phase.parallel_group, []).append(phase)
+        for parallel_group, lane in lanes.items():
+            if parallel_group is not None:
+                self._rows.add_widget(
+                    section_label(f"Parallel work · {parallel_group} ({len(lane)} phases)")
                 )
+            for phase in lane:
+                self._add_phase(phase, parallel_group is not None)
+
+    def _add_phase(self, phase: Phase, parallel: bool) -> None:
+        tasks = list(self._tasks.list_for_phase(phase.id))
+        task_names = ", ".join(task.title for task in tasks) or "No tasks"
+        start = format_optional_date(phase.start_date) or "No start"
+        end = format_optional_date(phase.end_date) or "No end"
+        self._rows.add_widget(
+            Label(
+                text=(
+                    f"{'↳ ' if parallel else ''}{phase.name}  ·  {start} → {end}\n"
+                    f"Tasks: {task_names}"
+                ),
+                color=PEARL_GREY,
+                halign="left",
+                valign="middle",
+                size_hint_y=None,
+                height=dp(64),
             )
+        )

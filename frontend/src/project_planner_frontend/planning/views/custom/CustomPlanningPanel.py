@@ -18,6 +18,7 @@ from project_planner_frontend.planning.views.custom.SectionEditorPopup import Se
 from project_planner_frontend.planning.views.custom.SectionPlanningPopup import SectionPlanningPopup
 from project_planner_frontend.projects.clients.ProjectWorkflowClient import ProjectWorkflowClient
 from project_planner_frontend.shared.date_parser import format_optional_date
+from project_planner_frontend.shared.ReorderableRow import ReorderableRow
 from project_planner_frontend.shared.theme import (
     NAVY_900,
     caption_label,
@@ -48,11 +49,12 @@ class CustomPlanningPanel(BoxLayout):
         self._tasks = tasks
         self._todos = todos
         self._project_id: str | None = None
+        self._drop_target_row: ReorderableRow | None = None
         paint_background(self, NAVY_900)
         self.add_widget(title_label("Custom roadmap"))
         self.add_widget(
             caption_label(
-                "Keep every section in its intended order, including completed roadmap steps."
+                "Drag a section onto another to set its roadmap order, including completed steps."
             )
         )
         controls = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
@@ -73,6 +75,7 @@ class CustomPlanningPanel(BoxLayout):
         self.refresh()
 
     def refresh(self) -> None:
+        self._clear_drop_target()
         self._roadmap_rows[1].clear_widgets()
         if self._project_id is None:
             return
@@ -83,7 +86,11 @@ class CustomPlanningPanel(BoxLayout):
         if not sections:
             rows.add_widget(empty_state_label("No roadmap sections yet."))
         for section in sections:
-            row = BoxLayout(
+            row = ReorderableRow(
+                section.id,
+                partial(self._open, section),
+                self._drag_section,
+                self._drop_section,
                 size_hint_y=None,
                 height=dp(68),
                 spacing=dp(5),
@@ -102,21 +109,15 @@ class CustomPlanningPanel(BoxLayout):
                 ),
                 "quiet",
             )
-            open_button.bind(on_release=partial(self._open, section))
             edit = style_button(Button(text="Edit", size_hint_x=None, width=dp(62)), "secondary")
             edit.bind(on_release=partial(self._edit, section))
             row.add_widget(open_button)
             row.add_widget(edit)
-            if reorder:
-                for label, offset in (("Up", -1), ("Down", 1)):
-                    button = style_button(
-                        Button(text=label, size_hint_x=None, width=dp(60)), "secondary"
-                    )
-                    button.bind(on_release=partial(self._move, section.id, offset))
-                    row.add_widget(button)
             remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
             remove.bind(on_release=partial(self._remove, section.id))
             row.add_widget(remove)
+            row.set_primary_control(open_button)
+            row.register_action_controls((edit, remove))
             rows.add_widget(row)
 
     def _add(self, section_type: SectionType, *_: object) -> None:
@@ -170,10 +171,44 @@ class CustomPlanningPanel(BoxLayout):
             self._todos,
         ).open()
 
-    def _move(self, section_id: str, offset: int, *_: object) -> None:
-        if self._project_id:
-            self._sections.move(self._project_id, section_id, offset)
+    def _drag_section(self, section_id: str, position: tuple[float, float] | None) -> None:
+        target = None if position is None else self._drop_target_at(section_id, position)
+        if target is self._drop_target_row:
+            return
+        self._clear_drop_target()
+        self._drop_target_row = target
+        if target is not None:
+            target.set_drop_target(True)
+
+    def _drop_section(self, section_id: str, position: tuple[float, float]) -> None:
+        target = self._drop_target_at(section_id, position)
+        self._clear_drop_target()
+        if target is not None and self._project_id:
+            self._sections.move_to(self._project_id, section_id, target.item_id)
             self.refresh()
+
+    def _drop_target_at(
+        self, section_id: str, position: tuple[float, float]
+    ) -> ReorderableRow | None:
+        scroll, rows = self._roadmap_rows
+        if not scroll.collide_point(*position):
+            return None
+        list_position = rows.to_widget(*position)
+        return next(
+            (
+                row
+                for row in rows.children
+                if isinstance(row, ReorderableRow)
+                and row.item_id != section_id
+                and row.collide_point(*list_position)
+            ),
+            None,
+        )
+
+    def _clear_drop_target(self) -> None:
+        if self._drop_target_row is not None:
+            self._drop_target_row.set_drop_target(False)
+        self._drop_target_row = None
 
     def _remove(self, section_id: str, *_: object) -> None:
         self._sections.remove(section_id)

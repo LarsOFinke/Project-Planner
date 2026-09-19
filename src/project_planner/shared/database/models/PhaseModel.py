@@ -29,6 +29,7 @@ class PhaseModel(Base):
     section_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("planning_sections.id", ondelete="CASCADE"), nullable=True
     )
+    parallel_group: Mapped[str | None] = mapped_column(String(80), nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)

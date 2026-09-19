@@ -97,9 +97,13 @@ Last refreshed: 2026-09-19
 - Workspace JSON version: `5`.
 - Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation;
   managed images use portable `managed://images/<filename>` references.
-- Migration head: `0011`; database export format: `5`.
+- Migration head: `0012`; database export format: `6`.
 - Phase rows persist dates, description, normalized lifecycle status, optional Custom section,
-  created timestamp, and updated timestamp; older phase rows are preserved and mapped forward.
+  optional named parallel-work group, created timestamp, and updated timestamp; older phase rows
+  are preserved and mapped forward.
+- Roadmap phases, Custom sections, and Free-section items use one shared drag-and-drop row; a
+  drop inserts the source immediately before its target. The existing offset endpoints remain for
+  API compatibility.
 - Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
 - Deleting an image object does not delete its managed source file.
 - Image location: `<data_directory>/projects/<project-id>/images/<uuid>.<ext>`.
@@ -153,9 +157,12 @@ Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environmen
 
 - System `python3` is 3.14.4. Running `python3 -m venv .venv` recreates an incompatible venv.
   Use `make setup`; it locates Python 3.11–3.13 and replaces incompatible environments.
-- `uv` is optional and is not an application dependency. Standard `venv` + `pip` is preferred
-  when Python 3.11–3.13 is installed. On systems that only provide newer Python, `pipx install uv`
-  can supply the compatible interpreter used by `make setup`.
+- Setup prefers a system-installed Python 3.11–3.13 and standard-library `venv` + `pip`. On
+  Linux x86-64 systems with only newer Python, it downloads a checksum-verified project-local
+  CPython 3.13 runtime to ignored `.tools/python/` before creating `.venv`; it never installs a
+  system Python or uses `uv`.
+- When a `.venv` directory exists but its Python launcher is unusable, `make setup` clears and
+  rebuilds it after a compatible system interpreter is available.
 - Startup forces Kivy's bundled SDL2 clipboard. A narrow log filter suppresses only Kivy 2.3.1's
   failed optional X11 cutbuffer probe when `xclip`/`xsel` are absent; real clipboard/window
   failures remain visible.

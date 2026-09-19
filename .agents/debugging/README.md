@@ -22,8 +22,10 @@ environment dumps and database contents, but paths and platform versions are inc
 
 ### `requires a different Python`
 
-Cause: `.venv` was created by system Python 3.14. Run `make setup`. Do not use
-`python3 -m venv .venv` on this machine.
+Cause: `.venv` was created by system Python 3.14 or its base interpreter was removed. Run
+`make setup`; it downloads a project-local CPython 3.13 runtime when no compatible system Python
+exists, then clears and rebuilds unusable environments. Do not use `python3 -m venv .venv` on
+this machine.
 
 ### Kivy Cutbuffer warning for `xclip` or `xsel`
 

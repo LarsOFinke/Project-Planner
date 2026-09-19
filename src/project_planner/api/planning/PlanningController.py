@@ -105,6 +105,13 @@ class PlanningController:
             ("/projects/{project_id}/phases", self.add_phase, ["POST"], 201, Phase),
             ("/projects/{project_id}/phases/{phase_id}", self.update_phase, ["PUT"], None, Phase),
             ("/projects/{project_id}/phases/{phase_id}/move", self.move_phase, ["POST"], 204, None),
+            (
+                "/projects/{project_id}/phases/{phase_id}/move-to",
+                self.move_phase_to,
+                ["POST"],
+                204,
+                None,
+            ),
             ("/projects/{project_id}/phases/{phase_id}", self.remove_phase, ["DELETE"], 204, None),
             (
                 "/projects/{project_id}/waterfall-template",
@@ -142,6 +149,13 @@ class PlanningController:
                 204,
                 None,
             ),
+            (
+                "/projects/{project_id}/sections/{section_id}/move-to",
+                self.move_section_to,
+                ["POST"],
+                204,
+                None,
+            ),
             ("/sections/{section_id}", self.remove_section, ["DELETE"], 204, None),
         )
         self._register_route_group(route_definitions)
@@ -166,6 +180,13 @@ class PlanningController:
             (
                 "/sections/{section_id}/items/{item_id}/move",
                 self.move_section_item,
+                ["POST"],
+                204,
+                None,
+            ),
+            (
+                "/sections/{section_id}/items/{item_id}/move-to",
+                self.move_section_item_to,
                 ["POST"],
                 204,
                 None,
@@ -285,6 +306,7 @@ class PlanningController:
             phase.start_date,
             phase.end_date,
             phase.section_id,
+            phase.parallel_group,
         )
 
     def update_phase(
@@ -301,6 +323,7 @@ class PlanningController:
             phase.status,
             phase.start_date,
             phase.end_date,
+            phase.parallel_group,
         )
 
     def move_phase(
@@ -310,6 +333,15 @@ class PlanningController:
         offset: Annotated[int, Body(embed=True)],
     ) -> Response:
         self._phases.move(project_id, phase_id, offset)
+        return Response(status_code=204)
+
+    def move_phase_to(
+        self,
+        project_id: str,
+        phase_id: str,
+        target_id: Annotated[str, Body(embed=True)],
+    ) -> Response:
+        self._phases.move_to(project_id, phase_id, target_id)
         return Response(status_code=204)
 
     def remove_phase(self, project_id: str, phase_id: str) -> Response:
@@ -366,6 +398,15 @@ class PlanningController:
         self._sections.move(project_id, section_id, offset)
         return Response(status_code=204)
 
+    def move_section_to(
+        self,
+        project_id: str,
+        section_id: str,
+        target_id: Annotated[str, Body(embed=True)],
+    ) -> Response:
+        self._sections.move_to(project_id, section_id, target_id)
+        return Response(status_code=204)
+
     def remove_section(self, section_id: str) -> Response:
         self._sections.remove(section_id)
         return Response(status_code=204)
@@ -406,6 +447,15 @@ class PlanningController:
         offset: Annotated[int, Body(embed=True)],
     ) -> Response:
         self._sections.move_item(section_id, item_id, offset)
+        return Response(status_code=204)
+
+    def move_section_item_to(
+        self,
+        section_id: str,
+        item_id: str,
+        target_id: Annotated[str, Body(embed=True)],
+    ) -> Response:
+        self._sections.move_item_to(section_id, item_id, target_id)
         return Response(status_code=204)
 
     def remove_section_item(self, item_id: str) -> Response:

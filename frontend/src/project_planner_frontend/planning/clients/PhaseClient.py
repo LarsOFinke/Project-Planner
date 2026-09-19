@@ -45,6 +45,7 @@ class PhaseClient:
         start_date: date | None = None,
         end_date: date | None = None,
         section_id: str | None = None,
+        parallel_group: str | None = None,
     ) -> Phase:
         return self._transport.model(
             Phase,
@@ -57,6 +58,7 @@ class PhaseClient:
                 "start_date": start_date,
                 "end_date": end_date,
                 "section_id": section_id,
+                "parallel_group": parallel_group,
             },
         )
 
@@ -69,6 +71,7 @@ class PhaseClient:
         status: PhaseStatus | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
+        parallel_group: str | None = None,
     ) -> Phase:
         return self._transport.model(
             Phase,
@@ -80,6 +83,7 @@ class PhaseClient:
                 "status": status,
                 "start_date": start_date,
                 "end_date": end_date,
+                "parallel_group": parallel_group,
             },
         )
 
@@ -89,4 +93,11 @@ class PhaseClient:
     def move(self, project_id: str, phase_id: str, offset: int) -> None:
         self._transport.request(
             "POST", f"/projects/{project_id}/phases/{phase_id}/move", payload={"offset": offset}
+        )
+
+    def move_to(self, project_id: str, phase_id: str, target_id: str) -> None:
+        self._transport.request(
+            "POST",
+            f"/projects/{project_id}/phases/{phase_id}/move-to",
+            payload={"target_id": target_id},
         )

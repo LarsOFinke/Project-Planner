@@ -81,6 +81,7 @@ def test_waterfall_phases_tasks_and_timeline_data_are_persisted() -> None:
         PhaseStatus.IN_PROGRESS,
         date(2026, 9, 1),
         date(2026, 9, 5),
+        parallel_group="Discovery lane",
     )
     task = planner.waterfall_tasks.add(
         phase.id,
@@ -92,6 +93,7 @@ def test_waterfall_phases_tasks_and_timeline_data_are_persisted() -> None:
     )
 
     assert updated_phase.start_date == date(2026, 9, 1)
+    assert updated_phase.parallel_group == "Discovery lane"
     assert planner.waterfall_tasks.list_for_phase(phase.id) == [task]
 
 

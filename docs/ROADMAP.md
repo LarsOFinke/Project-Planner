@@ -18,7 +18,7 @@ and timestamps. Persist everything in SQLite.
 
 ### M2 — Minimal planning (prototype 0.1)
 
-Agile backlog/sprint flow, Waterfall phases/tasks/timeline, and mixed Custom sections are
+Agile backlog/sprint flow, Waterfall phases/tasks/timeline, named parallel phase groups, and mixed Custom sections are
 implemented. Milestones and task dependencies remain follow-up work.
 
 ### M3 — Structured diagrams (basic editor in prototype 0.1)

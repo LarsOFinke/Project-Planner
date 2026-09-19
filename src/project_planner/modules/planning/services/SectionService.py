@@ -80,6 +80,26 @@ class SectionService:
         reordered = [section.revise(position=position) for position, section in enumerate(sections)]
         self._repository.save_all(project_id, reordered)
 
+    def move_to(self, project_id: str, section_id: str, target_section_id: str) -> None:
+        sections = list(self.list_for_project(project_id))
+        source_index = next(
+            index for index, section in enumerate(sections) if section.id == section_id
+        )
+        target_index = next(
+            index for index, section in enumerate(sections) if section.id == target_section_id
+        )
+        if source_index == target_index:
+            return
+        source = sections.pop(source_index)
+        target_index = next(
+            index for index, section in enumerate(sections) if section.id == target_section_id
+        )
+        sections.insert(target_index, source)
+        self._repository.save_all(
+            project_id,
+            [section.revise(position=position) for position, section in enumerate(sections)],
+        )
+
     def remove(self, section_id: str) -> None:
         section = self.require(section_id)
         self._repository.delete(section_id)
@@ -151,6 +171,20 @@ class SectionService:
         items[index], items[target] = items[target], items[index]
         reordered = [item.revise(position=position) for position, item in enumerate(items)]
         self._repository.save_items(section_id, reordered)
+
+    def move_item_to(self, section_id: str, item_id: str, target_item_id: str) -> None:
+        items = list(self.list_items(section_id))
+        source_index = next(index for index, item in enumerate(items) if item.id == item_id)
+        target_index = next(index for index, item in enumerate(items) if item.id == target_item_id)
+        if source_index == target_index:
+            return
+        source = items.pop(source_index)
+        target_index = next(index for index, item in enumerate(items) if item.id == target_item_id)
+        items.insert(target_index, source)
+        self._repository.save_items(
+            section_id,
+            [item.revise(position=position) for position, item in enumerate(items)],
+        )
 
     def _add_template(self, section: PlanningSection) -> None:
         if section.section_type is SectionType.WATERFALL:

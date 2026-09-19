@@ -14,6 +14,7 @@ from project_planner_frontend.planning.views.custom.SectionItemEditorPopup impor
     SectionItemEditorPopup,
 )
 from project_planner_frontend.shared.date_parser import format_optional_date
+from project_planner_frontend.shared.ReorderableRow import ReorderableRow
 from project_planner_frontend.shared.theme import (
     NAVY_900,
     SLATE_400,
@@ -29,18 +30,21 @@ class FreeSectionPanel(BoxLayout):
         super().__init__(orientation="vertical", spacing=dp(8), padding=dp(10), **kwargs)
         self._sections = sections
         self._section_id: str | None = None
+        self._drop_target_row: ReorderableRow | None = None
         paint_background(self, NAVY_900)
         self._title = title_label("Free section")
         self.add_widget(self._title)
-        self.add_widget(caption_label("Organize work without Agile or Waterfall terminology."))
+        self.add_widget(
+            caption_label("Organize work freely; drag an item onto another to reorder.")
+        )
         add = style_button(Button(text="+ Add item", size_hint_y=None, height=dp(44)), "primary")
         add.bind(on_release=self._add)
         self.add_widget(add)
         self._rows = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
         self._rows.bind(minimum_height=self._rows.setter("height"))
-        scroll = ScrollView(do_scroll_x=False)
-        scroll.add_widget(self._rows)
-        self.add_widget(scroll)
+        self._scroll = ScrollView(do_scroll_x=False)
+        self._scroll.add_widget(self._rows)
+        self.add_widget(self._scroll)
 
     def show_section(self, section_id: str) -> None:
         self._section_id = section_id
@@ -48,6 +52,7 @@ class FreeSectionPanel(BoxLayout):
         self.refresh()
 
     def refresh(self) -> None:
+        self._clear_drop_target()
         self._rows.clear_widgets()
         if self._section_id is None:
             return
@@ -57,7 +62,15 @@ class FreeSectionPanel(BoxLayout):
                 Label(text="No items yet.", color=SLATE_400, size_hint_y=None, height=dp(54))
             )
         for item in items:
-            row = BoxLayout(size_hint_y=None, height=dp(62), spacing=dp(5))
+            row = ReorderableRow(
+                item.id,
+                partial(self._edit, item),
+                self._drag_item,
+                self._drop_item,
+                size_hint_y=None,
+                height=dp(62),
+                spacing=dp(5),
+            )
             status = item.status.value.replace("_", " ").title()
             item_date = format_optional_date(item.item_date) or "No date"
             edit = style_button(
@@ -69,17 +82,12 @@ class FreeSectionPanel(BoxLayout):
                 ),
                 "quiet",
             )
-            edit.bind(on_release=partial(self._edit, item))
-            up = style_button(Button(text="Up", size_hint_x=None, width=dp(58)), "secondary")
-            down = style_button(Button(text="Down", size_hint_x=None, width=dp(58)), "secondary")
-            up.bind(on_release=partial(self._move, item.id, -1))
-            down.bind(on_release=partial(self._move, item.id, 1))
             remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
             remove.bind(on_release=partial(self._remove, item.id))
             row.add_widget(edit)
-            row.add_widget(up)
-            row.add_widget(down)
             row.add_widget(remove)
+            row.set_primary_control(edit)
+            row.register_action_controls((remove,))
             self._rows.add_widget(row)
 
     def _add(self, *_: object) -> None:
@@ -120,10 +128,41 @@ class FreeSectionPanel(BoxLayout):
 
         SectionItemEditorPopup(item, save).open()
 
-    def _move(self, item_id: str, offset: int, *_: object) -> None:
-        if self._section_id:
-            self._sections.move_item(self._section_id, item_id, offset)
+    def _drag_item(self, item_id: str, position: tuple[float, float] | None) -> None:
+        target = None if position is None else self._drop_target_at(item_id, position)
+        if target is self._drop_target_row:
+            return
+        self._clear_drop_target()
+        self._drop_target_row = target
+        if target is not None:
+            target.set_drop_target(True)
+
+    def _drop_item(self, item_id: str, position: tuple[float, float]) -> None:
+        target = self._drop_target_at(item_id, position)
+        self._clear_drop_target()
+        if target is not None and self._section_id:
+            self._sections.move_item_to(self._section_id, item_id, target.item_id)
             self.refresh()
+
+    def _drop_target_at(self, item_id: str, position: tuple[float, float]) -> ReorderableRow | None:
+        if not self._scroll.collide_point(*position):
+            return None
+        list_position = self._rows.to_widget(*position)
+        return next(
+            (
+                row
+                for row in self._rows.children
+                if isinstance(row, ReorderableRow)
+                and row.item_id != item_id
+                and row.collide_point(*list_position)
+            ),
+            None,
+        )
+
+    def _clear_drop_target(self) -> None:
+        if self._drop_target_row is not None:
+            self._drop_target_row.set_drop_target(False)
+        self._drop_target_row = None
 
     def _remove(self, item_id: str, *_: object) -> None:
         self._sections.remove_item(item_id)

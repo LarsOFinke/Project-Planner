@@ -218,3 +218,11 @@ The project directory is the primary visual organizer for project hierarchy. Dra
 onto a category makes it a root there; dragging it onto another project makes it a child and adopts
 the target category. The backend validates cycles and persists the moved project plus any descendant
 category changes in one transaction, so a subtree cannot be split across directory sections.
+
+## AD-034 — Named parallel phase groups are a small roadmap primitive
+
+A Waterfall phase may carry an optional short `parallel_group` label. Phases with the same label
+are presented as a concurrent lane in the timeline, while blank phases retain the normal ordered
+flow. This intentionally does not model dependencies, capacity, or automatic scheduling yet;
+the label is a reversible prototype that can inform a later planning model without making the
+current workflow misleadingly complex.

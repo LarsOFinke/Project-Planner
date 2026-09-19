@@ -33,7 +33,7 @@ class PhaseEditorPopup(Popup):
     def __init__(
         self,
         phase: Phase | None,
-        on_save: Callable[[str, str, PhaseStatus, date | None, date | None], None],
+        on_save: Callable[[str, str, PhaseStatus, date | None, date | None, str | None], None],
         **kwargs: object,
     ) -> None:
         self._phase = phase
@@ -48,7 +48,7 @@ class PhaseEditorPopup(Popup):
             content=content,
             size_hint=(None, None),
             width=min(Window.width * 0.9, dp(680)),
-            height=min(Window.height * 0.92, dp(520)),
+            height=min(Window.height * 0.92, dp(620)),
             **kwargs,
         )
         self.bind(on_open=self._queue_population)
@@ -99,6 +99,27 @@ class PhaseEditorPopup(Popup):
             )
         )
         form.add_widget(self.status)
+        form.add_widget(field_label("Parallel work group (prototype)"))
+        self.parallel_group = style_input(
+            TextInput(
+                hint_text="Optional shared label, for example: Research",
+                multiline=False,
+                size_hint_y=None,
+                height=dp(48),
+            )
+        )
+        form.add_widget(self.parallel_group)
+        guidance = Label(
+            text="Phases with the same label are shown as concurrent work in the roadmap.",
+            color=SLATE_400,
+            font_size="12sp",
+            halign="left",
+            valign="middle",
+            size_hint_y=None,
+            height=dp(36),
+        )
+        guidance.bind(size=lambda widget, size: setattr(widget, "text_size", size))
+        form.add_widget(guidance)
         metadata = Label(
             text=self._metadata_text(),
             color=SLATE_400,
@@ -137,6 +158,7 @@ class PhaseEditorPopup(Popup):
         self.description_input.text = self._phase.description
         self.start_date.text = format_optional_date(self._phase.start_date)
         self.end_date.text = format_optional_date(self._phase.end_date)
+        self.parallel_group.text = self._phase.parallel_group or ""
         self.name_input.focus = True
 
     def _metadata_text(self) -> str:
@@ -163,6 +185,7 @@ class PhaseEditorPopup(Popup):
                 PhaseStatus(self.status.text.lower().replace(" ", "_")),
                 start,
                 end,
+                self.parallel_group.text.strip() or None,
             )
         except ValueError as error:
             self.start_date.hint_text = str(error)

@@ -72,6 +72,13 @@ class SectionClient:
             "POST", f"/projects/{project_id}/sections/{section_id}/move", payload={"offset": offset}
         )
 
+    def move_to(self, project_id: str, section_id: str, target_id: str) -> None:
+        self._transport.request(
+            "POST",
+            f"/projects/{project_id}/sections/{section_id}/move-to",
+            payload={"target_id": target_id},
+        )
+
     def remove(self, section_id: str) -> None:
         self._transport.request("DELETE", f"/sections/{section_id}")
 
@@ -126,6 +133,13 @@ class SectionClient:
     def move_item(self, section_id: str, item_id: str, offset: int) -> None:
         self._transport.request(
             "POST", f"/sections/{section_id}/items/{item_id}/move", payload={"offset": offset}
+        )
+
+    def move_item_to(self, section_id: str, item_id: str, target_id: str) -> None:
+        self._transport.request(
+            "POST",
+            f"/sections/{section_id}/items/{item_id}/move-to",
+            payload={"target_id": target_id},
         )
 
     def remove_item(self, item_id: str) -> None:

@@ -17,6 +17,9 @@ migrations. SQLite remains the zero-configuration default, while `[database] url
 - Revision `0010` adds normalized project categories and a nullable category reference on projects.
 - Revision `0011` repairs the phase-to-project cascade rule in existing SQLite databases so
   deleting a project removes its phases, phase tasks, and phase To-Dos atomically.
+- Revision `0012` adds an optional `parallel_group` label to phases. Equal labels identify a
+  deliberately lightweight concurrent-work lane; no dependencies or resource scheduling are
+  inferred from it.
 - `shared/database/seeds/` contains the idempotent seed contract and runner. Each seed
   has its own class/file and is recorded in `seed_history` only after it succeeds.
 - Prototype 0.1 has no demo-data seed. Opening the application must never add sample projects to a
@@ -37,7 +40,7 @@ The relational metadata schema conforms to third normal form:
 | `sprints` | `id` | project/context, dates, goal and lifecycle state depend only on the sprint |
 | `backlog_items` | `id` | project/context, optional sprint, work fields and order depend only on the item |
 | `section_items` | `id` | free-section work fields and order depend only on the item |
-| `phases` | `id`; `(project_id, position)` | phase metadata and optional section depend on the selected candidate key, with no project facts copied |
+| `phases` | `id`; `(project_id, position)` | phase metadata, optional section, and optional parallel-work label depend on the selected candidate key, with no project facts copied |
 | `waterfall_tasks` | `id` | phase, work fields, dates, status and order depend only on the task |
 | `project_links` | `(source_id, target_id, relation)` | `note` depends on the whole relationship key |
 | `todos` | `id` | title, description, module, optional phase and timestamps depend only on `id`; project/phase data is referenced, not copied |
@@ -58,7 +61,7 @@ only its own To-Dos. Project relationships remain in `project_links`, while web 
 filesystem targets are separate `resource_links`, avoiding overloaded link semantics.
 
 Custom planning uses one `planning_sections` relation with a stable type code. Agile records and
-Waterfall phases optionally reference a section, so mixed models reuse the same normalized tables
+Waterfall phases optionally reference a section and a named parallel-work group, so mixed models reuse the same normalized tables
 instead of creating one table per combination. Free items are separate rows rather than repeating
 columns on a section. Project owner and assignee are intentionally atomic display names in 0.1;
 they have no independent editable attributes yet, so a person directory would add identity and

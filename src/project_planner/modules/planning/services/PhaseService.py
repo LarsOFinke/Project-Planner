@@ -60,6 +60,7 @@ class PhaseService:
         start_date: date | None = None,
         end_date: date | None = None,
         section_id: str | None = None,
+        parallel_group: str | None = None,
     ) -> Phase:
         phases = list(self.list_for_project(project_id))
         phase = Phase(
@@ -71,6 +72,7 @@ class PhaseService:
             start_date=start_date,
             end_date=end_date,
             section_id=section_id,
+            parallel_group=self._normalize_parallel_group(parallel_group),
         )
         phases.append(phase)
         self._phases.save_all(project_id, phases)
@@ -85,6 +87,7 @@ class PhaseService:
         status: PhaseStatus | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
+        parallel_group: str | None = None,
     ) -> Phase:
         phases = list(self.list_for_project(project_id))
         index = self._index_of(phases, phase_id)
@@ -93,6 +96,7 @@ class PhaseService:
             "description": description.strip(),
             "start_date": start_date,
             "end_date": end_date,
+            "parallel_group": self._normalize_parallel_group(parallel_group),
         }
         if status is not None:
             changes["status"] = status
@@ -119,6 +123,20 @@ class PhaseService:
         normalized = self._normalize_positions(phases)
         self._phases.save_all(project_id, normalized)
 
+    def move_to(self, project_id: str, phase_id: str, target_phase_id: str) -> None:
+        """Move a phase immediately before another phase in the same roadmap context."""
+        phases = list(self.list_for_project(project_id))
+        source_index = self._index_of(phases, phase_id)
+        target_index = self._index_of(phases, target_phase_id)
+        if source_index == target_index:
+            return
+        if phases[source_index].section_id != phases[target_index].section_id:
+            raise ValueError("Phases can only be reordered within the same roadmap context")
+        source = phases.pop(source_index)
+        target_index = self._index_of(phases, target_phase_id)
+        phases.insert(target_index, source)
+        self._phases.save_all(project_id, self._normalize_positions(phases))
+
     @staticmethod
     def _normalize_positions(phases: Sequence[Phase]) -> list[Phase]:
         return [
@@ -132,3 +150,8 @@ class PhaseService:
             if phase.id == phase_id:
                 return index
         raise LookupError(f"Phase {phase_id!r} does not exist")
+
+    @staticmethod
+    def _normalize_parallel_group(value: str | None) -> str | None:
+        normalized = (value or "").strip()
+        return normalized or None

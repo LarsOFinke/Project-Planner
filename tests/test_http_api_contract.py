@@ -145,10 +145,15 @@ def test_asgi_project_and_managed_image_round_trip(tmp_path: Path) -> None:
 
             phase = await client.post(
                 f"/api/v1/projects/{project_id}/phases",
-                json={"name": "Delivery", "status": "in_progress"},
+                json={
+                    "name": "Delivery",
+                    "status": "in_progress",
+                    "parallel_group": "Delivery lane",
+                },
             )
             assert phase.status_code == 201
             assert phase.json()["name"] == "Delivery"
+            assert phase.json()["parallel_group"] == "Delivery lane"
 
             uploaded = await client.post(
                 f"/api/v1/projects/{project_id}/images",

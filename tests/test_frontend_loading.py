@@ -4,6 +4,7 @@ from kivy.uix.textinput import TextInput
 from project_planner_frontend.projects.views.ProjectBrowser import ProjectBrowser
 from project_planner_frontend.projects.views.ProjectCategoryRow import ProjectCategoryRow
 from project_planner_frontend.projects.views.ProjectTreeRow import ProjectTreeRow
+from project_planner_frontend.shared.ReorderableRow import ReorderableRow
 from project_planner_frontend.shared.theme import style_input
 from project_planner_frontend.shell.ProjectPlannerRoot import ProjectPlannerRoot
 
@@ -125,6 +126,10 @@ def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
     assert set(project.gear_button.action_buttons) == {"Add child", "Archive"}
     assert project.disclosure_button is not None
     assert project._indent_width > 0
+    project.size = (500, 54)
+    project.do_layout()
+    assert project.button.markup is True
+    assert project.button.text.index("Active") < project.button.text.index("Website")
     assert project.delete_button.__class__.__name__ == "BinButton"
     assert category.add_project_button.width == category.gear_button.width
     assert category.gear_button.width == category.delete_button.width
@@ -212,6 +217,45 @@ def test_project_row_drag_dispatches_drop_instead_of_selection() -> None:
     assert actions == [touch.pos]
     assert drag_events == [touch.pos, None]
     assert project.opacity == 1
+
+
+def test_reorderable_row_dispatches_drop_instead_of_activation() -> None:
+    events: list[object] = []
+    row = ReorderableRow(
+        "phase-1",
+        lambda: events.append("activate"),
+        lambda item_id, position: events.append(("drag", item_id, position)),
+        lambda item_id, position: events.append(("drop", item_id, position)),
+        size_hint_y=None,
+        height=54,
+    )
+    primary = TextInput(text="Phase")
+    row.add_widget(primary)
+    row.set_primary_control(primary)
+    row.size = (500, 54)
+    row.do_layout()
+    touch = SimpleNamespace(
+        pos=primary.center,
+        x=primary.center_x,
+        y=primary.center_y,
+        button="left",
+        grab_current=None,
+    )
+    touch.grab = lambda widget: setattr(touch, "grab_current", widget)
+    touch.ungrab = lambda _widget: setattr(touch, "grab_current", None)
+
+    assert row.on_touch_down(touch)
+    touch.x += 20
+    touch.pos = (touch.x, touch.y)
+    assert row.on_touch_move(touch)
+    assert row.on_touch_up(touch)
+
+    assert events == [
+        ("drag", "phase-1", touch.pos),
+        ("drag", "phase-1", None),
+        ("drop", "phase-1", touch.pos),
+    ]
+    assert row.opacity == 1
 
 
 def test_project_drop_resolves_category_and_parent_targets() -> None:

@@ -21,6 +21,7 @@ from project_planner_frontend.projects.clients.ProjectWorkflowClient import (
     ProjectWorkflowClient,
 )
 from project_planner_frontend.shared.date_parser import format_optional_date
+from project_planner_frontend.shared.ReorderableRow import ReorderableRow
 from project_planner_frontend.shared.theme import (
     NAVY_900,
     caption_label,
@@ -53,11 +54,10 @@ class PhasePlanningPanel(BoxLayout):
         self._todos = todos
         self._project_id: str | None = None
         self._section_id: str | None = None
+        self._drop_target_row: ReorderableRow | None = None
         paint_background(self, NAVY_900)
         self.add_widget(title_label("Waterfall plan"))
-        self.add_widget(
-            caption_label("Shape the delivery flow, then reorder phases as work evolves.")
-        )
+        self.add_widget(caption_label("Drag a phase onto another to change the delivery order."))
         controls = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
         add = style_button(Button(text="+ Add phase"), "primary")
         reset = style_button(Button(text="Reset from template"), "danger")
@@ -68,10 +68,10 @@ class PhasePlanningPanel(BoxLayout):
         self.add_widget(section_label("Ordered delivery phases"))
         self._rows = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
         self._rows.bind(minimum_height=self._rows.setter("height"))
-        scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
-        scroll.add_widget(self._rows)
+        self._scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
+        self._scroll.add_widget(self._rows)
         self.add_widget(controls)
-        self.add_widget(scroll)
+        self.add_widget(self._scroll)
         self.disabled = True
 
     def show_project(self, project_id: str) -> None:
@@ -84,6 +84,7 @@ class PhasePlanningPanel(BoxLayout):
         self.refresh()
 
     def refresh(self) -> None:
+        self._clear_drop_target()
         self._rows.clear_widgets()
         if self._project_id is None:
             return
@@ -94,7 +95,11 @@ class PhasePlanningPanel(BoxLayout):
             )
             return
         for phase in phases:
-            row = BoxLayout(
+            row = ReorderableRow(
+                phase.id,
+                partial(self._edit, phase),
+                self._drag_phase,
+                self._drop_phase,
                 size_hint_y=None,
                 height=dp(78),
                 spacing=dp(6),
@@ -103,6 +108,9 @@ class PhasePlanningPanel(BoxLayout):
             summary = phase.description.strip() or "No description"
             phase_tasks = list(self._tasks.list_for_phase(phase.id))
             task_summary = ", ".join(task.title for task in phase_tasks) or "No tasks"
+            parallel = (
+                f" · Parallel: {phase.parallel_group}" if phase.parallel_group is not None else ""
+            )
             edit = style_button(
                 Button(
                     text=(
@@ -110,7 +118,7 @@ class PhasePlanningPanel(BoxLayout):
                         f"{phase.status.value.replace('_', ' ').title()} · "
                         f"{format_optional_date(phase.start_date) or 'No start'} → "
                         f"{format_optional_date(phase.end_date) or 'No end'} · {summary}\n"
-                        f"Tasks: {task_summary}"
+                        f"Tasks: {task_summary}{parallel}"
                     ),
                     halign="left",
                     valign="middle",
@@ -120,8 +128,6 @@ class PhasePlanningPanel(BoxLayout):
             edit.bind(
                 size=lambda widget, size: setattr(widget, "text_size", (size[0] - dp(18), size[1]))
             )
-            up = style_button(Button(text="Up", size_hint_x=None, width=dp(46)), "secondary")
-            down = style_button(Button(text="Down", size_hint_x=None, width=dp(52)), "secondary")
             remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
             todos = style_button(Button(text="To-Dos", size_hint_x=None, width=dp(82)), "secondary")
             task_count = len(phase_tasks)
@@ -129,18 +135,15 @@ class PhasePlanningPanel(BoxLayout):
                 Button(text=f"Tasks ({task_count})", size_hint_x=None, width=dp(104)),
                 "secondary",
             )
-            edit.bind(on_release=partial(self._edit, phase))
-            up.bind(on_release=partial(self._move, phase.id, -1))
-            down.bind(on_release=partial(self._move, phase.id, 1))
             remove.bind(on_release=partial(self._remove, phase.id))
             todos.bind(on_release=partial(self._open_todos, phase))
             tasks.bind(on_release=partial(self._open_tasks, phase))
             row.add_widget(edit)
             row.add_widget(tasks)
             row.add_widget(todos)
-            row.add_widget(up)
-            row.add_widget(down)
             row.add_widget(remove)
+            row.set_primary_control(edit)
+            row.register_action_controls((tasks, todos, remove))
             self._rows.add_widget(row)
 
     def _add(self, *_: object) -> None:
@@ -155,6 +158,7 @@ class PhasePlanningPanel(BoxLayout):
         status: PhaseStatus,
         start_date: date | None,
         end_date: date | None,
+        parallel_group: str | None,
     ) -> None:
         if self._project_id is not None:
             self._phases.add(
@@ -165,6 +169,7 @@ class PhasePlanningPanel(BoxLayout):
                 start_date,
                 end_date,
                 self._section_id,
+                parallel_group,
             )
             self.refresh()
 
@@ -178,6 +183,7 @@ class PhasePlanningPanel(BoxLayout):
             status: PhaseStatus,
             start_date: date | None,
             end_date: date | None,
+            parallel_group: str | None,
         ) -> None:
             if self._project_id is not None:
                 self._phases.update(
@@ -188,15 +194,49 @@ class PhasePlanningPanel(BoxLayout):
                     status,
                     start_date,
                     end_date,
+                    parallel_group,
                 )
                 self.refresh()
 
         PhaseEditorPopup(phase, submit).open()
 
-    def _move(self, phase_id: str, offset: int, *_: object) -> None:
-        if self._project_id is not None:
-            self._phases.move(self._project_id, phase_id, offset)
+    def _drag_phase(self, phase_id: str, position: tuple[float, float] | None) -> None:
+        target = None if position is None else self._drop_target_at(phase_id, position)
+        if target is self._drop_target_row:
+            return
+        self._clear_drop_target()
+        self._drop_target_row = target
+        if target is not None:
+            target.set_drop_target(True)
+
+    def _drop_phase(self, phase_id: str, position: tuple[float, float]) -> None:
+        target = self._drop_target_at(phase_id, position)
+        self._clear_drop_target()
+        if target is not None and self._project_id is not None:
+            self._phases.move_to(self._project_id, phase_id, target.item_id)
             self.refresh()
+
+    def _drop_target_at(
+        self, phase_id: str, position: tuple[float, float]
+    ) -> ReorderableRow | None:
+        if not self._scroll.collide_point(*position):
+            return None
+        list_position = self._rows.to_widget(*position)
+        return next(
+            (
+                row
+                for row in self._rows.children
+                if isinstance(row, ReorderableRow)
+                and row.item_id != phase_id
+                and row.collide_point(*list_position)
+            ),
+            None,
+        )
+
+    def _clear_drop_target(self) -> None:
+        if self._drop_target_row is not None:
+            self._drop_target_row.set_drop_target(False)
+        self._drop_target_row = None
 
     def _remove(self, phase_id: str, *_: object) -> None:
         if self._project_id is not None:

@@ -14,7 +14,6 @@ from project_planner_frontend.projects.views.GearMenuButton import GearMenuButto
 from project_planner_frontend.shared.theme import (
     BORDER,
     GOLD_LIGHT,
-    RED,
     SLATE_200,
     style_button,
 )
@@ -60,17 +59,28 @@ class ProjectTreeRow(BoxLayout):
             self.add_widget(self.disclosure_button)
         else:
             self.add_widget(Widget(size_hint_x=None, width=dp(34)))
+        status_color = {
+            "idea": "#A8B4C2",
+            "planned": "#E0C17C",
+            "active": "#69A987",
+            "blocked": "#CE6A6A",
+            "completed": "#A8B4C2",
+            "archived": "#52657A",
+        }.get(status, "#A8B4C2")
+        status_label = status.replace("_", " ").title()
         self.button = style_button(
             Button(
-                text=f"{title}\n{status.replace('_', ' ').title()}",
+                text=(
+                    f"[b][color={status_color}]{status_label}[/color][/b] "
+                    f"[color=#52657A]│[/color] {title}"
+                ),
+                markup=True,
                 halign="left",
                 valign="middle",
             ),
             "selected" if selected else "quiet",
         )
-        if status == "blocked" and not selected:
-            self.button.color = RED
-        elif not selected:
+        if not selected:
             self.button.color = SLATE_200
         self.button.bind(
             size=lambda widget, size: setattr(

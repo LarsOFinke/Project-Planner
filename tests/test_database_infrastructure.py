@@ -38,8 +38,9 @@ def test_migrations_create_versioned_normalized_schema(tmp_path: Path) -> None:
         "project_categories",
     } <= set(inspector.get_table_names())
     with database.engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0011"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0012"
     assert "category_id" in {column["name"] for column in inspector.get_columns("projects")}
+    assert "parallel_group" in {column["name"] for column in inspector.get_columns("phases")}
 
     todo_foreign_tables = {
         foreign_key["referred_table"] for foreign_key in inspector.get_foreign_keys("todos")
@@ -102,7 +103,7 @@ def test_migration_repairs_legacy_sprint_status_constraint(tmp_path: Path) -> No
                 "'2026-09-14', '', 'planned', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
             )
         )
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0011"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0012"
         assert connection.scalar(text("SELECT status FROM sprints")) == "planned"
 
 
@@ -198,6 +199,12 @@ def test_phase_todos_survive_reordering_and_follow_phase_deletion(tmp_path: Path
     planner.phases.move(project.id, delivery.id, -1)
     assert planner.todos.require(todo.id).phase_id == discovery.id
 
+    planner.phases.move_to(project.id, discovery.id, delivery.id)
+    assert [phase.id for phase in planner.phases.list_for_project(project.id)] == [
+        discovery.id,
+        delivery.id,
+    ]
+
     planner.phases.remove(project.id, discovery.id)
     assert planner.todos.list_for_context(project.id, TodoModule.PHASES, discovery.id) == []
 
@@ -208,7 +215,7 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     category = source.project_categories.create("Products")
     parent = source.projects.create("Platform", category_id=category.id)
     project = source.projects.create("Desktop", parent_id=parent.id, category_id=category.id)
-    source.phases.add(project.id, "Discovery")
+    source.phases.add(project.id, "Discovery", parallel_group="Discovery lane")
     source.todos.add(project.id, "Confirm scope", module=TodoModule.OVERVIEW)
     source.links.add(parent.id, project.id, "contains")
     source.artifacts.get_or_create(project.id, ArtifactKind.DIAGRAM)
@@ -225,7 +232,7 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     DatabaseTransferGateway(Database(source_path)).export_to(export_path)
     document = json.loads(export_path.read_text(encoding="utf-8"))
     assert document["format"] == "project-planner-database-export"
-    assert document["version"] == 5
+    assert document["version"] == 6
 
     target_path = tmp_path / "target.sqlite3"
     target_database = Database(target_path)
@@ -250,6 +257,7 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     restored_section = restored.sections.list_for_project(project.id)[0]
     assert restored_section.name == "Launch prep"
     assert restored.sections.list_items(restored_section.id)[0].assignee == "Ada"
+    assert restored.phases.list_for_project(project.id)[0].parallel_group == "Discovery lane"
 
 
 def test_import_rejects_unknown_export_version_without_changes(tmp_path: Path) -> None:
