@@ -31,7 +31,7 @@ from project_planner.shared.database.models.WaterfallTaskModel import (
 )
 
 _FORMAT = "project-planner-database-export"
-_VERSION = 6
+_VERSION = 7
 _TABLES = (
     "project_categories",
     "projects",
@@ -143,7 +143,7 @@ class DatabaseTransferGateway:
         if not isinstance(payload, dict):
             raise ValueError("Import document must be a JSON object")
         version = payload.get("version")
-        if payload.get("format") != _FORMAT or version not in {1, 2, 3, 4, 5, _VERSION}:
+        if payload.get("format") != _FORMAT or version not in {1, 2, 3, 4, 5, 6, _VERSION}:
             raise ValueError("Unsupported database export format or version")
         raw_tables = payload.get("tables")
         if not isinstance(raw_tables, dict):

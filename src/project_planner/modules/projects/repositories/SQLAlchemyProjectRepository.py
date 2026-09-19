@@ -28,7 +28,9 @@ class SQLAlchemyProjectRepository:
 
     def list_all(self) -> Sequence[Project]:
         statement = select(ProjectModel).order_by(
-            func.lower(ProjectModel.title), ProjectModel.created_at
+            ProjectModel.position,
+            func.lower(ProjectModel.title),
+            ProjectModel.created_at,
         )
         with self._database.session() as session:
             return [ProjectMapper.to_entity(model) for model in session.scalars(statement)]

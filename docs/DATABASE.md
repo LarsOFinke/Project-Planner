@@ -20,6 +20,8 @@ migrations. SQLite remains the zero-configuration default, while `[database] url
 - Revision `0012` adds an optional `parallel_group` label to phases. Equal labels identify a
   deliberately lightweight concurrent-work lane; no dependencies or resource scheduling are
   inferred from it.
+- Revision `0013` adds a sibling `position` to projects so directory ordering is persistent and
+  independent of project titles.
 - `shared/database/seeds/` contains the idempotent seed contract and runner. Each seed
   has its own class/file and is recorded in `seed_history` only after it succeeds.
 - Prototype 0.1 has no demo-data seed. Opening the application must never add sample projects to a
@@ -35,7 +37,7 @@ The relational metadata schema conforms to third normal form:
 | Relation | Candidate key | Non-key dependencies |
 | --- | --- | --- |
 | `project_categories` | `id`; `name` | display order and timestamps depend only on the category |
-| `projects` | `id` | setup, ownership text, notes, status, method, category, parent and timestamps depend only on `id` |
+| `projects` | `id` | setup, ownership text, notes, status, method, category, parent, sibling position and timestamps depend only on `id` |
 | `planning_sections` | `id` | project, model, order, optional dates and status depend only on the section |
 | `sprints` | `id` | project/context, dates, goal and lifecycle state depend only on the sprint |
 | `backlog_items` | `id` | project/context, optional sprint, work fields and order depend only on the item |

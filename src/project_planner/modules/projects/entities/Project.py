@@ -17,6 +17,7 @@ class Project:
     planning_method: PlanningMethod = PlanningMethod.CUSTOM
     parent_id: str | None = None
     category_id: str | None = None
+    position: int = 0
     start_date: date | None = None
     target_date: date | None = None
     owner: str = ""
@@ -31,6 +32,8 @@ class Project:
             raise ValueError("Project title must not be empty")
         if self.parent_id == self.id:
             raise ValueError("A project cannot be its own parent")
+        if self.position < 0:
+            raise ValueError("Project position must not be negative")
         if self.start_date and self.target_date and self.target_date < self.start_date:
             raise ValueError("Target date must not be before start date")
 

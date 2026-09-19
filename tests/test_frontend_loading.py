@@ -260,6 +260,7 @@ def test_reorderable_row_dispatches_drop_instead_of_activation() -> None:
 
 def test_project_drop_resolves_category_and_parent_targets() -> None:
     moves: list[tuple[str, str | None, str | None]] = []
+    reorders: list[tuple[str, str, bool]] = []
     category = ProjectCategoryRow(
         "category-1",
         "Client work",
@@ -314,6 +315,9 @@ def test_project_drop_resolves_category_and_parent_targets() -> None:
         _move_project=lambda project_id, parent_id, category_id: moves.append(
             (project_id, parent_id, category_id)
         ),
+        _reorder_project=lambda project_id, target_id, after: reorders.append(
+            (project_id, target_id, after)
+        ),
     )
     browser._drop_target_at = MethodType(ProjectBrowser._drop_target_at, browser)
     browser._drag_project = MethodType(ProjectBrowser._drag_project, browser)
@@ -337,6 +341,12 @@ def test_project_drop_resolves_category_and_parent_targets() -> None:
     assert moves == [
         ("source-project", None, "category-1"),
         ("source-project", "target-project", "category-1"),
+    ]
+    ProjectBrowser._drop_project(browser, "source-project", (target.center_x, target.top - 1))
+    ProjectBrowser._drop_project(browser, "source-project", (target.center_x, target.y + 1))
+    assert reorders == [
+        ("source-project", "target-project", False),
+        ("source-project", "target-project", True),
     ]
 
 

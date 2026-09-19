@@ -97,13 +97,15 @@ Last refreshed: 2026-09-19
 - Workspace JSON version: `5`.
 - Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation;
   managed images use portable `managed://images/<filename>` references.
-- Migration head: `0012`; database export format: `6`.
+- Migration head: `0013`; database export format: `7`.
 - Phase rows persist dates, description, normalized lifecycle status, optional Custom section,
   optional named parallel-work group, created timestamp, and updated timestamp; older phase rows
   are preserved and mapped forward.
 - Roadmap phases, Custom sections, and Free-section items use one shared drag-and-drop row; a
   drop inserts the source immediately before its target. The existing offset endpoints remain for
   API compatibility.
+- Projects persist a sibling position. In the directory, a project dropped on the middle of a row
+  becomes its child; dropping on the upper/lower edge moves it before/after that row instead.
 - Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
 - Deleting an image object does not delete its managed source file.
 - Image location: `<data_directory>/projects/<project-id>/images/<uuid>.<ext>`.

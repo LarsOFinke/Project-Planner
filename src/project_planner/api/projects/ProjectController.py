@@ -75,6 +75,12 @@ class ProjectController:
             response_model=Project,
         )
         routes.add_api_route(
+            "/projects/{project_id}/move-to",
+            self.move_project_to,
+            methods=["PUT"],
+            response_model=Project,
+        )
+        routes.add_api_route(
             "/projects/{project_id}/phase-plan/reset",
             self.reset_phase_plan,
             methods=["POST"],
@@ -159,6 +165,14 @@ class ProjectController:
             parent_id=parent_id,
             category_id=category_id,
         )
+
+    def move_project_to(
+        self,
+        project_id: str,
+        target_id: Annotated[str, Body()],
+        after: Annotated[bool, Body()] = False,
+    ):
+        return self._projects.move_to(project_id, target_id, after=after)
 
     def create_project(
         self,

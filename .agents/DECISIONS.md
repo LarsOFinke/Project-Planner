@@ -226,3 +226,10 @@ are presented as a concurrent lane in the timeline, while blank phases retain th
 flow. This intentionally does not model dependencies, capacity, or automatic scheduling yet;
 the label is a reversible prototype that can inform a later planning model without making the
 current workflow misleadingly complex.
+
+## AD-035 — Project hierarchy has explicit sibling ordering
+
+Projects retain a numeric position among their siblings instead of deriving directory order from
+titles. A directory-row middle drop retains the existing “make child” behavior, while an upper or
+lower edge drop places the project before or after that sibling. This makes hierarchy structure and
+ordering available in one interaction without adding separate move controls.

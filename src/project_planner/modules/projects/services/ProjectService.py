@@ -37,6 +37,7 @@ class ProjectService:
         if parent_id is not None:
             category_id = self.require(parent_id).category_id
         self._validate_category(category_id)
+        projects = tuple(self._projects.list_all())
         project = Project(
             title=title.strip(),
             description=description.strip(),
@@ -44,6 +45,7 @@ class ProjectService:
             planning_method=planning_method,
             parent_id=parent_id,
             category_id=category_id,
+            position=len(self._siblings(projects, parent_id, category_id)),
             start_date=start_date,
             target_date=target_date,
             owner=owner.strip(),
@@ -73,6 +75,10 @@ class ProjectService:
         category_id = current.category_id
         if parent_id is not None:
             category_id = self.require(parent_id).category_id
+        projects = tuple(self._projects.list_all())
+        position = current.position
+        if (parent_id, category_id) != (current.parent_id, current.category_id):
+            position = len(self._siblings(projects, parent_id, category_id))
         updated = current.revise(
             title=title.strip(),
             description=description.strip(),
@@ -80,17 +86,17 @@ class ProjectService:
             planning_method=planning_method,
             parent_id=parent_id,
             category_id=category_id,
+            position=position,
             start_date=start_date,
             target_date=target_date,
             owner=owner.strip(),
             assignee=assignee.strip(),
             notes=notes.strip(),
         )
-        if category_id == current.category_id:
+        if category_id == current.category_id and parent_id == current.parent_id:
             self._projects.save(updated)
         else:
-            projects = tuple(self._projects.list_all())
-            self._projects.save_all(self._subtree_updates(updated, projects))
+            self._projects.save_all(self._relocate(updated, current, projects))
         return updated
 
     def require(self, project_id: str) -> Project:
@@ -125,24 +131,77 @@ class ProjectService:
             category_id = self.require(parent_id).category_id
         self._validate_category(category_id)
         projects = tuple(self._projects.list_all())
-        moved = current.revise(parent_id=parent_id, category_id=category_id)
-        self._projects.save_all(self._subtree_updates(moved, projects))
+        position = current.position
+        if (parent_id, category_id) != (current.parent_id, current.category_id):
+            position = len(self._siblings(projects, parent_id, category_id))
+        moved = current.revise(parent_id=parent_id, category_id=category_id, position=position)
+        self._projects.save_all(self._relocate(moved, current, projects))
+        return moved
+
+    def move_to(self, project_id: str, target_id: str, *, after: bool = False) -> Project:
+        """Move a project beside a sibling, preserving its descendants as one subtree."""
+        current = self.require(project_id)
+        target = self.require(target_id)
+        self._validate_parent(project_id, target.parent_id)
+        projects = tuple(self._projects.list_all())
+        moved = current.revise(parent_id=target.parent_id, category_id=target.category_id)
+        self._projects.save_all(
+            self._relocate(moved, current, projects, target_id=target.id, after=after)
+        )
         return moved
 
     @classmethod
-    def _subtree_updates(
+    def _relocate(
         cls,
         root: Project,
+        previous: Project,
         projects: Sequence[Project],
+        *,
+        target_id: str | None = None,
+        after: bool = False,
     ) -> list[Project]:
         descendant_ids = cls._descendant_ids(root.id, projects)
-        updates = [root]
-        updates.extend(
-            project.revise(category_id=root.category_id)
-            for project in projects
-            if project.id in descendant_ids and project.category_id != root.category_id
+        updated_by_id = {root.id: root}
+        updated_by_id.update(
+            {
+                project.id: project.revise(category_id=root.category_id)
+                for project in projects
+                if project.id in descendant_ids and project.category_id != root.category_id
+            }
         )
-        return updates
+        changed_contexts = {
+            (previous.parent_id, previous.category_id),
+            (root.parent_id, root.category_id),
+        }
+        final_projects = [updated_by_id.get(project.id, project) for project in projects]
+        for parent_id, category_id in changed_contexts:
+            siblings = cls._siblings(final_projects, parent_id, category_id)
+            if target_id is not None and (parent_id, category_id) == (
+                root.parent_id,
+                root.category_id,
+            ):
+                siblings = [project for project in siblings if project.id != root.id]
+                target_index = next(
+                    index for index, project in enumerate(siblings) if project.id == target_id
+                )
+                siblings.insert(target_index + int(after), root)
+            for position, sibling in enumerate(siblings):
+                if sibling.position != position:
+                    updated_by_id[sibling.id] = sibling.revise(position=position)
+        return list(updated_by_id.values())
+
+    @staticmethod
+    def _siblings(
+        projects: Sequence[Project], parent_id: str | None, category_id: str | None
+    ) -> list[Project]:
+        return sorted(
+            (
+                project
+                for project in projects
+                if project.parent_id == parent_id and project.category_id == category_id
+            ),
+            key=lambda project: (project.position, project.title.casefold(), project.id),
+        )
 
     def _validate_category(self, category_id: str | None) -> None:
         if category_id is not None and self._categories.get(category_id) is None:

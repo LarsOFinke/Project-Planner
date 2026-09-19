@@ -33,3 +33,11 @@ class ProjectServiceClient:
             f"/projects/{project_id}/move",
             payload={"parent_id": parent_id, "category_id": category_id},
         )
+
+    def move_to(self, project_id: str, target_id: str, *, after: bool) -> Project:
+        return self._transport.model(
+            Project,
+            "PUT",
+            f"/projects/{project_id}/move-to",
+            payload={"target_id": target_id, "after": after},
+        )

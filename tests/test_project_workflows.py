@@ -130,6 +130,34 @@ def test_moving_project_preserves_its_subtree_and_rejects_cycles(
         planner.projects.move(target.id, parent_id=grandchild.id, category_id=target_category.id)
 
 
+def test_projects_can_be_reordered_within_the_same_hierarchy(
+    planner: SimpleNamespace,
+) -> None:
+    parent = planner.projects.create("Parent")
+    first = planner.projects.create("First", parent_id=parent.id)
+    second = planner.projects.create("Second", parent_id=parent.id)
+    third = planner.projects.create("Third", parent_id=parent.id)
+
+    moved = planner.projects.move_to(third.id, first.id)
+
+    directory = planner.project_queries.list_directory()
+    assert moved.parent_id == parent.id
+    assert [item.project.id for item in directory[-1].projects] == [
+        parent.id,
+        third.id,
+        first.id,
+        second.id,
+    ]
+    ordered_sibling_ids = (third.id, first.id, second.id)
+    assert [
+        planner.projects.require(project_id).position for project_id in ordered_sibling_ids
+    ] == [
+        0,
+        1,
+        2,
+    ]
+
+
 def test_renames_category_without_changing_its_identity(planner: SimpleNamespace) -> None:
     category = planner.project_categories.create("Client work")
 

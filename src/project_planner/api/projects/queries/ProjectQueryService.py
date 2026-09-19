@@ -66,7 +66,7 @@ class ProjectQueryService:
             parent_id = project.parent_id if project.parent_id in project_ids else None
             by_parent.setdefault(parent_id, []).append(project)
         for children in by_parent.values():
-            children.sort(key=lambda item: (item.title.casefold(), item.id))
+            children.sort(key=lambda item: (item.position, item.title.casefold(), item.id))
 
         items: list[ProjectTreeItem] = []
         visited: set[str] = set()
@@ -80,7 +80,10 @@ class ProjectQueryService:
                 append_children(project.id, depth + 1)
 
         append_children(None, 0)
-        for project in sorted(projects, key=lambda item: (item.title.casefold(), item.id)):
+        for project in sorted(
+            projects,
+            key=lambda item: (item.position, item.title.casefold(), item.id),
+        ):
             if project.id not in visited:
                 visited.add(project.id)
                 items.append(ProjectTreeItem(project, 0))

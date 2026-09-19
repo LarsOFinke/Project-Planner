@@ -38,8 +38,9 @@ def test_migrations_create_versioned_normalized_schema(tmp_path: Path) -> None:
         "project_categories",
     } <= set(inspector.get_table_names())
     with database.engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0012"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0013"
     assert "category_id" in {column["name"] for column in inspector.get_columns("projects")}
+    assert "position" in {column["name"] for column in inspector.get_columns("projects")}
     assert "parallel_group" in {column["name"] for column in inspector.get_columns("phases")}
 
     todo_foreign_tables = {
@@ -103,7 +104,7 @@ def test_migration_repairs_legacy_sprint_status_constraint(tmp_path: Path) -> No
                 "'2026-09-14', '', 'planned', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
             )
         )
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0012"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0013"
         assert connection.scalar(text("SELECT status FROM sprints")) == "planned"
 
 
@@ -232,7 +233,7 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     DatabaseTransferGateway(Database(source_path)).export_to(export_path)
     document = json.loads(export_path.read_text(encoding="utf-8"))
     assert document["format"] == "project-planner-database-export"
-    assert document["version"] == 6
+    assert document["version"] == 7
 
     target_path = tmp_path / "target.sqlite3"
     target_database = Database(target_path)
