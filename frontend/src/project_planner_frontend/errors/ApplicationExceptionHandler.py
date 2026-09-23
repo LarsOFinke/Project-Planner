@@ -2,6 +2,7 @@ from kivy.base import ExceptionHandler, ExceptionManager
 from kivy.clock import Clock
 from kivy.logger import Logger
 
+from project_planner_frontend.api.ApiError import ApiError
 from project_planner_frontend.shared.dialogs import show_error
 from project_planner_frontend.system.clients.IssueClient import IssueClient
 
@@ -14,6 +15,9 @@ class ApplicationExceptionHandler(ExceptionHandler):
     def handle_exception(self, error: BaseException) -> int:
         if not isinstance(error, Exception) or isinstance(error, MemoryError):
             return ExceptionManager.RAISE
+        if isinstance(error, ApiError) and error.status_code == 408:
+            Clock.schedule_once(lambda _elapsed: show_error(str(error)), 0)
+            return ExceptionManager.PASS
         Logger.error(
             "ProjectPlanner: Recovered from %s: %s",
             type(error).__name__,

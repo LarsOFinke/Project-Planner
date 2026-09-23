@@ -55,6 +55,16 @@ class ResourceLinksPanel(BoxLayout):
         )
         self.disabled = False
 
+    def show_project_async(self, project_id: str) -> None:
+        self.web_panel.show_project_async(project_id)
+        self.file_panel.show_project_async(project_id)
+        self.todo_panel.show_context_async(
+            project_id,
+            TodoModule.LINKS,
+            title="Resource To-Dos",
+        )
+        self.disabled = False
+
     def refresh(self) -> None:
         self.web_panel.refresh()
         self.file_panel.refresh()

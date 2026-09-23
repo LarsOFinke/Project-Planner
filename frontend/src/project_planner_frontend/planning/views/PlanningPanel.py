@@ -13,6 +13,7 @@ from project_planner_frontend.planning.views.waterfall.WaterfallPlanningPanel im
 )
 from project_planner_frontend.projects.clients.ProjectServiceClient import ProjectServiceClient
 from project_planner_frontend.projects.clients.ProjectWorkflowClient import ProjectWorkflowClient
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.theme import NAVY_900, empty_state_label, paint_background
 
 
@@ -37,6 +38,7 @@ class PlanningPanel(BoxLayout):
         self._tasks = tasks
         self._todos = todos
         self._project_id: str | None = None
+        self._load_generation = 0
         paint_background(self, NAVY_900)
         self._show_empty("Select a project to open its roadmap.")
 
@@ -62,11 +64,44 @@ class PlanningPanel(BoxLayout):
             panel.show_project(project_id)
         self.add_widget(panel)
 
+    def show_project_async(self, project_id: str) -> None:
+        self._project_id = project_id
+        self._load_generation += 1
+        generation = self._load_generation
+        self._show_empty("Loading roadmap...")
+
+        def display(project: object) -> None:
+            if generation != self._load_generation:
+                return
+            self.clear_widgets()
+            if project.planning_method is PlanningMethod.AGILE:
+                panel = AgilePlanningPanel(self._agile)
+                panel.show_context_async(project_id)
+            elif project.planning_method is PlanningMethod.WATERFALL:
+                panel = WaterfallPlanningPanel(
+                    self._phases, self._workflows, self._tasks, self._todos
+                )
+                panel.show_context_async(project_id)
+            else:
+                panel = CustomPlanningPanel(
+                    self._sections,
+                    self._agile,
+                    self._phases,
+                    self._workflows,
+                    self._tasks,
+                    self._todos,
+                )
+                panel.show_project_async(project_id)
+            self.add_widget(panel)
+
+        run_background(lambda: self._projects.require(project_id), display)
+
     def refresh(self) -> None:
         if self._project_id:
             self.show_project(self._project_id)
 
     def clear_project(self) -> None:
+        self._load_generation += 1
         self._project_id = None
         self._show_empty("Select a project to open its roadmap.")
 

@@ -19,6 +19,8 @@ from project_planner_frontend.planning.views.agile.BacklogItemEditorPopup import
 )
 from project_planner_frontend.planning.views.agile.SprintDetailsPopup import SprintDetailsPopup
 from project_planner_frontend.planning.views.agile.SprintEditorPopup import SprintEditorPopup
+from project_planner_frontend.planning.views.planning_summary import planning_summary
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.SimpleTabbedPanel import SimpleTabbedPanel
 from project_planner_frontend.shared.theme import (
     NAVY_900,
@@ -37,6 +39,7 @@ class AgilePlanningPanel(BoxLayout):
         self._agile = agile
         self._project_id: str | None = None
         self._section_id: str | None = None
+        self._load_generation = 0
         paint_background(self, NAVY_900)
         self.add_widget(title_label("Agile roadmap"))
         self.add_widget(
@@ -59,6 +62,7 @@ class AgilePlanningPanel(BoxLayout):
         self.refresh()
 
     def refresh(self) -> None:
+        self._load_generation += 1
         for _container, rows in (self._backlog, self._sprints):
             rows.clear_widgets()
         if self._project_id is None:
@@ -66,6 +70,28 @@ class AgilePlanningPanel(BoxLayout):
         items = list(self._agile.list_items(self._project_id, self._section_id))
         self._render_backlog(items)
         self._render_sprints()
+
+    def show_context_async(self, project_id: str, section_id: str | None = None) -> None:
+        self._project_id = project_id
+        self._section_id = section_id
+        self._load_generation += 1
+        generation = self._load_generation
+
+        def fetch():
+            return (
+                list(self._agile.list_items(project_id, section_id)),
+                list(self._agile.list_sprints(project_id, section_id)),
+            )
+
+        def display(result: tuple[list[BacklogItem], list[Sprint]]) -> None:
+            if generation != self._load_generation:
+                return
+            for _container, rows in (self._backlog, self._sprints):
+                rows.clear_widgets()
+            self._render_backlog(result[0])
+            self._render_sprints(result[1])
+
+        run_background(fetch, display)
 
     def _render_backlog(self, items: list[BacklogItem]) -> None:
         rows = self._backlog[1]
@@ -82,14 +108,15 @@ class AgilePlanningPanel(BoxLayout):
         for item in backlog:
             rows.add_widget(self._item_row(item, reorder=True))
 
-    def _render_sprints(self) -> None:
+    def _render_sprints(self, sprints: list[Sprint] | None = None) -> None:
         rows = self._sprints[1]
         if self._project_id is None:
             return
         add = style_button(Button(text="+ Add sprint"), "primary")
         add.bind(on_release=self._add_sprint)
         rows.add_widget(self._action_row(add))
-        sprints = list(self._agile.list_sprints(self._project_id, self._section_id))
+        if sprints is None:
+            sprints = list(self._agile.list_sprints(self._project_id, self._section_id))
         if not sprints:
             self._empty(rows, "No sprints in the roadmap yet.")
             return
@@ -110,22 +137,20 @@ class AgilePlanningPanel(BoxLayout):
     def _sprint_row(self, sprint: Sprint, *, allow_completion: bool) -> BoxLayout:
         row = BoxLayout(
             size_hint_y=None,
-            height=dp(72),
+            height=dp(84),
             spacing=dp(6),
             padding=[dp(18), 0, 0, 0],
         )
-        open_sprint = style_button(
-            Button(
-                text=(
-                    f"{sprint.name}  ·  {sprint.start_date} → {sprint.end_date}\n"
-                    f"{sprint.status.value.title()} · Goal: {sprint.goal or 'No goal'}"
-                ),
-                halign="left",
+        summary, open_sprint = planning_summary(
+            sprint.name,
+            (
+                ("Status", sprint.status.value.title(), 0.25),
+                ("Dates", f"{sprint.start_date} → {sprint.end_date}", 0.45),
+                ("Goal", sprint.goal or "No goal", 0.3),
             ),
-            "quiet",
         )
         open_sprint.bind(on_release=partial(self._open_sprint, sprint))
-        row.add_widget(open_sprint)
+        row.add_widget(summary)
         if allow_completion:
             finish = style_button(
                 Button(text="Complete", size_hint_x=None, width=dp(110)),
@@ -139,27 +164,26 @@ class AgilePlanningPanel(BoxLayout):
         SprintDetailsPopup(sprint, self._agile, self.refresh).open()
 
     def _item_row(self, item: BacklogItem, reorder: bool = False) -> BoxLayout:
-        row = BoxLayout(size_hint_y=None, height=dp(62), spacing=dp(5))
-        edit = style_button(
-            Button(
-                text=(
-                    f"{item.title}\n{item.priority.value.title()} · "
-                    f"{item.status.value.replace('_', ' ').title()} · "
-                    f"{item.assignee or 'Unassigned'}"
-                ),
-                halign="left",
+        row = BoxLayout(size_hint_y=None, height=dp(84), spacing=dp(5))
+        summary, edit = planning_summary(
+            item.title,
+            (
+                ("Priority", item.priority.value.title(), 0.25),
+                ("Status", item.status.value.replace("_", " ").title(), 0.35),
+                ("Assignee", item.assignee or "Unassigned", 0.4),
             ),
-            "quiet",
         )
         edit.bind(on_release=partial(self._edit_item, item))
-        row.add_widget(edit)
+        row.add_widget(summary)
         if reorder:
+            movement = BoxLayout(
+                orientation="vertical", size_hint_x=None, width=dp(58), spacing=dp(5)
+            )
             for label, offset in (("Up", -1), ("Down", 1)):
-                button = style_button(
-                    Button(text=label, size_hint_x=None, width=dp(60)), "secondary"
-                )
+                button = style_button(Button(text=label), "secondary")
                 button.bind(on_release=partial(self._move_item, item.id, offset))
-                row.add_widget(button)
+                movement.add_widget(button)
+            row.add_widget(movement)
         remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
         remove.bind(on_release=partial(self._remove_item, item.id))
         row.add_widget(remove)

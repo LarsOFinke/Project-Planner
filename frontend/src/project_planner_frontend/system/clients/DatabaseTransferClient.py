@@ -12,6 +12,23 @@ class DatabaseTransferClient:
         self._transport = transport
 
     def export_to(self, destination: str | Path) -> Path:
+        path = Path(destination).expanduser().resolve()
+        if not str(path).lower().endswith(".tar.gz"):
+            path = Path(f"{path}.tar.gz")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        handle, temporary_name = tempfile.mkstemp(
+            prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+        )
+        os.close(handle)
+        try:
+            self._transport.download("/backup/export", Path(temporary_name))
+            os.replace(temporary_name, path)
+        except Exception:
+            Path(temporary_name).unlink(missing_ok=True)
+            raise
+        return path
+
+    def export_json_to(self, destination: str | Path) -> Path:
         payload = self._transport.request("GET", "/database/export")
         if not isinstance(payload, dict):
             raise ValueError("Database export response must be a JSON object")
@@ -33,6 +50,14 @@ class DatabaseTransferClient:
         return path
 
     def import_from(self, source: str | Path) -> ImportReport:
+        return self._transport.upload("/backup/import", Path(source).expanduser(), ImportReport)
+
+    def dry_run_import(self, source: str | Path) -> ImportReport:
+        return self._transport.upload(
+            "/backup/import/dry-run", Path(source).expanduser(), ImportReport
+        )
+
+    def import_json_from(self, source: str | Path) -> ImportReport:
         return self._transport.model(
             ImportReport,
             "POST",
@@ -40,7 +65,7 @@ class DatabaseTransferClient:
             payload=self._read_document(source),
         )
 
-    def dry_run_import(self, source: str | Path) -> ImportReport:
+    def dry_run_json_import(self, source: str | Path) -> ImportReport:
         return self._transport.model(
             ImportReport,
             "POST",

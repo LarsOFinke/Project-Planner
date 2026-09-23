@@ -1,6 +1,6 @@
 # Project cache
 
-Last refreshed: 2026-09-19
+Last refreshed: 2026-09-23
 
 ## Hot context
 
@@ -8,7 +8,7 @@ Last refreshed: 2026-09-19
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 89 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
+- Current suite: 94 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -33,8 +33,12 @@ Last refreshed: 2026-09-19
   business modules contain no transport DTO directories.
 - Visual system: shared low-glare palette, rounded controls, bordered surfaces, section hierarchy,
   and a collapsible project directory with compact scale-aware icon controls and branch guides.
+- Custom and Agile planning rows use left-aligned titles above labeled, fixed-position metadata
+  columns, so text remains scannable across different title lengths.
 - Project switching reuses the loaded directory projection and loads only the visible feature tab;
   each tab is fetched once per selected project until its data is invalidated.
+- Initial project-directory and feature-tab fetches, Admin refresh, and backup transfers run in
+  background workers; results are applied on Kivy's event loop. HTTP timeouts show a retry message.
 
 ## Implemented workflows
 
@@ -79,8 +83,10 @@ Last refreshed: 2026-09-19
 - Links separates Web URLs, Local Files, and contextual To-Dos into dedicated nested tabs while
   retaining one normalized resource-link persistence model;
 - save confirmations and direct navigation from real project links;
-- top-right Admin database tools for atomic JSON export, explicit rollback-backed dry runs, and
-  confirmed direct imports with automatic UI refresh after a successful merge.
+- top-right Admin tarball backup tools include the versioned database snapshot and managed project
+  images; rollback-backed dry runs and confirmed imports preserve unrelated local records/files.
+  Reports distinguish created, changed, and identical database records plus restored/already-present
+  managed files; identical records are not rewritten.
 
 ## Persistence facts
 
@@ -109,6 +115,8 @@ Last refreshed: 2026-09-19
 - Artifact codecs reject unknown future versions and migrate supported older payloads when saved.
 - Deleting an image object does not delete its managed source file.
 - Image location: `<data_directory>/projects/<project-id>/images/<uuid>.<ext>`.
+- Backup archive: `.tar.gz` with `database.json` and `data/projects/<project-id>/images/*`;
+  legacy JSON-only database endpoints remain for compatibility. External linked files are not copied.
 - Remote clients materialize managed images below `~/.cache/project_planner/images/<project-id>/`.
 - Image uploads default to a 20 MiB limit and validate supported file signatures.
 

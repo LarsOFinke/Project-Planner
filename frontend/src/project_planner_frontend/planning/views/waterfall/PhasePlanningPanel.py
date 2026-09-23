@@ -8,6 +8,7 @@ from kivy.uix.scrollview import ScrollView
 
 from project_planner.modules.planning.entities.Phase import Phase
 from project_planner.modules.planning.entities.PhaseStatus import PhaseStatus
+from project_planner.modules.planning.entities.WaterfallTask import WaterfallTask
 from project_planner.modules.todos.entities.TodoModule import TodoModule
 from project_planner_frontend.collaboration.clients.TodoClient import TodoClient
 from project_planner_frontend.collaboration.views.todos.TodoManagerPopup import TodoManagerPopup
@@ -89,6 +90,27 @@ class PhasePlanningPanel(BoxLayout):
         if self._project_id is None:
             return
         phases = self._phases.list_for_context(self._project_id, self._section_id)
+        self._render_phases(phases)
+
+    def show_fetched(
+        self,
+        project_id: str,
+        section_id: str | None,
+        phases: list[Phase],
+        tasks_by_phase: dict[str, list[WaterfallTask]],
+    ) -> None:
+        self._project_id = project_id
+        self._section_id = section_id
+        self.disabled = False
+        self._clear_drop_target()
+        self._rows.clear_widgets()
+        self._render_phases(phases, tasks_by_phase)
+
+    def _render_phases(
+        self,
+        phases: list[Phase],
+        tasks_by_phase: dict[str, list[WaterfallTask]] | None = None,
+    ) -> None:
         if not phases:
             self._rows.add_widget(
                 empty_state_label("No phases yet. Add one or load the selected planning template.")
@@ -106,7 +128,11 @@ class PhasePlanningPanel(BoxLayout):
                 padding=[dp(14), 0, 0, 0],
             )
             summary = phase.description.strip() or "No description"
-            phase_tasks = list(self._tasks.list_for_phase(phase.id))
+            phase_tasks = (
+                tasks_by_phase[phase.id]
+                if tasks_by_phase is not None
+                else list(self._tasks.list_for_phase(phase.id))
+            )
             task_summary = ", ".join(task.title for task in phase_tasks) or "No tasks"
             parallel = (
                 f" · Parallel: {phase.parallel_group}" if phase.parallel_group is not None else ""

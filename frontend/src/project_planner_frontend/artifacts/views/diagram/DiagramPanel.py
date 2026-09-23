@@ -13,6 +13,7 @@ from project_planner_frontend.artifacts.views.diagram.DiagramCanvas import Diagr
 from project_planner_frontend.artifacts.views.diagram.DiagramToolbox import DiagramToolbox
 from project_planner_frontend.collaboration.clients.TodoClient import TodoClient
 from project_planner_frontend.collaboration.views.todos.TodoPanel import TodoPanel
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.dialogs import (
     open_text_dialog,
     show_confirmation,
@@ -46,6 +47,7 @@ class DiagramPanel(BoxLayout):
         self._todos = todos
         self._artifact: Artifact | None = None
         self._dirty = False
+        self._load_generation = 0
         paint_background(self, NAVY_900)
         self.add_widget(title_label("Diagram"))
         self.add_widget(
@@ -83,7 +85,32 @@ class DiagramPanel(BoxLayout):
         )
         self.disabled = False
 
+    def show_project_async(self, project_id: str) -> None:
+        self._save()
+        self._load_generation += 1
+        generation = self._load_generation
+        self.disabled = True
+
+        def fetch():
+            artifact = self._artifacts.get_or_create(project_id, ArtifactKind.DIAGRAM)
+            document = self._documents.decode(self._artifacts.read_json(artifact))
+            return artifact, document
+
+        def display(result: tuple[object, object]) -> None:
+            if generation != self._load_generation:
+                return
+            self._artifact, document = result
+            self.canvas_editor.load_document(document)
+            self._dirty = False
+            self.todo_panel.show_context_async(
+                project_id, TodoModule.DIAGRAM, title="Diagram To-Dos"
+            )
+            self.disabled = False
+
+        run_background(fetch, display)
+
     def clear_project(self) -> None:
+        self._load_generation += 1
         self._artifact = None
         self._dirty = False
         self.canvas_editor.clear_diagram(notify=False)

@@ -18,7 +18,7 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 - Custom planning with ordered Free, Agile, and Waterfall sections that can be mixed freely
 - shared calendar date picker backed by framework-independent calendar-module logic
 - SQLAlchemy persistence with SQLite as the local default and ordered Alembic migrations
-- top-right Admin management panel with database export, dry run/import, and local diagnostics
+- top-right Admin management panel with complete tarball backup, dry run/import, and local diagnostics
 - modular Kivy desktop UI with project browser and tabbed planning levels
 - shared low-glare visual system with structural tree indentation, rounded controls, and clear
   section hierarchy
@@ -128,16 +128,18 @@ optional X11 primary-selection tools `xclip` and `xsel`; Project Planner suppres
 non-fatal probe message when those tools are absent. Normal copy/paste continues through SDL2, and
 all other Kivy critical errors remain visible.
 
-### Database export and import
+### Backup and restore
 
-Open **Admin** and use **Export database** to save all relational project data as a versioned JSON
-document. **Dry run** validates a selected backup in a rolled-back transaction and reports the
-records it would create or update. **Import database** is the direct merge action and requires
-explicit confirmation before applying changes.
+Open **Admin** and use **Export backup** to save a `.tar.gz` archive containing a versioned JSON
+database snapshot and all managed project images. **Dry run** checks the database and archive
+files without saving changes. **Import backup** restores missing managed images and merges the
+database records after explicit confirmation. It stops if a local file has the same path but
+different content, preserving that local file. Both actions report new, changed, and unchanged
+records and separately count files to restore or already present.
 
-Import merges records by primary key and does not delete unrelated local records. Managed image
-files are outside the database and therefore must be backed up from the configured data directory
-separately. See [docs/DATABASE.md](docs/DATABASE.md) for migrations, seeds, and normalization.
+Import merges records by primary key and does not delete unrelated local records or managed files.
+The older JSON-only HTTP endpoints remain available for compatibility. See
+[docs/DATABASE.md](docs/DATABASE.md) for migrations, seeds, and normalization.
 
 Run the complete automated test suite:
 

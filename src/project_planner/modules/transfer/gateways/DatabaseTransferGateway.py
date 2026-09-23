@@ -109,13 +109,15 @@ class DatabaseTransferGateway:
         tables = self._validated_tables(payload)
         session = self._database.new_session()
         try:
-            created, updated = self._merge(session, tables)
+            created, updated, unchanged = self._merge(session, tables)
             session.flush()
             if dry_run:
                 session.rollback()
             else:
                 session.commit()
-            return ImportReport(created=created, updated=updated, dry_run=dry_run)
+            return ImportReport(
+                created=created, updated=updated, unchanged=unchanged, dry_run=dry_run
+            )
         except Exception:
             session.rollback()
             raise
@@ -186,8 +188,10 @@ class DatabaseTransferGateway:
                 phase["status"] = status_map.get(phase.get("status"), "not_started")
         return result
 
-    def _merge(self, session: Session, tables: dict[str, list[dict[str, Any]]]) -> tuple[int, int]:
-        created = updated = 0
+    def _merge(
+        self, session: Session, tables: dict[str, list[dict[str, Any]]]
+    ) -> tuple[int, int, int]:
+        created = updated = unchanged = 0
         model_rows: tuple[tuple[type[Any], list[dict[str, Any]]], ...] = (
             (ProjectCategoryModel, tables["project_categories"]),
             (ProjectModel, self._ordered_projects(tables["projects"])),
@@ -224,11 +228,14 @@ class DatabaseTransferGateway:
                 existing = session.get(model_type, identity[0] if len(identity) == 1 else identity)
                 if existing is None:
                     created += 1
+                elif all(getattr(existing, key) == value for key, value in values.items()):
+                    unchanged += 1
+                    continue
                 else:
                     updated += 1
                 session.merge(model_type(**values))
             session.flush()
-        return created, updated
+        return created, updated, unchanged
 
     @staticmethod
     def _model_value(model_type: type[Any], key: str, value: Any) -> Any:

@@ -206,11 +206,14 @@ real Kivy event-loop smoke runs at both supported density profiles.
 ## AD-032 — GUI-owned database transfer
 
 Database backup and restore are Admin-panel workflows rather than a separate CLI product surface.
-The authenticated System API transfers versioned JSON documents and never assumes that a path on
-the desktop exists on a remote API host. The desktop client writes exports atomically and reads the
-user-selected import locally. Dry run is a separate rollback-backed validation action that reports
-create/update counts. Direct import does not implicitly dry-run; it requires confirmation and then
-applies the transactional merge.
+The authenticated System API transfers versioned archives and never assumes that a path on the
+desktop exists on a remote API host. The desktop client writes exports atomically and reads the
+user-selected import locally. Archives contain a versioned relational JSON snapshot and managed
+project images. Dry run validates database rows and image conflicts without persisting either.
+Direct import requires confirmation, then restores missing files and applies the transactional
+merge. Dry-run and applied reports compare actual database values and managed-file bytes, so
+identical records are counted separately and skipped rather than being reported as updates.
+The earlier JSON-only API remains available for compatibility.
 
 ## AD-033 — Directory-owned hierarchy organization
 
@@ -233,3 +236,10 @@ Projects retain a numeric position among their siblings instead of deriving dire
 titles. A directory-row middle drop retains the existing “make child” behavior, while an upper or
 lower edge drop places the project before or after that sibling. This makes hierarchy structure and
 ordering available in one interaction without adding separate move controls.
+
+## AD-036 — Background initial fetches
+
+Project-directory, feature-tab, and Admin initial reads run in bounded background workers. Their
+results are applied on Kivy's event loop, with generation checks to discard stale responses after
+selection changes. Backup transfers use the same mechanism. HTTP timeouts become a clear retry
+message, so a slow remote API does not freeze the primary navigation flow.

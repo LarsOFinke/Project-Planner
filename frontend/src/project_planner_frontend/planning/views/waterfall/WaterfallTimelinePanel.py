@@ -4,6 +4,7 @@ from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 
 from project_planner.modules.planning.entities.Phase import Phase
+from project_planner.modules.planning.entities.WaterfallTask import WaterfallTask
 from project_planner_frontend.planning.clients.PhaseClient import PhaseClient
 from project_planner_frontend.planning.clients.WaterfallTaskClient import WaterfallTaskClient
 from project_planner_frontend.shared.date_parser import format_optional_date
@@ -45,6 +46,29 @@ class WaterfallTimelinePanel(BoxLayout):
             self._phases.list_for_context(self._project_id, self._section_id),
             key=lambda phase: (phase.start_date is None, phase.start_date, phase.position),
         )
+        self._render_phases(phases)
+
+    def show_fetched(
+        self,
+        project_id: str,
+        section_id: str | None,
+        phases: list[Phase],
+        tasks_by_phase: dict[str, list[WaterfallTask]],
+    ) -> None:
+        self._project_id = project_id
+        self._section_id = section_id
+        self._rows.clear_widgets()
+        ordered = sorted(
+            phases,
+            key=lambda phase: (phase.start_date is None, phase.start_date, phase.position),
+        )
+        self._render_phases(ordered, tasks_by_phase)
+
+    def _render_phases(
+        self,
+        phases: list[Phase],
+        tasks_by_phase: dict[str, list[WaterfallTask]] | None = None,
+    ) -> None:
         if not phases:
             self._rows.add_widget(
                 Label(
@@ -63,10 +87,17 @@ class WaterfallTimelinePanel(BoxLayout):
                     section_label(f"Parallel work · {parallel_group} ({len(lane)} phases)")
                 )
             for phase in lane:
-                self._add_phase(phase, parallel_group is not None)
+                self._add_phase(
+                    phase,
+                    parallel_group is not None,
+                    tasks_by_phase[phase.id] if tasks_by_phase is not None else None,
+                )
 
-    def _add_phase(self, phase: Phase, parallel: bool) -> None:
-        tasks = list(self._tasks.list_for_phase(phase.id))
+    def _add_phase(
+        self, phase: Phase, parallel: bool, tasks: list[WaterfallTask] | None = None
+    ) -> None:
+        if tasks is None:
+            tasks = list(self._tasks.list_for_phase(phase.id))
         task_names = ", ".join(task.title for task in tasks) or "No tasks"
         start = format_optional_date(phase.start_date) or "No start"
         end = format_optional_date(phase.end_date) or "No end"

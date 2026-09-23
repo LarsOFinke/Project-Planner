@@ -1,9 +1,12 @@
 import asyncio
-import json
+import io
+import tarfile
 from dataclasses import replace
 from pathlib import Path
 
 import httpx
+import pytest
+from project_planner_frontend.api.ApiError import ApiError
 from project_planner_frontend.api.ApiTransport import ApiTransport
 from project_planner_frontend.projects.clients.ProjectServiceClient import ProjectServiceClient
 from project_planner_frontend.system.clients.DatabaseTransferClient import DatabaseTransferClient
@@ -37,6 +40,8 @@ def test_openapi_exposes_versioned_typed_resources(tmp_path: Path) -> None:
     assert "get" in schema["paths"]["/api/v1/database/export"]
     assert "post" in schema["paths"]["/api/v1/database/import"]
     assert "post" in schema["paths"]["/api/v1/database/import/dry-run"]
+    assert "get" in schema["paths"]["/api/v1/backup/export"]
+    assert "post" in schema["paths"]["/api/v1/backup/import"]
     assert "Project" in schema["components"]["schemas"]
     assert "Sprint" in schema["components"]["schemas"]
 
@@ -87,22 +92,30 @@ def test_project_client_uses_http_contract_and_decodes_project() -> None:
     assert result == project
 
 
-def test_database_transfer_client_reads_and_writes_local_json(tmp_path: Path) -> None:
-    document = {
-        "format": "project-planner-database-export",
-        "version": 5,
-        "exported_at": "2026-09-19T12:00:00+00:00",
-        "tables": {},
-    }
+def test_transport_reports_fetch_timeout_clearly() -> None:
+    def timeout(_request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("timed out")
+
+    transport = ApiTransport("http://test/api/v1", transport=httpx.MockTransport(timeout))
+    try:
+        with pytest.raises(ApiError, match="did not respond in time") as error:
+            transport.request("GET", "/projects")
+    finally:
+        transport.close()
+    assert error.value.status_code == 408
+
+
+def test_backup_client_reads_and_writes_local_tarball(tmp_path: Path) -> None:
+    archive = b"backup archive content"
 
     def respond(request: httpx.Request) -> httpx.Response:
         if request.method == "GET":
-            assert request.url.path == "/api/v1/database/export"
-            return httpx.Response(200, json=document)
+            assert request.url.path == "/api/v1/backup/export"
+            return httpx.Response(200, content=archive)
         assert request.method == "POST"
-        assert json.loads(request.content) == document
+        assert archive in request.content
         dry_run = request.url.path.endswith("/dry-run")
-        expected_path = "/api/v1/database/import/dry-run" if dry_run else "/api/v1/database/import"
+        expected_path = "/api/v1/backup/import/dry-run" if dry_run else "/api/v1/backup/import"
         assert request.url.path == expected_path
         return httpx.Response(
             200,
@@ -118,8 +131,8 @@ def test_database_transfer_client_reads_and_writes_local_json(tmp_path: Path) ->
     finally:
         transport.close()
 
-    assert destination == tmp_path / "backup.json"
-    assert json.loads(destination.read_text(encoding="utf-8")) == document
+    assert destination == tmp_path / "backup.tar.gz"
+    assert destination.read_bytes() == archive
     assert dry_run.dry_run is True
     assert report.created == 2
     assert report.updated == 3
@@ -192,7 +205,14 @@ def test_asgi_database_export_dry_run_and_import(tmp_path: Path) -> None:
                 json=document,
             )
             assert dry_run.status_code == 200
-            assert dry_run.json() == {"created": 0, "updated": 1, "dry_run": True}
+            assert dry_run.json() == {
+                "created": 0,
+                "updated": 1,
+                "dry_run": True,
+                "unchanged": 0,
+                "files_created": 0,
+                "files_unchanged": 0,
+            }
             unchanged = await client.get(f"/api/v1/projects/{project_id}")
             assert unchanged.json()["title"] == "Before import"
 
@@ -201,9 +221,63 @@ def test_asgi_database_export_dry_run_and_import(tmp_path: Path) -> None:
                 json=document,
             )
             assert applied.status_code == 200
-            assert applied.json() == {"created": 0, "updated": 1, "dry_run": False}
+            assert applied.json() == {
+                "created": 0,
+                "updated": 1,
+                "dry_run": False,
+                "unchanged": 0,
+                "files_created": 0,
+                "files_unchanged": 0,
+            }
             updated = await client.get(f"/api/v1/projects/{project_id}")
             assert updated.json()["title"] == "After import"
+
+    asyncio.run(scenario())
+
+
+def test_asgi_backup_includes_images_and_restores_them(tmp_path: Path) -> None:
+    source_app = create_app(_settings(tmp_path / "source"))
+    target_app = create_app(_settings(tmp_path / "target"))
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=source_app), base_url="http://source"
+        ) as source:
+            created = await source.post("/api/v1/projects", json={"title": "With image"})
+            project_id = created.json()["id"]
+            uploaded = await source.post(
+                f"/api/v1/projects/{project_id}/images",
+                files={"image": ("pixel.png", b"\x89PNG\r\n\x1a\ncontent", "image/png")},
+            )
+            filename = uploaded.json()["reference"].removeprefix("managed://images/")
+            exported = await source.get("/api/v1/backup/export")
+            assert exported.status_code == 200
+            archive_bytes = exported.content
+            with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:gz") as archive:
+                assert "database.json" in archive.getnames()
+                assert f"data/projects/{project_id}/images/{filename}" in archive.getnames()
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=target_app), base_url="http://target"
+        ) as target:
+            upload = {"archive": ("backup.tar.gz", archive_bytes, "application/gzip")}
+            dry_run = await target.post("/api/v1/backup/import/dry-run", files=upload)
+            assert dry_run.status_code == 200
+            assert dry_run.json()["dry_run"] is True
+            assert dry_run.json()["files_created"] == 1
+            assert (await target.get("/api/v1/projects")).json() == []
+            imported = await target.post("/api/v1/backup/import", files=upload)
+            assert imported.status_code == 200
+            assert imported.json()["created"] == 1
+            assert imported.json()["files_created"] == 1
+            repeated = await target.post("/api/v1/backup/import/dry-run", files=upload)
+            assert repeated.json()["created"] == 0
+            assert repeated.json()["updated"] == 0
+            assert repeated.json()["unchanged"] == 1
+            assert repeated.json()["files_created"] == 0
+            assert repeated.json()["files_unchanged"] == 1
+            image = await target.get(f"/api/v1/projects/{project_id}/images/{filename}")
+            assert image.content == b"\x89PNG\r\n\x1a\ncontent"
 
     asyncio.run(scenario())
 

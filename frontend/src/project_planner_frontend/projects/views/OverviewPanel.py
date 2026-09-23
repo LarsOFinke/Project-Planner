@@ -22,6 +22,7 @@ from project_planner_frontend.projects.clients.ProjectQueryClient import Project
 from project_planner_frontend.projects.clients.ProjectWorkflowClient import (
     ProjectWorkflowClient,
 )
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.date_parser import (
     format_optional_date,
     parse_optional_date,
@@ -60,6 +61,7 @@ class OverviewPanel(BoxLayout):
         self._on_navigate = on_navigate
         self._on_saved = on_saved
         self._project: Project | None = None
+        self._load_generation = 0
         self._parent_ids: dict[str, str | None] = {"No parent": None}
         paint_background(self, NAVY_900)
         scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
@@ -175,6 +177,20 @@ class OverviewPanel(BoxLayout):
 
     def show_project(self, project_id: str) -> None:
         overview = self._queries.get_overview(project_id)
+        self._display_overview(overview)
+
+    def show_project_async(self, project_id: str) -> None:
+        self._load_generation += 1
+        generation = self._load_generation
+        self.disabled = True
+
+        def display(overview: object) -> None:
+            if generation == self._load_generation:
+                self._display_overview(overview)
+
+        run_background(lambda: self._queries.get_overview(project_id), display)
+
+    def _display_overview(self, overview: object) -> None:
         project = overview.project
         self._project = project
         self.disabled = False
@@ -200,6 +216,7 @@ class OverviewPanel(BoxLayout):
         )
 
     def clear_project(self) -> None:
+        self._load_generation += 1
         self._project = None
         self._parent_ids = {"No parent": None}
         self.title_input.text = ""

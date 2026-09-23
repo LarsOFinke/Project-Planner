@@ -18,6 +18,7 @@ from project_planner_frontend.planning.clients.AgileClient import AgileClient
 from project_planner_frontend.planning.views.agile.BacklogItemEditorPopup import (
     BacklogItemEditorPopup,
 )
+from project_planner_frontend.planning.views.planning_summary import planning_summary
 from project_planner_frontend.shared.SimpleTabbedPanel import SimpleTabbedPanel
 from project_planner_frontend.shared.theme import (
     GOLD,
@@ -112,19 +113,16 @@ class SprintDetailsPopup(Popup):
                 rows.add_widget(self._item_row(item))
 
     def _item_row(self, item: BacklogItem) -> BoxLayout:
-        row = BoxLayout(size_hint_y=None, height=dp(64), spacing=dp(6))
+        row = BoxLayout(size_hint_y=None, height=dp(84), spacing=dp(6))
         assignment = item.assignee or "Unassigned"
-        details = style_button(
-            Button(
-                text=f"{item.title}\n{item.priority.value.title()} · {assignment}",
-                halign="left",
+        summary, details = planning_summary(
+            item.title,
+            (
+                ("Priority", item.priority.value.title(), 0.35),
+                ("Assignee", assignment, 0.65),
             ),
-            "quiet",
         )
-        details.bind(
-            size=lambda widget, size: setattr(widget, "text_size", (size[0] - dp(18), size[1]))
-        )
-        row.add_widget(details)
+        row.add_widget(summary)
         if self._sprint.status is not SprintStatus.COMPLETED:
             details.bind(on_release=partial(self._edit_item, item))
             remove = style_button(Button(text="Remove", size_hint_x=None, width=dp(96)), "danger")

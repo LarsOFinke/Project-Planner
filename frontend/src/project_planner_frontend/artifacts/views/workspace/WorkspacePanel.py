@@ -15,6 +15,7 @@ from project_planner_frontend.artifacts.views.workspace.WorkspaceMode import Wor
 from project_planner_frontend.artifacts.views.workspace.WorkspaceToolbox import WorkspaceToolbox
 from project_planner_frontend.collaboration.clients.TodoClient import TodoClient
 from project_planner_frontend.collaboration.views.todos.TodoPanel import TodoPanel
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.dialogs import (
     open_image_dialog,
     show_confirmation,
@@ -51,6 +52,7 @@ class WorkspacePanel(BoxLayout):
         self._artifact: Artifact | None = None
         self._project_id: str | None = None
         self._dirty = False
+        self._load_generation = 0
         paint_background(self, NAVY_900)
         self.add_widget(title_label("Free workspace"))
         self.add_widget(
@@ -95,7 +97,38 @@ class WorkspacePanel(BoxLayout):
         )
         self.disabled = False
 
+    def show_project_async(self, project_id: str) -> None:
+        self._save()
+        self._load_generation += 1
+        generation = self._load_generation
+        self.disabled = True
+
+        def fetch():
+            artifact = self._artifacts.get_or_create(project_id, ArtifactKind.WORKSPACE)
+            document = self._documents.decode(self._artifacts.read_json(artifact))
+            for image in document.images:
+                self._images.materialize(project_id, image.source)
+            return artifact, document
+
+        def display(result: tuple[object, object]) -> None:
+            if generation != self._load_generation:
+                return
+            self._project_id = project_id
+            self._artifact, document = result
+            self.canvas_editor.load_document(
+                document,
+                lambda source: str(self._images.materialize(project_id, source)),
+            )
+            self._dirty = False
+            self.todo_panel.show_context_async(
+                project_id, TodoModule.WORKSPACE, title="Workspace To-Dos"
+            )
+            self.disabled = False
+
+        run_background(fetch, display)
+
     def clear_project(self) -> None:
+        self._load_generation += 1
         self._artifact = None
         self._project_id = None
         self._dirty = False

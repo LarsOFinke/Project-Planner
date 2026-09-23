@@ -16,7 +16,9 @@ from project_planner_frontend.planning.clients.SectionClient import SectionClien
 from project_planner_frontend.planning.clients.WaterfallTaskClient import WaterfallTaskClient
 from project_planner_frontend.planning.views.custom.SectionEditorPopup import SectionEditorPopup
 from project_planner_frontend.planning.views.custom.SectionPlanningPopup import SectionPlanningPopup
+from project_planner_frontend.planning.views.planning_summary import planning_summary
 from project_planner_frontend.projects.clients.ProjectWorkflowClient import ProjectWorkflowClient
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.date_parser import format_optional_date
 from project_planner_frontend.shared.ReorderableRow import ReorderableRow
 from project_planner_frontend.shared.theme import (
@@ -49,6 +51,7 @@ class CustomPlanningPanel(BoxLayout):
         self._tasks = tasks
         self._todos = todos
         self._project_id: str | None = None
+        self._load_generation = 0
         self._drop_target_row: ReorderableRow | None = None
         paint_background(self, NAVY_900)
         self.add_widget(title_label("Custom roadmap"))
@@ -75,12 +78,27 @@ class CustomPlanningPanel(BoxLayout):
         self.refresh()
 
     def refresh(self) -> None:
+        self._load_generation += 1
         self._clear_drop_target()
         self._roadmap_rows[1].clear_widgets()
         if self._project_id is None:
             return
         sections = list(self._sections.list_for_project(self._project_id))
         self._render(sections, self._roadmap_rows[1], True)
+
+    def show_project_async(self, project_id: str) -> None:
+        self._project_id = project_id
+        self._load_generation += 1
+        generation = self._load_generation
+
+        def display(sections: list[PlanningSection]) -> None:
+            if generation != self._load_generation:
+                return
+            self._clear_drop_target()
+            self._roadmap_rows[1].clear_widgets()
+            self._render(sections, self._roadmap_rows[1], True)
+
+        run_background(lambda: list(self._sections.list_for_project(project_id)), display)
 
     def _render(self, sections: list[PlanningSection], rows: BoxLayout, reorder: bool) -> None:
         if not sections:
@@ -92,30 +110,35 @@ class CustomPlanningPanel(BoxLayout):
                 self._drag_section,
                 self._drop_section,
                 size_hint_y=None,
-                height=dp(68),
+                height=dp(84),
                 spacing=dp(5),
                 padding=[dp(14), 0, 0, 0],
             )
             status = section.status.value.replace("_", " ").title()
             start = format_optional_date(section.start_date) or "No start"
             end = format_optional_date(section.end_date) or "No end"
-            open_button = style_button(
-                Button(
-                    text=(
-                        f"{section.position + 1}. {section.name}\n"
-                        f"{section.section_type.value.title()} · {status} · {start} → {end}"
-                    ),
-                    halign="left",
+            summary, open_button = planning_summary(
+                f"{section.position + 1}. {section.name}",
+                (
+                    ("Method", section.section_type.value.title(), 0.23),
+                    ("Status", status, 0.27),
+                    ("Schedule", f"{start} → {end}", 0.5),
                 ),
-                "quiet",
             )
-            edit = style_button(Button(text="Edit", size_hint_x=None, width=dp(62)), "secondary")
+            edit = style_button(Button(text="Edit"), "secondary")
             edit.bind(on_release=partial(self._edit, section))
-            row.add_widget(open_button)
-            row.add_widget(edit)
-            remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
+            remove = style_button(Button(text="Delete"), "danger")
             remove.bind(on_release=partial(self._remove, section.id))
-            row.add_widget(remove)
+            actions = BoxLayout(
+                orientation="vertical",
+                size_hint_x=None,
+                width=dp(76),
+                spacing=dp(5),
+            )
+            actions.add_widget(edit)
+            actions.add_widget(remove)
+            row.add_widget(summary)
+            row.add_widget(actions)
             row.set_primary_control(open_button)
             row.register_action_controls((edit, remove))
             rows.add_widget(row)

@@ -12,6 +12,7 @@ from kivy.uix.textinput import TextInput
 from project_planner.modules.resources.entities.ResourceLink import ResourceLink
 from project_planner.modules.resources.entities.ResourceLinkKind import ResourceLinkKind
 from project_planner_frontend.collaboration.clients.ResourceLinkClient import ResourceLinkClient
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.dialogs import open_file_dialog
 from project_planner_frontend.shared.theme import (
     NAVY_900,
@@ -43,6 +44,7 @@ class ResourceLinkKindPanel(BoxLayout):
         self._resources = resources
         self._kind = kind
         self._project_id: str | None = None
+        self._refresh_generation = 0
         paint_background(self, NAVY_900)
         self.add_widget(title_label(self._heading))
         self.add_widget(caption_label(self._caption))
@@ -116,7 +118,14 @@ class ResourceLinkKindPanel(BoxLayout):
         self.disabled = False
         self.refresh()
 
+    def show_project_async(self, project_id: str) -> None:
+        self._project_id = project_id
+        self.feedback.text = ""
+        self.disabled = False
+        self.refresh_async()
+
     def clear_project(self) -> None:
+        self._refresh_generation += 1
         self._project_id = None
         self.title_input.text = ""
         self.target_input.text = ""
@@ -125,10 +134,28 @@ class ResourceLinkKindPanel(BoxLayout):
         self.disabled = True
 
     def refresh(self) -> None:
+        self._refresh_generation += 1
         self._rows.clear_widgets()
         if self._project_id is None:
             return
         links = self._resources.list_for_project(self._project_id, self._kind)
+        self._display_links(links)
+
+    def refresh_async(self) -> None:
+        self._refresh_generation += 1
+        generation = self._refresh_generation
+        self._rows.clear_widgets()
+        if self._project_id is None:
+            return
+        project_id = self._project_id
+
+        def display(links: list[ResourceLink]) -> None:
+            if generation == self._refresh_generation:
+                self._display_links(links)
+
+        run_background(lambda: self._resources.list_for_project(project_id, self._kind), display)
+
+    def _display_links(self, links: list[ResourceLink]) -> None:
         if not links:
             self._rows.add_widget(empty_state_label(self._empty_message))
             return

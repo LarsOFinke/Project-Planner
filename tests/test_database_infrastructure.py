@@ -1,13 +1,17 @@
+import io
 import json
 import sqlite3
+import tarfile
 from pathlib import Path
 
+import pytest
 from sqlalchemy import inspect, text
 
 from project_planner.modules.artifacts.entities.ArtifactKind import ArtifactKind
 from project_planner.modules.planning.entities.SectionType import SectionType
 from project_planner.modules.resources.entities.ResourceLinkKind import ResourceLinkKind
 from project_planner.modules.todos.entities.TodoModule import TodoModule
+from project_planner.modules.transfer.gateways.BackupArchiveGateway import BackupArchiveGateway
 from project_planner.modules.transfer.gateways.DatabaseTransferGateway import (
     DatabaseTransferGateway,
 )
@@ -259,6 +263,71 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     assert restored_section.name == "Launch prep"
     assert restored.sections.list_items(restored_section.id)[0].assignee == "Ada"
     assert restored.phases.list_for_project(project.id)[0].parallel_group == "Discovery lane"
+
+    unchanged = transfer.validate_import(export_path)
+    assert (unchanged.created, unchanged.updated, unchanged.unchanged) == (0, 0, 10)
+    unchanged_apply = transfer.import_from(export_path)
+    assert (unchanged_apply.created, unchanged_apply.updated, unchanged_apply.unchanged) == (
+        0,
+        0,
+        10,
+    )
+
+    project_row = next(row for row in document["tables"]["projects"] if row["id"] == project.id)
+    project_row["title"] = "Desktop changed"
+    changed = transfer.validate_document(document)
+    assert (changed.created, changed.updated, changed.unchanged) == (0, 1, 9)
+    assert next(item for item in restored.projects.list_all() if item.id == project.id).title == (
+        "Desktop"
+    )
+
+
+def test_backup_rejects_unsafe_paths_and_conflicting_local_files(tmp_path: Path) -> None:
+    database = Database(tmp_path / "planner.sqlite3")
+    data = tmp_path / "data"
+    gateway = BackupArchiveGateway(DatabaseTransferGateway(database), data)
+    image = data / "projects" / "sample" / "images" / "example.png"
+    image.parent.mkdir(parents=True)
+    image.write_bytes(b"original")
+    backup = io.BytesIO()
+    gateway.export_to(backup)
+    backup.seek(0)
+    same = gateway.import_from(backup, dry_run=True)
+    assert (same.files_created, same.files_unchanged) == (0, 1)
+    assert (same.created, same.updated, same.unchanged) == (0, 0, 0)
+    backup.seek(0)
+    same_applied = gateway.import_from(backup)
+    assert (same_applied.files_created, same_applied.files_unchanged) == (0, 1)
+
+    image.unlink()
+    backup.seek(0)
+    missing = gateway.import_from(backup, dry_run=True)
+    assert (missing.files_created, missing.files_unchanged) == (1, 0)
+    assert not image.exists()
+    backup.seek(0)
+    restored = gateway.import_from(backup)
+    assert (restored.files_created, restored.files_unchanged) == (1, 0)
+    assert image.read_bytes() == b"original"
+
+    image.write_bytes(b"local edit")
+    backup.seek(0)
+    with pytest.raises(ValueError, match="conflicts with local data"):
+        gateway.import_from(backup)
+    assert image.read_bytes() == b"local edit"
+
+    unsafe = io.BytesIO()
+    with tarfile.open(fileobj=unsafe, mode="w:gz") as archive:
+        document = json.dumps(DatabaseTransferGateway(database).export_document()).encode()
+        info = tarfile.TarInfo("database.json")
+        info.size = len(document)
+        archive.addfile(info, io.BytesIO(document))
+        info = tarfile.TarInfo("data/../outside")
+        info.size = 1
+        archive.addfile(info, io.BytesIO(b"x"))
+    unsafe.seek(0)
+    with pytest.raises(ValueError, match="unsafe path"):
+        gateway.import_from(unsafe)
+    assert not (tmp_path / "outside").exists()
 
 
 def test_import_rejects_unknown_export_version_without_changes(tmp_path: Path) -> None:

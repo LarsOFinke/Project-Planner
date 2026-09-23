@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -19,17 +20,29 @@ def main() -> None:
         from kivy.clock import Clock
         from kivy.core.window import Window
         from kivy.input.providers.mouse import MouseMotionEvent
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.popup import Popup
         from project_planner_frontend.bootstrap.clipboard_bootstrap import configure_clipboard
         from project_planner_frontend.bootstrap.input_bootstrap import configure_mouse_input
 
         from project_planner.api.controller_builder import build_controllers
+        from project_planner.modules.planning.entities.BacklogItem import BacklogItem
+        from project_planner.modules.planning.entities.PlanningSection import PlanningSection
+        from project_planner.modules.planning.entities.SectionType import SectionType
         from project_planner.shared.settings.Settings import Settings
 
         configure_clipboard()
         configure_mouse_input()
 
         from project_planner_frontend.application.ProjectPlannerApp import ProjectPlannerApp
+        from project_planner_frontend.planning.views.agile.AgilePlanningPanel import (
+            AgilePlanningPanel,
+        )
+        from project_planner_frontend.planning.views.custom.CustomPlanningPanel import (
+            CustomPlanningPanel,
+        )
         from project_planner_frontend.projects.views.ProjectTreeRow import ProjectTreeRow
+        from project_planner_frontend.shared.SimpleTabbedPanel import SimpleTabbedPanel
 
         root = Path(temporary)
         settings = Settings(
@@ -62,6 +75,8 @@ def main() -> None:
         application = ProjectPlannerApp(settings)
         drag_target_verified = False
         drag_diagnostic = "drag callback did not run"
+        planning_layout_verified = False
+        rows_ready_at: float | None = None
 
         def layout_widgets(widget: object) -> None:
             do_layout = getattr(widget, "do_layout", None)
@@ -71,7 +86,7 @@ def main() -> None:
                 layout_widgets(child_widget)
 
         def exercise_drag_target(_elapsed: float) -> None:
-            nonlocal drag_diagnostic, drag_target_verified
+            nonlocal drag_diagnostic, drag_target_verified, rows_ready_at
             planner = application._host._planner_root
             if planner is None:
                 return
@@ -80,6 +95,15 @@ def main() -> None:
                 for row in planner.browser._list.children
                 if isinstance(row, ProjectTreeRow)
             }
+            if project.id not in rows or drop_target.id not in rows:
+                Clock.schedule_once(exercise_drag_target, 0.1)
+                return
+            if rows_ready_at is None:
+                rows_ready_at = time.monotonic()
+            if time.monotonic() - rows_ready_at < 0.5:
+                layout_widgets(application.root)
+                Clock.schedule_once(exercise_drag_target, 0.1)
+                return
             source = rows[project.id]
             target = rows[drop_target.id]
             scroll = planner.browser._scroll
@@ -105,10 +129,15 @@ def main() -> None:
                     grabbed.on_touch_move(touch)
                 touch.grab_current = None
 
-            scroll.update_from_scroll()
             layout_widgets(application.root)
-            scroll.update_from_scroll()
             source_position = visible_center(source.button)
+            for step in range(101):
+                scroll_y = 1 - step / 100
+                scroll.scroll_y = scroll_y
+                scroll.update_from_scroll()
+                source_position = visible_center(source.button)
+                if scroll.y <= source_position[1] <= scroll.top:
+                    break
             touch = MouseMotionEvent(
                 "mouse",
                 "drag-smoke",
@@ -122,10 +151,14 @@ def main() -> None:
             touch.scale_for_screen(Window.width, Window.height)
             scroll.on_touch_down(touch)
             row_received_touch = source._drag_touch is touch
-            edge_position = (scroll.center_x, scroll.y + 2)
-            for _step in range(32):
-                move_touch(touch, edge_position)
+            edge_position = (scroll.center_x, scroll.top - 2)
+            move_touch(touch, edge_position)
+            for step in range(101):
+                scroll.scroll_y = step / 100
                 scroll.update_from_scroll()
+                candidate = visible_center(target)
+                if scroll.y <= candidate[1] <= scroll.top:
+                    break
             target_position = visible_center(target)
             move_touch(touch, target_position)
             target_highlighted = (
@@ -168,14 +201,80 @@ def main() -> None:
                 raise AssertionError("Project Planner root was not built")
             planner.admin_button.dispatch("on_release")
 
+        def show_planning_examples(_elapsed: float) -> None:
+            planner = application._host._planner_root
+            if planner is None:
+                return
+            planner._admin_popup.dismiss()
+            preview = BoxLayout(orientation="vertical")
+            custom = CustomPlanningPanel(None, None, None, None, None, None)
+            sections = [
+                PlanningSection("preview", "Short", SectionType.FREE, 0),
+                PlanningSection(
+                    "preview",
+                    "A much longer section title that should stay left aligned",
+                    SectionType.AGILE,
+                    1,
+                ),
+            ]
+            custom._render(sections, custom._roadmap_rows[1], True)
+            agile = AgilePlanningPanel(None)
+            agile._backlog[1].add_widget(agile._item_row(BacklogItem("preview", "Short", 0)))
+            agile._backlog[1].add_widget(
+                agile._item_row(BacklogItem("preview", "A much longer backlog title", 1))
+            )
+            preview.add_widget(custom)
+            preview.add_widget(agile)
+            popup = Popup(title="Planning layout smoke", content=preview, size_hint=(0.95, 0.9))
+            popup.open()
+
+            def verify(_elapsed: float) -> None:
+                nonlocal planning_layout_verified
+                agile_tabs = next(
+                    child for child in agile.children if isinstance(child, SimpleTabbedPanel)
+                )
+                agile_tabs.switch_to(agile_tabs._headers[0])
+                layout_widgets(popup)
+                agile._backlog[0].width = agile.width
+                agile._backlog[1].width = agile.width
+                layout_widgets(agile._backlog[0])
+                groups = (custom._roadmap_rows[1].children, agile._backlog[1].children)
+                for rows in groups:
+                    summaries = [
+                        next(
+                            child
+                            for child in row.children
+                            if isinstance(child, BoxLayout)
+                            and any(isinstance(part, BoxLayout) for part in child.children)
+                        )
+                        for row in rows
+                    ]
+                    titles = [summary.children[1] for summary in summaries]
+                    if any(title.halign != "left" or title.text_size[0] <= 0 for title in titles):
+                        details = [
+                            (title.text, title.halign, title.text_size, title.size)
+                            for title in titles
+                        ]
+                        raise AssertionError(f"Planning titles are not left aligned: {details}")
+                    first_columns = [summary.children[0].children[-1].x for summary in summaries]
+                    if max(first_columns) - min(first_columns) > 1:
+                        raise AssertionError("Planning metadata columns do not align")
+                planning_layout_verified = True
+                popup.dismiss()
+
+            Clock.schedule_once(verify, 0.4)
+
         Clock.schedule_once(lambda _elapsed: layout_widgets(application.root), 0.1)
         Clock.schedule_once(lambda _elapsed: layout_widgets(application.root), 0.35)
         Clock.schedule_once(exercise_drag_target, 0.75)
         Clock.schedule_once(show_admin, 1.0)
-        Clock.schedule_once(lambda _elapsed: application.stop(), 1.6)
+        Clock.schedule_once(show_planning_examples, 2.0)
+        Clock.schedule_once(lambda _elapsed: application.stop(), 5.0)
         application.run()
         if not drag_target_verified:
             raise AssertionError(f"Rendered project drag failed: {drag_diagnostic}")
+        if not planning_layout_verified:
+            raise AssertionError("Planning layouts were not verified in the event loop")
 
 
 if __name__ == "__main__":

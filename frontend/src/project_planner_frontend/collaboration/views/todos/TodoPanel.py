@@ -11,6 +11,7 @@ from project_planner.modules.todos.entities.TodoModule import TodoModule
 from project_planner.modules.todos.entities.TodoStatus import TodoStatus
 from project_planner_frontend.collaboration.clients.TodoClient import TodoClient
 from project_planner_frontend.collaboration.views.todos.TodoEditorPopup import TodoEditorPopup
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.theme import (
     NAVY_900,
     caption_label,
@@ -34,6 +35,7 @@ class TodoPanel(BoxLayout):
         self._project_id: str | None = None
         self._module = TodoModule.GENERAL
         self._phase_id: str | None = None
+        self._refresh_generation = 0
         paint_background(self, NAVY_900)
         self._heading = title_label("To-Dos")
         self.add_widget(self._heading)
@@ -67,17 +69,51 @@ class TodoPanel(BoxLayout):
         self.disabled = False
         self.refresh()
 
+    def show_context_async(
+        self,
+        project_id: str,
+        module: TodoModule,
+        *,
+        phase_id: str | None = None,
+        title: str = "To-Dos",
+    ) -> None:
+        self._project_id = project_id
+        self._module = module
+        self._phase_id = phase_id
+        self._heading.text = title
+        self.disabled = False
+        self.refresh_async()
+
     def clear_context(self) -> None:
+        self._refresh_generation += 1
         self._project_id = None
         self._phase_id = None
         self._rows.clear_widgets()
         self.disabled = True
 
     def refresh(self) -> None:
+        self._refresh_generation += 1
         self._rows.clear_widgets()
         if self._project_id is None:
             return
         todos = self._todos.list_for_context(self._project_id, self._module, self._phase_id)
+        self._display_todos(todos)
+
+    def refresh_async(self) -> None:
+        self._refresh_generation += 1
+        generation = self._refresh_generation
+        self._rows.clear_widgets()
+        if self._project_id is None:
+            return
+        project_id, module, phase_id = self._project_id, self._module, self._phase_id
+
+        def display(todos: list[Todo]) -> None:
+            if generation == self._refresh_generation:
+                self._display_todos(todos)
+
+        run_background(lambda: self._todos.list_for_context(project_id, module, phase_id), display)
+
+    def _display_todos(self, todos: list[Todo]) -> None:
         if not todos:
             self._rows.add_widget(empty_state_label("No to-dos in this view."))
             return

@@ -76,14 +76,16 @@ This preserves a simple aggregate boundary without denormalizing project metadat
 
 ## Transfer behavior
 
-The Admin panel's **Export database** action writes a versioned JSON document atomically. **Dry
-run** validates the format and constraints, calculates create/update counts, and rolls the
-transaction back. **Import database** directly merges categories and projects before dependent
-rows in one transaction after explicit confirmation. Import never removes records that are absent
-from the export.
+The Admin panel's **Export backup** action writes a `.tar.gz` archive atomically on the desktop.
+It contains `database.json`, a versioned relational snapshot, and managed project images beneath
+`data/projects/<project-id>/images/`. **Dry run** validates the archive, database constraints,
+and file conflicts without saving changes. **Import backup** restores missing image files and
+merges database rows in one transaction after explicit confirmation. Import never removes records
+or files absent from the archive. Both reports compare archive contents with local data and count
+records as created, changed, or identical, plus managed files as restored or already identical.
+Identical records are not rewritten. A conflicting local file stops import before changes are made.
 
-The export covers database rows only. Workspace image binaries live in the configured data
-directory and require a separate filesystem backup. Workspace documents store portable managed
-image references rather than absolute server paths, but database export intentionally does not
-embed the referenced binaries. Local application diagnostics are deliberately excluded from
-project exports because they describe the running installation rather than project content.
+The older JSON-only `/api/v1/database/*` endpoints remain available for compatibility. Local
+application diagnostics are deliberately excluded from project backups because they describe the
+running installation rather than project content. External files referenced by resource links are
+not managed project files; the archive preserves their paths, but does not copy those files.

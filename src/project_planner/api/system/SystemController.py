@@ -1,11 +1,14 @@
+import tempfile
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Query
+from fastapi import APIRouter, Body, File, Query, UploadFile
+from fastapi.responses import StreamingResponse
 
 from project_planner.modules.health.entities.ApplicationIssue import ApplicationIssue
 from project_planner.modules.health.entities.SystemHealth import SystemHealth
 from project_planner.modules.health.services.IssueLogService import IssueLogService
 from project_planner.modules.health.services.SystemHealthService import SystemHealthService
+from project_planner.modules.transfer.gateways.BackupArchiveGateway import BackupArchiveGateway
 from project_planner.modules.transfer.gateways.DatabaseTransferGateway import (
     DatabaseTransferGateway,
 )
@@ -18,10 +21,12 @@ class SystemController:
         issues: IssueLogService,
         health: SystemHealthService,
         database_transfer: DatabaseTransferGateway,
+        backup_archive: BackupArchiveGateway,
     ) -> None:
         self._issues = issues
         self._health = health
         self._database_transfer = database_transfer
+        self._backup_archive = backup_archive
         self.router = APIRouter(tags=["system"])
         self._register_routes()
 
@@ -50,6 +55,9 @@ class SystemController:
         )
 
     def _register_database_routes(self) -> None:
+        self.router.add_api_route("/backup/export", self.export_backup, methods=["GET"])
+        self.router.add_api_route("/backup/import", self.import_backup, methods=["POST"])
+        self.router.add_api_route("/backup/import/dry-run", self.dry_run_backup, methods=["POST"])
         self.router.add_api_route(
             "/database/export",
             self.export_database,
@@ -104,3 +112,31 @@ class SystemController:
         document: Annotated[dict[str, Any], Body()],
     ) -> ImportReport:
         return self._database_transfer.validate_document(document)
+
+    def export_backup(self) -> StreamingResponse:
+        archive = tempfile.TemporaryFile()  # noqa: SIM115 - streaming owns the file lifetime
+        try:
+            self._backup_archive.export_to(archive)
+            archive.seek(0)
+        except Exception:
+            archive.close()
+            raise
+
+        def chunks():
+            try:
+                while chunk := archive.read(1024 * 1024):
+                    yield chunk
+            finally:
+                archive.close()
+
+        return StreamingResponse(
+            chunks(),
+            media_type="application/gzip",
+            headers={"Content-Disposition": 'attachment; filename="project-planner-backup.tar.gz"'},
+        )
+
+    def import_backup(self, archive: Annotated[UploadFile, File()]) -> ImportReport:
+        return self._backup_archive.import_from(archive.file)
+
+    def dry_run_backup(self, archive: Annotated[UploadFile, File()]) -> ImportReport:
+        return self._backup_archive.import_from(archive.file, dry_run=True)

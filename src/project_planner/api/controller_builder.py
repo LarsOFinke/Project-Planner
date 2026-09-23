@@ -54,6 +54,7 @@ from project_planner.modules.todos.repositories.SQLAlchemyTodoRepository import 
     SQLAlchemyTodoRepository,
 )
 from project_planner.modules.todos.services.TodoService import TodoService
+from project_planner.modules.transfer.gateways.BackupArchiveGateway import BackupArchiveGateway
 from project_planner.modules.transfer.gateways.DatabaseTransferGateway import (
     DatabaseTransferGateway,
 )
@@ -113,5 +114,6 @@ def build_controllers(
             issue_service,
             SystemHealthService(database, issue_service),
             DatabaseTransferGateway(database),
+            BackupArchiveGateway(DatabaseTransferGateway(database), resolved.data_directory),
         ),
     )

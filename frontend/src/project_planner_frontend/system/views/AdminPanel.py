@@ -10,6 +10,7 @@ from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 
 from project_planner.modules.health.entities.ApplicationIssue import ApplicationIssue
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.dialogs import (
     open_confirmation_dialog,
     open_details_dialog,
@@ -51,6 +52,7 @@ class AdminPanel(BoxLayout):
         self._issues = issues
         self._database_transfer = database_transfer
         self._on_database_imported = on_database_imported
+        self._refresh_generation = 0
         paint_background(self, NAVY_900)
         content = BoxLayout(
             orientation="vertical",
@@ -66,7 +68,7 @@ class AdminPanel(BoxLayout):
         heading.add_widget(refresh)
         content.add_widget(heading)
         content.add_widget(
-            caption_label("Runtime health, database transfer, and recorded application errors.")
+            caption_label("Runtime health, complete backups, and recorded application errors.")
         )
         self.health_summary = Label(
             text="",
@@ -80,7 +82,7 @@ class AdminPanel(BoxLayout):
         self.health_summary.padding = [dp(16), dp(10)]
         paint_background(self.health_summary, NAVY_800, 8, BORDER)
         content.add_widget(self.health_summary)
-        content.add_widget(section_label("Database transfer"))
+        content.add_widget(section_label("Complete backup"))
         content.add_widget(self._build_database_transfer())
         content.add_widget(section_label("Recent issues"))
         self._rows = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
@@ -102,14 +104,14 @@ class AdminPanel(BoxLayout):
         paint_background(surface, NAVY_800, 8, BORDER)
         surface.add_widget(
             caption_label(
-                "Export a versioned JSON backup, test an import without changes, or merge it "
-                "directly. Managed image files are not included."
+                "Export a tarball containing the database and managed files. Dry run validates "
+                "a backup before merging its records and restoring missing files."
             )
         )
         actions = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
-        self.export_button = style_button(Button(text="Export database"), "primary")
+        self.export_button = style_button(Button(text="Export backup"), "primary")
         self.dry_run_button = style_button(Button(text="Dry run"), "secondary")
-        self.import_button = style_button(Button(text="Import database"), "secondary")
+        self.import_button = style_button(Button(text="Import backup"), "secondary")
         self.export_button.bind(on_release=lambda *_: self._choose_export_destination())
         self.dry_run_button.bind(on_release=lambda *_: self._choose_dry_run_source())
         self.import_button.bind(on_release=lambda *_: self._choose_import_source())
@@ -121,57 +123,61 @@ class AdminPanel(BoxLayout):
 
     def _choose_export_destination(self) -> None:
         open_save_file_dialog(
-            "Export database",
-            f"project-planner-{date.today().isoformat()}.json",
+            "Export backup",
+            f"project-planner-{date.today().isoformat()}.tar.gz",
             self._export_database,
         )
 
     def _export_database(self, destination: str) -> None:
-        try:
-            path = self._database_transfer.export_to(destination)
-        except (OSError, ValueError) as error:
-            show_error(f"Database export failed:\n{error}")
-            return
-        show_confirmation(f"Database exported to\n{path}")
+        run_background(
+            lambda: self._database_transfer.export_to(destination),
+            lambda path: show_confirmation(f"Backup exported to\n{path}"),
+            lambda error: show_error(f"Backup export failed:\n{error}"),
+        )
 
     def _choose_import_source(self) -> None:
         open_file_dialog(
             self._confirm_import,
-            title="Import database",
+            title="Import backup",
             action_text="Review import",
-            filters=("*.json", "*.JSON"),
+            filters=("*.tar.gz", "*.TAR.GZ"),
         )
 
     def _choose_dry_run_source(self) -> None:
         open_file_dialog(
             self._dry_run_import,
-            title="Dry-run database import",
+            title="Dry-run backup import",
             action_text="Run validation",
-            filters=("*.json", "*.JSON"),
+            filters=("*.tar.gz", "*.TAR.GZ"),
         )
 
     def _dry_run_import(self, source: str) -> None:
-        try:
-            report = self._database_transfer.dry_run_import(source)
-        except (OSError, ValueError) as error:
-            show_error(f"Database import dry run failed:\n{error}")
-            return
+        run_background(
+            lambda: self._database_transfer.dry_run_import(source),
+            self._show_dry_run_report,
+            lambda error: show_error(f"Backup dry run failed:\n{error}"),
+        )
+
+    def _show_dry_run_report(self, report: object) -> None:
         open_details_dialog(
-            "Database dry run complete",
+            "Backup dry run complete",
             (
                 "Validation succeeded and no changes were saved.\n\n"
                 f"Records to create: {report.created}\n"
-                f"Records to update: {report.updated}"
+                f"Records to update: {report.updated}\n"
+                f"Records already identical: {report.unchanged}\n\n"
+                f"Managed files to restore: {report.files_created}\n"
+                f"Managed files already identical: {report.files_unchanged}"
             ),
         )
 
     def _confirm_import(self, source: str) -> None:
         open_confirmation_dialog(
-            "Apply database import",
+            "Apply backup import",
             (
-                "Merge this backup into the current database? Existing records absent from the "
-                "backup will remain. Use Dry run first if you want to validate the file and "
-                "preview its create/update counts."
+                "Merge this backup into the current database and restore its managed files? "
+                "Existing records and files absent from the backup will remain. "
+                "Conflicting local files will stop the import."
             ),
             partial(self._apply_import, source),
             confirm_text="Import",
@@ -179,19 +185,40 @@ class AdminPanel(BoxLayout):
         )
 
     def _apply_import(self, source: str) -> None:
-        try:
-            report = self._database_transfer.import_from(source)
-        except (OSError, ValueError) as error:
-            show_error(f"Database import failed:\n{error}")
-            return
+        run_background(
+            lambda: self._database_transfer.import_from(source),
+            self._import_finished,
+            lambda error: show_error(f"Backup import failed:\n{error}"),
+        )
+
+    def _import_finished(self, report: object) -> None:
         self._on_database_imported()
         self.refresh()
         show_confirmation(
-            f"Database import complete: {report.created} created, {report.updated} updated."
+            "Backup import complete:\n"
+            f"Records: {report.created} created, {report.updated} updated, "
+            f"{report.unchanged} unchanged.\n"
+            f"Managed files: {report.files_created} restored, "
+            f"{report.files_unchanged} already identical."
         )
 
     def refresh(self, *_: object) -> None:
-        health = self._health.snapshot()
+        self._refresh_generation += 1
+        generation = self._refresh_generation
+
+        def fetch():
+            health = self._health.snapshot()
+            issues = self._issues.list_recent(50) if health.database_healthy else []
+            return health, issues
+
+        def display(result: tuple[object, list[ApplicationIssue]]) -> None:
+            if generation != self._refresh_generation:
+                return
+            self._display_status(*result)
+
+        run_background(fetch, display)
+
+    def _display_status(self, health: object, issues: list[ApplicationIssue]) -> None:
         status = "Healthy" if health.database_healthy else "Unavailable"
         self.health_summary.text = (
             f"Project Planner {health.app_version}  ·  Kivy {kivy_version}  ·  "
@@ -205,7 +232,6 @@ class AdminPanel(BoxLayout):
         self.dry_run_button.disabled = not health.database_healthy
         self.import_button.disabled = not health.database_healthy
         self._rows.clear_widgets()
-        issues = self._issues.list_recent(50) if health.database_healthy else []
         if not issues:
             self._rows.add_widget(
                 Label(

@@ -13,6 +13,7 @@ from project_planner_frontend.planning.clients.SectionClient import SectionClien
 from project_planner_frontend.planning.views.custom.SectionItemEditorPopup import (
     SectionItemEditorPopup,
 )
+from project_planner_frontend.planning.views.planning_summary import planning_summary
 from project_planner_frontend.shared.date_parser import format_optional_date
 from project_planner_frontend.shared.ReorderableRow import ReorderableRow
 from project_planner_frontend.shared.theme import (
@@ -68,23 +69,22 @@ class FreeSectionPanel(BoxLayout):
                 self._drag_item,
                 self._drop_item,
                 size_hint_y=None,
-                height=dp(62),
+                height=dp(84),
                 spacing=dp(5),
             )
             status = item.status.value.replace("_", " ").title()
             item_date = format_optional_date(item.item_date) or "No date"
-            edit = style_button(
-                Button(
-                    text=(
-                        f"{item.title}\n{status} · {item.assignee or 'Unassigned'} · {item_date}"
-                    ),
-                    halign="left",
+            summary, edit = planning_summary(
+                item.title,
+                (
+                    ("Status", status, 0.3),
+                    ("Assignee", item.assignee or "Unassigned", 0.4),
+                    ("Date", item_date, 0.3),
                 ),
-                "quiet",
             )
             remove = style_button(Button(text="Delete", size_hint_x=None, width=dp(76)), "danger")
             remove.bind(on_release=partial(self._remove, item.id))
-            row.add_widget(edit)
+            row.add_widget(summary)
             row.add_widget(remove)
             row.set_primary_control(edit)
             row.register_action_controls((remove,))

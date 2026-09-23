@@ -24,6 +24,7 @@ from project_planner_frontend.projects.clients.ProjectWorkflowClient import (
 from project_planner_frontend.projects.views.NewProjectPopup import NewProjectPopup
 from project_planner_frontend.projects.views.ProjectCategoryRow import ProjectCategoryRow
 from project_planner_frontend.projects.views.ProjectTreeRow import ProjectTreeRow
+from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.dialogs import (
     open_confirmation_dialog,
     open_text_dialog,
@@ -75,6 +76,7 @@ class ProjectBrowser(BoxLayout):
         self._parent_by_project_id: dict[str, str | None] = {}
         self._drop_target_widget: ProjectCategoryRow | ProjectTreeRow | None = None
         self._drop_target_placement: str | None = None
+        self._refresh_generation = 0
         paint_background(self, NAVY_800, 10, BORDER)
         self._list = BoxLayout(
             orientation="vertical",
@@ -97,7 +99,7 @@ class ProjectBrowser(BoxLayout):
         )
         self.exit_button.bind(on_release=lambda *_: self._on_exit())
         self.add_widget(self.exit_button)
-        self.refresh()
+        self.refresh_async()
 
     def _build_header(self) -> None:
         self.add_widget(section_label("Project directory"))
@@ -240,13 +242,30 @@ class ProjectBrowser(BoxLayout):
         )
 
     def refresh(self, *, reload: bool = True) -> None:
+        self._refresh_generation += 1
+        if reload:
+            self._directory = self._queries.list_directory()
+        self._render_directory(reload=reload)
+
+    def refresh_async(self) -> None:
+        self._refresh_generation += 1
+        generation = self._refresh_generation
+
+        def display(directory: object) -> None:
+            if generation != self._refresh_generation:
+                return
+            self._directory = directory
+            self._render_directory(reload=True)
+
+        run_background(self._queries.list_directory, display)
+
+    def _render_directory(self, *, reload: bool) -> None:
         if self._drop_target_widget is not None:
             self._drop_target_widget.set_drop_target(False)
             self._drop_target_widget = None
             self._drop_target_placement = None
         self._list.clear_widgets()
         if reload:
-            self._directory = self._queries.list_directory()
             self._project_by_id = {
                 item.project.id: item.project
                 for section in self._directory

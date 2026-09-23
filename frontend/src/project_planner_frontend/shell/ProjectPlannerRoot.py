@@ -124,11 +124,11 @@ class ProjectPlannerRoot(BoxLayout):
         self._add_tab(self.tabs, "Workspace", self.workspace)
         self._add_tab(self.tabs, "Links", self.links)
         self._project_loaders = {
-            "Overview": self.overview.show_project,
-            "Plan Roadmap": self.planning.show_project,
-            "Diagram": self.diagram.show_project,
-            "Workspace": self.workspace.show_project,
-            "Links": self.links.show_project,
+            "Overview": self.overview.show_project_async,
+            "Plan Roadmap": self.planning.show_project_async,
+            "Diagram": self.diagram.show_project_async,
+            "Workspace": self.workspace.show_project_async,
+            "Links": self.links.show_project_async,
         }
         self.tabs.bind(current_tab=self._on_tab_changed)
         self.tabs.switch_to(self._tab_headers[0])
@@ -252,7 +252,7 @@ class ProjectPlannerRoot(BoxLayout):
             self._load_tab(current.text)
 
     def _database_imported(self) -> None:
-        self.browser.refresh()
+        self.browser.refresh_async()
         if self._selected_project_id is not None:
             self._show_project(self._selected_project_id, True)
 
