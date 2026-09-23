@@ -16,3 +16,6 @@ class Settings:
     api_cors_origins: tuple[str, ...] = ()
     api_token: str | None = None
     max_image_bytes: int = 20 * 1024 * 1024
+    max_backup_uncompressed_bytes: int = 8 * 1024 * 1024 * 1024
+    api_timeout_seconds: float = 15.0
+    backup_timeout_seconds: float = 120.0

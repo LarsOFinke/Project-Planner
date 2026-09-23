@@ -42,7 +42,12 @@ class ProjectPlannerApp(App):
                 api_url = self._api_server.base_url
             else:
                 api_url = self._settings.api_url
-            self._clients = ProjectPlannerApi.connect(api_url, self._settings.api_token)
+            self._clients = ProjectPlannerApi.connect(
+                api_url,
+                self._settings.api_token,
+                self._settings.api_timeout_seconds,
+                self._settings.backup_timeout_seconds,
+            )
         except Exception:
             if self._api_server is not None:
                 self._api_server.stop()

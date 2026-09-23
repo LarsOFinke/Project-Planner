@@ -31,6 +31,9 @@ def test_cfg_values_can_be_overridden_by_environment(monkeypatch, tmp_path: Path
     monkeypatch.setenv("PROJECT_PLANNER_DATA_DIR", str(tmp_path / "assets"))
     monkeypatch.setenv("PROJECT_PLANNER_API_TOKEN", "test-token")
     monkeypatch.setenv("PROJECT_PLANNER_MAX_IMAGE_BYTES", "4096")
+    monkeypatch.setenv("PROJECT_PLANNER_MAX_BACKUP_UNCOMPRESSED_BYTES", "1048576")
+    monkeypatch.setenv("PROJECT_PLANNER_API_TIMEOUT_SECONDS", "9.5")
+    monkeypatch.setenv("PROJECT_PLANNER_BACKUP_TIMEOUT_SECONDS", "240")
 
     settings = load_settings(config)
 
@@ -44,6 +47,18 @@ def test_cfg_values_can_be_overridden_by_environment(monkeypatch, tmp_path: Path
     assert settings.data_directory == tmp_path / "assets"
     assert settings.api_token == "test-token"
     assert settings.max_image_bytes == 4096
+    assert settings.max_backup_uncompressed_bytes == 1048576
+    assert settings.api_timeout_seconds == 9.5
+    assert settings.backup_timeout_seconds == 240
+
+
+@pytest.mark.parametrize("timeout", ["0", "-1", "nan", "inf", "invalid"])
+def test_api_timeout_requires_a_finite_positive_number(
+    monkeypatch: pytest.MonkeyPatch, timeout: str
+) -> None:
+    monkeypatch.setenv("PROJECT_PLANNER_API_TIMEOUT_SECONDS", timeout)
+    with pytest.raises(ValueError, match="API timeout"):
+        load_settings()
 
 
 def test_auto_scale_keeps_laptop_profile_readable(tmp_path: Path) -> None:

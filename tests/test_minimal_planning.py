@@ -23,7 +23,7 @@ def test_agile_backlog_sprint_completion_and_history() -> None:
         "Iterative", planning_method=PlanningMethod.AGILE
     )
     first = planner.agile.add_item(
-        project.id, "First", priority=BacklogPriority.HIGH, assignee="Ada"
+        project.id, "First", priority=BacklogPriority.HIGH, assignee="Example assignee"
     )
     second = planner.agile.add_item(project.id, "Second")
     third = planner.agile.add_item(project.id, "Third")

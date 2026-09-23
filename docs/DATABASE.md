@@ -84,6 +84,13 @@ merges database rows in one transaction after explicit confirmation. Import neve
 or files absent from the archive. Both reports compare archive contents with local data and count
 records as created, changed, or identical, plus managed files as restored or already identical.
 Identical records are not rewritten. A conflicting local file stops import before changes are made.
+Unpacked archive data is limited to 8 GiB by default (configurable with
+`PROJECT_PLANNER_MAX_BACKUP_UNCOMPRESSED_BYTES`), and files are staged before import. New files
+are published atomically and removed if the database merge raises an error. SQLite changes are
+transactional. A power loss or process crash between file publication and database commit is
+not recoverable as one atomic transaction, so retain the archive until the restored data is checked.
+The FastAPI multipart layer receives an upload before archive validation; remote deployments
+should enforce an HTTP request-size limit at their proxy or gateway as well.
 
 The older JSON-only `/api/v1/database/*` endpoints remain available for compatibility. Local
 application diagnostics are deliberately excluded from project backups because they describe the

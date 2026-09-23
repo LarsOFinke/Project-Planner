@@ -80,11 +80,12 @@ Configuration is read in this order: packaged defaults, `./project_planner.cfg`,
 `~/.config/project_planner/config.cfg`, then environment variables. Copy
 `project_planner.cfg.example` to either configuration location when you want file-based
 settings. Available environment overrides are `PROJECT_PLANNER_DB`,
-`PROJECT_PLANNER_DB_URL`,
-`PROJECT_PLANNER_WINDOW_WIDTH`, `PROJECT_PLANNER_WINDOW_HEIGHT`, and
-`PROJECT_PLANNER_AUTOSAVE_SECONDS`. API deployment additionally supports
-`PROJECT_PLANNER_API_URL` and `PROJECT_PLANNER_API_CORS_ORIGINS`. The application starts in native fullscreen mode by default;
-set `PROJECT_PLANNER_FULLSCREEN=false` or `[window] fullscreen = false` for a normal window.
+`PROJECT_PLANNER_DB_URL`, `PROJECT_PLANNER_WINDOW_WIDTH`, `PROJECT_PLANNER_WINDOW_HEIGHT`,
+`PROJECT_PLANNER_AUTOSAVE_SECONDS`, `PROJECT_PLANNER_FULLSCREEN`, and
+`PROJECT_PLANNER_UI_SCALE`. Storage and API settings are listed in
+`project_planner.cfg.example`, with matching environment overrides. The application starts in
+native fullscreen mode by default; set `PROJECT_PLANNER_FULLSCREEN=false` or
+`[window] fullscreen = false` for a normal window.
 The bottom-left Exit button closes the fullscreen application after flushing pending Diagram and
 Workspace changes. The top-right Windowed/Fullscreen button switches modes immediately and saves
 the selection for the next launch.
@@ -104,6 +105,11 @@ those assets through the API into their local cache, so workspaces also render w
 on another machine. Legacy documents containing existing local file paths remain readable.
 Uploads are content-checked and limited to 20 MiB by default; configure
 `PROJECT_PLANNER_MAX_IMAGE_BYTES` or `[storage] max_image_bytes` to change that limit.
+Backup imports and exports default to an 8 GiB unpacked-data limit. Adjust it with
+`PROJECT_PLANNER_MAX_BACKUP_UNCOMPRESSED_BYTES` or
+`[storage] max_backup_uncompressed_bytes`. HTTP requests default to a 15-second timeout;
+backup transfers default to 120 seconds. Set `PROJECT_PLANNER_API_TIMEOUT_SECONDS` and
+`PROJECT_PLANNER_BACKUP_TIMEOUT_SECONDS` (or the matching `[api]` settings) for slower hosts.
 
 ### HTTP API and alternate frontends
 
@@ -138,6 +144,10 @@ different content, preserving that local file. Both actions report new, changed,
 records and separately count files to restore or already present.
 
 Import merges records by primary key and does not delete unrelated local records or managed files.
+The import validates before writing, creates files atomically, and removes newly restored files
+if the database merge fails. A sudden power loss or process crash between file restoration and
+database commit is not covered by that rollback; keep the original archive until verifying the
+restored project. The archive does not include external files referenced by local-file links.
 The older JSON-only HTTP endpoints remain available for compatibility. See
 [docs/DATABASE.md](docs/DATABASE.md) for migrations, seeds, and normalization.
 

@@ -25,8 +25,10 @@ entities <- services -> protocols <- repositories -> SQLAlchemy models
 
 `src/project_planner/modules/transfer/gateways/`
 : Explicit database import/export boundary. It is a gateway—not a repository—because it transfers
-  a complete relational snapshot rather than managing one aggregate. The System API transports
-  snapshot documents; the desktop System client owns local file selection and atomic writes.
+  a complete relational snapshot rather than managing one aggregate. The archive gateway wraps
+  that snapshot with managed images, validates and stages files before applying changes, and
+  cleans up new files if the database transaction fails. The System API transports archives and
+  legacy snapshot documents; the desktop System client owns local file selection and atomic writes.
 
 `src/project_planner/modules/projects/`
 : Project/category entities, repository protocols, workflows, persistence repositories, and

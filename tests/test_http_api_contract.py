@@ -109,6 +109,7 @@ def test_backup_client_reads_and_writes_local_tarball(tmp_path: Path) -> None:
     archive = b"backup archive content"
 
     def respond(request: httpx.Request) -> httpx.Response:
+        assert request.extensions["timeout"]["read"] == 77.0
         if request.method == "GET":
             assert request.url.path == "/api/v1/backup/export"
             return httpx.Response(200, content=archive)
@@ -122,7 +123,9 @@ def test_backup_client_reads_and_writes_local_tarball(tmp_path: Path) -> None:
             json={"created": 2, "updated": 3, "dry_run": dry_run},
         )
 
-    transport = ApiTransport("http://test/api/v1", transport=httpx.MockTransport(respond))
+    transport = ApiTransport(
+        "http://test/api/v1", transport=httpx.MockTransport(respond), backup_timeout=77.0
+    )
     client = DatabaseTransferClient(transport)
     try:
         destination = client.export_to(tmp_path / "backup")

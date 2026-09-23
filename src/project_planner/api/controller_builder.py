@@ -114,6 +114,10 @@ def build_controllers(
             issue_service,
             SystemHealthService(database, issue_service),
             DatabaseTransferGateway(database),
-            BackupArchiveGateway(DatabaseTransferGateway(database), resolved.data_directory),
+            BackupArchiveGateway(
+                DatabaseTransferGateway(database),
+                resolved.data_directory,
+                resolved.max_backup_uncompressed_bytes,
+            ),
         ),
     )

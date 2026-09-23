@@ -15,7 +15,9 @@ class ApiTransport:
         timeout: float = 15.0,
         transport: httpx.BaseTransport | None = None,
         api_token: str | None = None,
+        backup_timeout: float = 120.0,
     ) -> None:
+        self._backup_timeout = backup_timeout
         headers = {"Authorization": f"Bearer {api_token}"} if api_token else None
         self._client = httpx.Client(
             base_url=base_url.rstrip("/"),
@@ -69,7 +71,7 @@ class ApiTransport:
 
     def download(self, path: str, destination: Path) -> None:
         try:
-            with self._client.stream("GET", path, timeout=120.0) as response:
+            with self._client.stream("GET", path, timeout=self._backup_timeout) as response:
                 self._raise_for_error(response)
                 with destination.open("wb") as output:
                     for chunk in response.iter_bytes():
@@ -84,7 +86,7 @@ class ApiTransport:
                 "POST",
                 path,
                 files={"archive": (source.name, stream)},
-                timeout=120.0,
+                timeout=self._backup_timeout,
             )
 
     @staticmethod

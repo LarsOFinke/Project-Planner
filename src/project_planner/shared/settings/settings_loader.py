@@ -46,6 +46,17 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
     max_image_bytes = os.environ.get(
         "PROJECT_PLANNER_MAX_IMAGE_BYTES", parser["storage"].get("max_image_bytes", "20971520")
     )
+    max_backup_bytes = os.environ.get(
+        "PROJECT_PLANNER_MAX_BACKUP_UNCOMPRESSED_BYTES",
+        parser["storage"].get("max_backup_uncompressed_bytes", "8589934592"),
+    )
+    api_timeout = os.environ.get(
+        "PROJECT_PLANNER_API_TIMEOUT_SECONDS", parser["api"].get("timeout_seconds", "15")
+    )
+    backup_timeout = os.environ.get(
+        "PROJECT_PLANNER_BACKUP_TIMEOUT_SECONDS",
+        parser["api"].get("backup_timeout_seconds", "120"),
+    )
     return Settings(
         database_path=Path(database).expanduser(),
         window_width=width,
@@ -61,6 +72,9 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         ),
         api_token=api_token or None,
         max_image_bytes=_positive_int(max_image_bytes, "maximum image size"),
+        max_backup_uncompressed_bytes=_positive_int(max_backup_bytes, "maximum backup size"),
+        api_timeout_seconds=_positive_float(api_timeout, "API timeout"),
+        backup_timeout_seconds=_positive_float(backup_timeout, "backup timeout"),
     )
 
 
@@ -71,6 +85,16 @@ def _positive_int(value: str, label: str) -> int:
         raise ValueError(f"Invalid {label}: {value!r}") from error
     if parsed <= 0:
         raise ValueError(f"{label.capitalize()} must be positive")
+    return parsed
+
+
+def _positive_float(value: str, label: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as error:
+        raise ValueError(f"Invalid {label}: {value!r}") from error
+    if not 0 < parsed < float("inf"):
+        raise ValueError(f"{label} must be a finite positive number")
     return parsed
 
 

@@ -8,7 +8,7 @@ Last refreshed: 2026-09-23
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 94 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
+- Current suite: 102 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -117,6 +117,9 @@ Last refreshed: 2026-09-23
 - Image location: `<data_directory>/projects/<project-id>/images/<uuid>.<ext>`.
 - Backup archive: `.tar.gz` with `database.json` and `data/projects/<project-id>/images/*`;
   legacy JSON-only database endpoints remain for compatibility. External linked files are not copied.
+- Backup import stages files under a configurable 8 GiB unpacked-data cap, publishes new files
+  atomically, and removes those files on a database-merge exception. Cross-resource rollback is
+  not crash-consistent after sudden process or machine termination.
 - Remote clients materialize managed images below `~/.cache/project_planner/images/<project-id>/`.
 - Image uploads default to a 20 MiB limit and validate supported file signatures.
 
@@ -141,6 +144,9 @@ Important overrides:
 - `PROJECT_PLANNER_API_CORS_ORIGINS`
 - `PROJECT_PLANNER_API_TOKEN`
 - `PROJECT_PLANNER_MAX_IMAGE_BYTES`
+- `PROJECT_PLANNER_MAX_BACKUP_UNCOMPRESSED_BYTES`
+- `PROJECT_PLANNER_API_TIMEOUT_SECONDS`
+- `PROJECT_PLANNER_BACKUP_TIMEOUT_SECONDS`
 
 `PROJECT_PLANNER_UI_SCALE` accepts `auto` or a numeric value from `0.05` through `5.00`.
 Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environment overrides win.

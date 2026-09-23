@@ -207,6 +207,7 @@ class DatabaseTransferGateway:
             (ResourceLinkModel, tables["resource_links"]),
         )
         for model_type, rows in model_rows:
+            seen_identities: set[tuple[object, ...]] = set()
             allowed = {column.key for column in inspect(model_type).columns}
             required = {
                 column.key
@@ -225,6 +226,9 @@ class DatabaseTransferGateway:
                     key: self._model_value(model_type, key, value) for key, value in raw_row.items()
                 }
                 identity = tuple(values[column.key] for column in inspect(model_type).primary_key)
+                if identity in seen_identities:
+                    raise ValueError(f"Duplicate {model_type.__tablename__} primary key in import")
+                seen_identities.add(identity)
                 existing = session.get(model_type, identity[0] if len(identity) == 1 else identity)
                 if existing is None:
                     created += 1

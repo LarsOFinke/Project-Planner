@@ -4,7 +4,7 @@
 
 1. Local-first: a project remains useful without an account or network.
 2. Progressive detail: overview first, phase plan second, visual workspaces on demand.
-3. One mental model: every plan, diagram, and canvas is an artifact belonging to a project.
+3. One mental model: planning records and visual artifacts belong to a project.
 4. KISS: ship small vertical slices and use JSON only for editor-specific payloads.
 5. SOLID boundaries: UI, use cases, domain rules, and persistence depend inward through
    narrow contracts.
@@ -35,9 +35,9 @@ implemented. Text objects, grouping, infinite pan/zoom, and undo remain follow-u
 
 Linked projects, backlinks, transactional database export/import, recoverable UI errors, local
 health diagnostics, project archiving, portable managed-image references, bounded image uploads,
-and authenticated remote API access are implemented. Search/filtering, recent projects, complete
-managed-asset backups, keyboard navigation, accessibility, and recovery from autosaved revisions
-remain.
+authenticated remote API access, and managed-image tarball backups are implemented.
+Search/filtering, recent projects, keyboard navigation, accessibility, crash-consistent
+cross-resource restore, and recovery from autosaved revisions remain.
 
 ## Explicit non-goals for the first release
 

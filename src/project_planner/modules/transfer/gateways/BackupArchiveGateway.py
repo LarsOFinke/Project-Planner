@@ -1,5 +1,6 @@
 import filecmp
 import json
+import os
 import shutil
 import tarfile
 import tempfile
@@ -16,12 +17,31 @@ from project_planner.modules.transfer.models.ImportReport import ImportReport
 class BackupArchiveGateway:
     """Transfer the database and managed data files as one portable archive."""
 
-    def __init__(self, database: DatabaseTransferGateway, data_directory: Path) -> None:
+    _MAX_MEMBERS = 100_000
+
+    def __init__(
+        self,
+        database: DatabaseTransferGateway,
+        data_directory: Path,
+        max_uncompressed_bytes: int = 8 * 1024 * 1024 * 1024,
+    ) -> None:
         self._database = database
         self._data_directory = data_directory
+        if max_uncompressed_bytes <= 0:
+            raise ValueError("Maximum backup size must be positive")
+        self._max_uncompressed_bytes = max_uncompressed_bytes
+
+    def _check_size(self, total: int, entries: int) -> None:
+        if total > self._max_uncompressed_bytes:
+            raise ValueError("Backup exceeds the configured unpacked size limit")
+        if entries > self._MAX_MEMBERS:
+            raise ValueError("Backup contains too many files")
 
     def export_to(self, destination: BinaryIO) -> None:
         document = json.dumps(self._database.export_document(), sort_keys=True).encode("utf-8")
+        total = len(document)
+        entries = 1
+        self._check_size(total, entries)
         with tarfile.open(fileobj=destination, mode="w:gz") as archive:
             with tempfile.TemporaryFile() as payload:
                 payload.write(document)
@@ -38,6 +58,9 @@ class BackupArchiveGateway:
                     if any(parent.is_symlink() for parent in ancestors):
                         raise ValueError("Managed data contains a symbolic link")
                     if path.is_file():
+                        total += path.stat().st_size
+                        entries += 1
+                        self._check_size(total, entries)
                         name = PurePosixPath("data", *path.relative_to(self._data_directory).parts)
                         archive.add(path, arcname=str(name), recursive=False)
 
@@ -47,9 +70,14 @@ class BackupArchiveGateway:
             document = None
             asset_paths: list[tuple[Path, Path]] = []
             seen: set[str] = set()
+            total = 0
             try:
                 with tarfile.open(fileobj=source, mode="r:gz") as archive:
                     for member in archive:
+                        if member.size < 0:
+                            raise ValueError("Backup contains an invalid file size")
+                        total += member.size
+                        self._check_size(total, len(seen) + 1)
                         parts = PurePosixPath(member.name).parts
                         if member.name in seen or not member.isfile():
                             raise ValueError("Backup contains duplicate or non-file entries")
@@ -109,11 +137,30 @@ class BackupArchiveGateway:
             try:
                 for staged_file, target in asset_paths:
                     if target.exists():
+                        if not target.is_file() or not filecmp.cmp(
+                            staged_file, target, shallow=False
+                        ):
+                            raise ValueError(f"Backup file conflicts with local data: {target}")
                         continue
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    with staged_file.open("rb") as source_file, target.open("xb") as output:
+                    with tempfile.NamedTemporaryFile(
+                        dir=target.parent, prefix=f".{target.name}.", delete=False
+                    ) as output:
+                        temporary = Path(output.name)
+                        try:
+                            with staged_file.open("rb") as source_file:
+                                shutil.copyfileobj(source_file, output)
+                            output.flush()
+                            os.fsync(output.fileno())
+                        except Exception:
+                            output.close()
+                            temporary.unlink(missing_ok=True)
+                            raise
+                    try:
+                        os.link(temporary, target)
                         created.append(target)
-                        shutil.copyfileobj(source_file, output)
+                    finally:
+                        temporary.unlink(missing_ok=True)
                 return replace(
                     self._database.import_document(document),
                     files_created=len(created),

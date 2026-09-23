@@ -214,6 +214,10 @@ Direct import requires confirmation, then restores missing files and applies the
 merge. Dry-run and applied reports compare actual database values and managed-file bytes, so
 identical records are counted separately and skipped rather than being reported as updates.
 The earlier JSON-only API remains available for compatibility.
+Archive reads and writes enforce a configurable unpacked-data cap. New managed files are staged
+and published atomically; on a normal database-merge failure, only files created by that import
+are removed. Database and filesystem cannot share one transaction, so crash-consistent recovery
+would require a separate durable journal rather than claiming full atomicity.
 
 ## AD-033 — Directory-owned hierarchy organization
 

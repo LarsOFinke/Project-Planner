@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import sqlite3
 import tarfile
 from pathlib import Path
@@ -231,7 +232,7 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
         ResourceLinkKind.WEB,
     )
     section = source.sections.add(project.id, "Launch prep", SectionType.FREE)
-    source.sections.add_item(section.id, "Confirm release copy", assignee="Ada")
+    source.sections.add_item(section.id, "Confirm release copy", assignee="Example assignee")
 
     export_path = tmp_path / "planner-export.json"
     DatabaseTransferGateway(Database(source_path)).export_to(export_path)
@@ -261,7 +262,7 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     assert restored.resources.list_for_project(project.id)[0].title == "Project website"
     restored_section = restored.sections.list_for_project(project.id)[0]
     assert restored_section.name == "Launch prep"
-    assert restored.sections.list_items(restored_section.id)[0].assignee == "Ada"
+    assert restored.sections.list_items(restored_section.id)[0].assignee == "Example assignee"
     assert restored.phases.list_for_project(project.id)[0].parallel_group == "Discovery lane"
 
     unchanged = transfer.validate_import(export_path)
@@ -277,6 +278,12 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     project_row["title"] = "Desktop changed"
     changed = transfer.validate_document(document)
     assert (changed.created, changed.updated, changed.unchanged) == (0, 1, 9)
+    assert next(item for item in restored.projects.list_all() if item.id == project.id).title == (
+        "Desktop"
+    )
+    document["tables"]["projects"].append(dict(project_row))
+    with pytest.raises(ValueError, match="Duplicate projects primary key"):
+        transfer.import_document(document)
     assert next(item for item in restored.projects.list_all() if item.id == project.id).title == (
         "Desktop"
     )
@@ -328,6 +335,75 @@ def test_backup_rejects_unsafe_paths_and_conflicting_local_files(tmp_path: Path)
     with pytest.raises(ValueError, match="unsafe path"):
         gateway.import_from(unsafe)
     assert not (tmp_path / "outside").exists()
+
+
+def test_backup_import_rolls_back_new_files_if_database_merge_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_database = Database(tmp_path / "source.sqlite3")
+    source_data = tmp_path / "source-data"
+    source_image = source_data / "projects" / "sample" / "images" / "example.png"
+    source_image.parent.mkdir(parents=True)
+    source_image.write_bytes(b"image contents")
+    archive = io.BytesIO()
+    BackupArchiveGateway(DatabaseTransferGateway(source_database), source_data).export_to(archive)
+
+    target_data = tmp_path / "target-data"
+    target_image = target_data / "projects" / "sample" / "images" / "example.png"
+    transfer = DatabaseTransferGateway(Database(tmp_path / "target.sqlite3"))
+    gateway = BackupArchiveGateway(transfer, target_data)
+
+    def fail_merge(_document: object) -> None:
+        raise RuntimeError("simulated database failure")
+
+    monkeypatch.setattr(transfer, "import_document", fail_merge)
+    archive.seek(0)
+    with pytest.raises(RuntimeError, match="simulated database failure"):
+        gateway.import_from(archive)
+    assert not target_image.exists()
+    assert not [path for path in target_data.rglob("*") if path.is_file()]
+
+
+def test_backup_rejects_archives_over_configured_unpacked_limit(tmp_path: Path) -> None:
+    database = Database(tmp_path / "planner.sqlite3")
+    archive = io.BytesIO()
+    BackupArchiveGateway(DatabaseTransferGateway(database), tmp_path / "data").export_to(archive)
+    limited = BackupArchiveGateway(DatabaseTransferGateway(database), tmp_path / "data", 1)
+
+    archive.seek(0)
+    with pytest.raises(ValueError, match="unpacked size limit"):
+        limited.import_from(archive, dry_run=True)
+    with pytest.raises(ValueError, match="unpacked size limit"):
+        limited.export_to(io.BytesIO())
+
+
+def test_backup_import_rolls_back_files_after_a_restore_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = Database(tmp_path / "planner.sqlite3")
+    data = tmp_path / "data"
+    image_dir = data / "projects" / "sample" / "images"
+    image_dir.mkdir(parents=True)
+    for name in ("first.png", "second.png"):
+        (image_dir / name).write_bytes(name.encode())
+    archive = io.BytesIO()
+    gateway = BackupArchiveGateway(DatabaseTransferGateway(database), data)
+    gateway.export_to(archive)
+    for path in image_dir.iterdir():
+        path.unlink()
+
+    link = os.link
+
+    def fail_second(source: str | Path, target: str | Path) -> None:
+        if Path(target).name == "second.png":
+            raise OSError("simulated restore failure")
+        link(source, target)
+
+    monkeypatch.setattr(os, "link", fail_second)
+    archive.seek(0)
+    with pytest.raises(OSError, match="simulated restore failure"):
+        gateway.import_from(archive)
+    assert not list(image_dir.iterdir())
 
 
 def test_import_rejects_unknown_export_version_without_changes(tmp_path: Path) -> None:

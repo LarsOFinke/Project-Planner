@@ -96,3 +96,19 @@ remove `.venv`, configured databases, managed assets, migrations, or user diagno
 - Removed generated caches and checked for stale CLI/category-assignment references and empty source
   directories.
 - Reconfirmed dependency boundaries, class/file invariants, documentation, and both UI scales.
+
+## 2026-09-23 follow-up audit
+
+- Tracked source and documentation contain no developer-home paths, contact addresses, or
+  machine-specific absolute paths. Published Git authorship and the remote account identify a
+  person; anonymizing that metadata would require a separate history/hosting decision.
+- Kept the feature-first module boundaries. Large planning and project UI files still have one
+  coherent feature owner; file length alone does not justify a breaking module split.
+- Added configurable HTTP/backup timeouts and an unpacked-backup size limit to defaults,
+  example cfg, and environment loading; checked dependency health and empty source directories.
+- Strengthened backup import with bounded extraction, duplicate-record rejection, atomic file
+  publication, and fault-path rollback tests. Normal exceptions roll back; a process or power
+  failure between file publication and database commit still needs a future recovery journal.
+  Remote HTTP ingress also needs an upload-body limit before multipart buffering.
+- Updated the roadmap, database guide, architecture map, cache, and known-issues note to match
+  current behavior.

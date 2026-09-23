@@ -27,6 +27,9 @@ scale = auto
 data_directory = ~/.project_planner/data
 # Environment override: PROJECT_PLANNER_MAX_IMAGE_BYTES
 max_image_bytes = 20971520
+# Maximum total unpacked archive bytes (8 GiB by default).
+# Environment override: PROJECT_PLANNER_MAX_BACKUP_UNCOMPRESSED_BYTES
+max_backup_uncompressed_bytes = 8589934592
 
 [api]
 # Optional remote API base including /api/v1. Empty starts the embedded localhost API.
@@ -38,3 +41,7 @@ cors_origins =
 # Optional bearer token; required for non-loopback standalone API binding.
 # Environment override: PROJECT_PLANNER_API_TOKEN
 token =
+# HTTP request/read timeout in seconds. Environment: PROJECT_PLANNER_API_TIMEOUT_SECONDS
+timeout_seconds = 15
+# Backup upload/download timeout in seconds. Environment: PROJECT_PLANNER_BACKUP_TIMEOUT_SECONDS
+backup_timeout_seconds = 120
