@@ -24,9 +24,28 @@ class ProjectPlannerHost(BoxLayout):
         self._fullscreen = fullscreen
         self._on_fullscreen_change = on_fullscreen_change
         self._planner_root: ProjectPlannerRoot | None = None
+        self._rebuild_pending = False
+        self._pending_scale = ui_scale
+        self._stopping = False
         self.rebuild(ui_scale)
 
     def rebuild(self, ui_scale: float) -> None:
+        self._pending_scale = ui_scale
+        if self._rebuild_pending:
+            return
+        if self._planner_root is not None:
+            self._rebuild_pending = True
+            self._planner_root.save_editors_before_rebuild(
+                self._finish_rebuild,
+                lambda: setattr(self, "_rebuild_pending", False),
+            )
+            return
+        self._finish_rebuild()
+
+    def _finish_rebuild(self) -> None:
+        if self._stopping:
+            return
+        self._rebuild_pending = False
         selected_id = None
         selected_category_id = None
         if self._planner_root is not None:
@@ -37,7 +56,7 @@ class ProjectPlannerHost(BoxLayout):
         self._planner_root = ProjectPlannerRoot(
             self._clients,
             self._autosave_seconds,
-            ui_scale,
+            self._pending_scale,
             self._fullscreen,
             self._on_scale_change,
             self._change_fullscreen,
@@ -50,6 +69,7 @@ class ProjectPlannerHost(BoxLayout):
             self._planner_root.browser.refresh()
 
     def dispose(self) -> None:
+        self._stopping = True
         if self._planner_root is not None:
             self._planner_root.dispose()
 

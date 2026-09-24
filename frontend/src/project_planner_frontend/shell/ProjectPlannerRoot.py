@@ -259,6 +259,11 @@ class ProjectPlannerRoot(BoxLayout):
     def _load_tab(self, title: str) -> None:
         project_id = self._selected_project_id
         loader = self._project_loaders.get(title)
+        editor = getattr(self, title.lower(), None) if title in {"Diagram", "Workspace"} else None
+        if editor is not None and project_id is not None:
+            if editor.project_id != project_id and editor.loading_project_id != project_id:
+                loader(project_id)
+            return
         if (
             project_id is None
             or loader is None
@@ -286,6 +291,21 @@ class ProjectPlannerRoot(BoxLayout):
             self._admin_popup.dismiss()
         self.diagram.dispose()
         self.workspace.dispose()
+
+    def save_editors_before_rebuild(
+        self, after: Callable[[], None], on_failure: Callable[[], None]
+    ) -> None:
+        self.diagram.disabled = True
+        self.workspace.disabled = True
+
+        def failed() -> None:
+            self.diagram.disabled = self.diagram.project_id is None
+            self.workspace.disabled = self.workspace.project_id is None
+            on_failure()
+
+        self.diagram.save_before_rebuild(
+            lambda: self.workspace.save_before_rebuild(after, failed), failed
+        )
 
     @staticmethod
     def _exit_application() -> None:

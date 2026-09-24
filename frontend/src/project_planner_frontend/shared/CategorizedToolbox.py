@@ -1,12 +1,15 @@
 from collections.abc import Callable, Mapping, Sequence
-from functools import partial
 
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
 
 from project_planner_frontend.shared.theme import (
     BORDER,
+    GOLD_LIGHT,
     NAVY_800,
     paint_background,
     style_button,
@@ -16,48 +19,76 @@ ToolboxAction = tuple[str, Callable[..., None], str]
 
 
 class CategorizedToolbox(BoxLayout):
+    """Always-visible, scrollable editor dock with task-oriented sections."""
+
     def __init__(
         self,
         groups: Mapping[str, Sequence[ToolboxAction]],
-        *,
-        initial_group: str | None = None,
         **kwargs: object,
     ) -> None:
         super().__init__(
             orientation="vertical",
-            spacing=dp(6),
-            size_hint_y=None,
-            height=dp(102),
+            size_hint_x=None,
+            width=dp(148),
             padding=dp(7),
             **kwargs,
         )
         if not groups:
             raise ValueError("A toolbox requires at least one group")
-        self._groups = {name: tuple(actions) for name, actions in groups.items()}
         paint_background(self, NAVY_800, 8, BORDER)
-        self._category_buttons: dict[str, Button] = {}
-        categories = BoxLayout(size_hint_y=None, height=dp(38), spacing=dp(6))
-        for name in self._groups:
-            button = style_button(Button(text=name), "quiet")
-            if len(self._groups) > 4:
-                button.font_size = sp(12)
-            button.bind(on_release=partial(self.show_group, name))
-            self._category_buttons[name] = button
-            categories.add_widget(button)
-        self._actions = BoxLayout(spacing=dp(5))
-        self.add_widget(categories)
-        self.add_widget(self._actions)
-        self.show_group(initial_group or next(iter(self._groups)))
+        self._buttons: dict[tuple[str, str], Button] = {}
+        self._sections: dict[str, BoxLayout] = {}
+        self._headings: dict[str, Label] = {}
+        stack = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(10))
+        stack.bind(minimum_height=stack.setter("height"))
+        for title, actions in groups.items():
+            section = self._section(title, actions)
+            self._sections[title] = section
+            stack.add_widget(section)
+        self._scroll = ScrollView(
+            do_scroll_x=False, do_scroll_y=True, bar_width=dp(4), scroll_type=["bars", "content"]
+        )
+        self._scroll.add_widget(stack)
+        self.add_widget(self._scroll)
 
-    def show_group(self, name: str, *_: object) -> None:
-        if name not in self._groups:
-            raise ValueError(f"Unknown toolbox group: {name}")
-        self._actions.clear_widgets()
-        for category, button in self._category_buttons.items():
-            style_button(button, "selected" if category == name else "quiet")
-        for label, callback, variant in self._groups[name]:
+    def button(self, group: str, label: str) -> Button:
+        return self._buttons[group, label]
+
+    def set_group_label(self, group: str, text: str) -> None:
+        self._headings[group].text = text.upper()
+
+    def _section(self, title: str, actions: Sequence[ToolboxAction]) -> BoxLayout:
+        section = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(4))
+        section.bind(minimum_height=section.setter("height"))
+        heading = Label(
+            text=title.upper(),
+            color=GOLD_LIGHT,
+            bold=True,
+            font_size=sp(11),
+            halign="left",
+            valign="middle",
+            size_hint_y=None,
+            height=dp(20),
+        )
+        heading.bind(size=lambda widget, size: setattr(widget, "text_size", size))
+        self._headings[title] = heading
+        section.add_widget(heading)
+        grid = GridLayout(
+            cols=2,
+            size_hint_y=None,
+            spacing=dp(4),
+            row_force_default=True,
+            row_default_height=dp(36),
+        )
+        grid.bind(minimum_height=grid.setter("height"))
+        for label, callback, variant in actions:
             button = style_button(Button(text=label), variant)
-            if len(self._groups[name]) > 4:
-                button.font_size = sp(12)
+            button.font_size = sp(11)
+            button.halign = "center"
+            button.valign = "middle"
+            button.bind(size=lambda widget, size: setattr(widget, "text_size", size))
             button.bind(on_release=callback)
-            self._actions.add_widget(button)
+            grid.add_widget(button)
+            self._buttons[title, label] = button
+        section.add_widget(grid)
+        return section

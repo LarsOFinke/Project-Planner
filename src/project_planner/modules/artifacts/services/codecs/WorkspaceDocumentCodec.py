@@ -14,10 +14,11 @@ from project_planner.modules.artifacts.documents.WorkspaceShape import (
 from project_planner.modules.artifacts.documents.WorkspaceStroke import (
     WorkspaceStroke,
 )
+from project_planner.modules.artifacts.documents.WorkspaceText import WorkspaceText
 
 
 class WorkspaceDocumentCodec:
-    CURRENT_VERSION = 5
+    CURRENT_VERSION = 6
     SHAPE_KINDS = {"rectangle", "ellipse", "line", "arrow"}
     DEFAULT_COLOR = "#D7DDE5"
 
@@ -29,6 +30,7 @@ class WorkspaceDocumentCodec:
             strokes=self._decode_strokes(data.get("strokes", [])),
             shapes=self._decode_shapes(data.get("shapes", [])),
             images=self._decode_images(data.get("images", [])),
+            texts=self._decode_texts(data.get("texts", [])),
             version=version,
         )
 
@@ -41,7 +43,31 @@ class WorkspaceDocumentCodec:
             ],
             "shapes": [self._element_data(shape, kind=shape.kind) for shape in document.shapes],
             "images": [self._element_data(image, source=image.source) for image in document.images],
+            "texts": [self._element_data(item, text=item.text) for item in document.texts],
         }
+
+    def _decode_texts(self, value: object) -> tuple[WorkspaceText, ...]:
+        if not isinstance(value, list):
+            return ()
+        texts: list[WorkspaceText] = []
+        for entry in value:
+            if not isinstance(entry, dict) or not str(entry.get("text", "")).strip():
+                continue
+            try:
+                texts.append(
+                    WorkspaceText(
+                        element_id=str(entry.get("id") or uuid4()),
+                        text=str(entry["text"]),
+                        x=self._finite_float(entry.get("x", 30)),
+                        y=self._finite_float(entry.get("y", 30)),
+                        width=self._positive_float(entry.get("width", 180)),
+                        height=self._positive_float(entry.get("height", 80)),
+                        color=self._color(entry.get("color")),
+                    )
+                )
+            except (TypeError, ValueError):
+                continue
+        return tuple(texts)
 
     def _decode_strokes(self, value: object) -> tuple[WorkspaceStroke, ...]:
         if not isinstance(value, list):
@@ -124,9 +150,11 @@ class WorkspaceDocumentCodec:
             "y": element.y,
             "width": element.width,
             "height": element.height,
-            "rotation": element.rotation,
             **specific,
         }
+        rotation = getattr(element, "rotation", None)
+        if rotation is not None:
+            data["rotation"] = rotation
         color = getattr(element, "color", None)
         if color is not None:
             data["color"] = color

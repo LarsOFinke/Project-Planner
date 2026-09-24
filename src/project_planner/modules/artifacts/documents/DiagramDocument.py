@@ -7,4 +7,4 @@ from project_planner.modules.artifacts.documents.DiagramNode import DiagramNode
 class DiagramDocument:
     nodes: tuple[DiagramNode, ...] = ()
     edges: tuple[tuple[str, str], ...] = ()
-    version: int = 1
+    version: int = 2

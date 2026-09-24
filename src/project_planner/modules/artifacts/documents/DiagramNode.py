@@ -7,3 +7,5 @@ class DiagramNode:
     label: str
     x: float
     y: float
+    width: float = 150.0
+    height: float = 64.0

@@ -15,6 +15,7 @@ class DraggableImage(Widget):
         on_select: Callable[[str], None],
         on_change: Callable[[], None],
         source: str,
+        on_edit_start: Callable[[], None] | None = None,
         render_source: str | None = None,
         rotation_degrees: float = 0,
         **kwargs: object,
@@ -34,7 +35,9 @@ class DraggableImage(Widget):
         self.rotation_degrees = rotation_degrees
         self._on_select = on_select
         self._on_change = on_change
+        self._on_edit_start = on_edit_start or (lambda: None)
         self._drag_offset = (0.0, 0.0)
+        self._drag_started = False
         with self.canvas:
             PushMatrix()
             self._rotation = Rotate(angle=rotation_degrees, origin=self.center)
@@ -54,8 +57,11 @@ class DraggableImage(Widget):
         self._on_change()
 
     def scale_by(self, factor: float) -> None:
-        new_width = min(dp(600), max(dp(60), self.width * factor))
-        new_height = min(dp(450), max(dp(40), self.height * factor))
+        minimum = max(dp(60) / self.width, dp(40) / self.height)
+        maximum = min(dp(600) / self.width, dp(450) / self.height)
+        factor = min(maximum, max(minimum, factor))
+        new_width = self.width * factor
+        new_height = self.height * factor
         center = self.center
         self.size = (new_width, new_height)
         self.center = center
@@ -71,12 +77,16 @@ class DraggableImage(Widget):
         if self.collide_point(*touch.pos):
             touch.grab(self)
             self._drag_offset = (touch.x - self.x, touch.y - self.y)
+            self._drag_started = False
             self._on_select(self.element_id)
             return True
         return super().on_touch_down(touch)
 
     def on_touch_move(self, touch: object) -> bool:
         if touch.grab_current is self:
+            if not self._drag_started:
+                self._on_edit_start()
+                self._drag_started = True
             self.pos = (
                 touch.x - self._drag_offset[0],
                 touch.y - self._drag_offset[1],
@@ -87,6 +97,7 @@ class DraggableImage(Widget):
     def on_touch_up(self, touch: object) -> bool:
         if touch.grab_current is self:
             touch.ungrab(self)
-            self._on_change()
+            if self._drag_started:
+                self._on_change()
             return True
         return super().on_touch_up(touch)

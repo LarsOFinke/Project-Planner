@@ -8,7 +8,13 @@ class DiagramToolbox(CategorizedToolbox):
         self,
         add_node: Callable[..., None],
         rename_node: Callable[..., None],
+        edit_geometry: Callable[..., None],
         connect_selected: Callable[..., None],
+        zoom: Callable[[float], None],
+        pan: Callable[[float, float], None],
+        toggle_snap: Callable[..., None],
+        undo: Callable[..., None],
+        redo: Callable[..., None],
         delete_selected: Callable[..., None],
         clear_all: Callable[..., None],
         save: Callable[..., None],
@@ -16,19 +22,39 @@ class DiagramToolbox(CategorizedToolbox):
     ) -> None:
         super().__init__(
             groups={
-                "Nodes": [
+                "Quick edit": [
                     ("+ Node", add_node, "primary"),
-                    ("Rename selected", rename_node, "secondary"),
+                    ("Connect", connect_selected, "secondary"),
+                    ("Geometry", edit_geometry, "secondary"),
+                    ("Rename", rename_node, "secondary"),
                 ],
-                "Relations": [
-                    ("Connect selected", connect_selected, "secondary"),
+                "Selection": [
+                    ("Delete", delete_selected, "danger"),
                 ],
-                "Manage": [
-                    ("Delete selected", delete_selected, "danger"),
-                    ("Clear all", clear_all, "danger"),
+                "Canvas view": [
+                    ("Zoom -", lambda *_: zoom(0.8), "secondary"),
+                    ("Zoom +", lambda *_: zoom(1.25), "secondary"),
+                    ("Pan left", lambda *_: pan(-40, 0), "secondary"),
+                    ("Pan right", lambda *_: pan(40, 0), "secondary"),
+                    ("Pan up", lambda *_: pan(0, 40), "secondary"),
+                    ("Pan down", lambda *_: pan(0, -40), "secondary"),
+                    ("Snap grid", toggle_snap, "secondary"),
+                ],
+                "History & file": [
+                    ("Undo", undo, "secondary"),
+                    ("Redo", redo, "secondary"),
                     ("Save now", save, "primary"),
+                    ("Clear all", clear_all, "danger"),
                 ],
             },
-            initial_group="Nodes",
             **kwargs,
         )
+        self.set_selection(0)
+
+    def set_selection(self, count: int) -> None:
+        label = "none" if count == 0 else f"{count} node{'s' if count != 1 else ''}"
+        self.set_group_label("Quick edit", f"Selected: {label}")
+        self.button("Quick edit", "Connect").disabled = count != 2
+        self.button("Quick edit", "Geometry").disabled = count != 1
+        self.button("Quick edit", "Rename").disabled = count != 1
+        self.button("Selection", "Delete").disabled = count == 0

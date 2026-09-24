@@ -1,6 +1,6 @@
 # Project cache
 
-Last refreshed: 2026-09-23
+Last refreshed: 2026-09-24
 
 ## Hot context
 
@@ -8,7 +8,7 @@ Last refreshed: 2026-09-23
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 102 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
+- Current suite: 109 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -17,8 +17,9 @@ Last refreshed: 2026-09-23
   `~/.project_planner/project_planner.sqlite3`.
 - Managed data: default `~/.project_planner/data`.
 - UI scale: persistent top-right dropdown from 5%–500%; cfg/env accepts `auto` or `0.05`–`5.00`.
+  A scale rebuild waits for pending editor saves and keeps the current UI if a save fails.
 - Window: native fullscreen by default; cfg/env can opt into windowed mode.
-- Fullscreen exit: persistent bottom-left Exit button; shutdown flushes editor autosaves.
+- Fullscreen exit: persistent bottom-left Exit button; shutdown requests any dirty editor save.
 - Window mode: persistent top-right Windowed/Fullscreen toggle beside the scale selector.
 - General management: the top-right Admin button opens database transfer, runtime health, and
   recorded issue tools in a responsive overlay rather than a project workspace tab.
@@ -60,21 +61,28 @@ Last refreshed: 2026-09-23
 - ordered Custom sections that independently use Free, Agile, or Waterfall structures;
 - shared calendar-module service and reusable Date picker across all planning date fields;
 - project links and backlinks;
-- draggable node/edge diagram editor;
-- freehand workspace with explicit Select and Draw interaction modes;
+- draggable node/edge diagram editor with boundary-anchored connectors, exact position/size,
+  zoom/pan, snap-to-grid, and undo/redo;
+- freehand workspace with explicit Select and Draw modes, editable multiline text objects,
+  exact position/size, zoom/pan, snap-to-grid, and undo/redo;
 - movable, rotatable, scalable rectangle/ellipse/line/arrow objects;
 - imported PNG/JPEG/GIF/BMP/WebP images copied into per-project managed storage;
-- shared categorized-toolbox component;
+- shared scrollable side-dock component for visual editors, with visible task sections and
+  selection-aware quick actions;
 - top-anchored, scrollable editor forms with persistent bottom action rows at every UI scale;
 - content-sized text and image dialogs with responsive bounds and keyboard submission;
 - wrapping title/caption primitives and density-aware, horizontally scrollable planning tabs;
-- workspace toolboxes: Mode, Shapes, Media, Colors, Transform, Manage;
-- diagram toolboxes: Nodes, Relations, Manage;
-- local artifact autosave with JSON payloads.
+- Workspace and Diagram put their tool docks beside the canvas rather than above it. Workspace
+  keeps Select/Draw, size, rectangle and text creation immediately available; Diagram keeps node creation,
+  connection and geometry immediately available. Other actions remain in labeled dock sections.
+- background artifact autosave and image upload, with serialized saves and retained dirty state
+  after a failed save; clear-all requires confirmation and is undoable within the open editor.
 - project workflow orchestration for project/phase lifecycle operations;
 - query projections for project trees, parent choices, and duplicate-title-safe selectors;
 - resolved link projections with incoming/outgoing direction;
-- typed diagram/workspace documents with version-aware codecs;
+- typed diagram/workspace documents with version-aware codecs: diagram v2 and workspace v6
+  persist logical canvas coordinates (independent of UI scale and viewport); workspace v6
+  additionally persists editable text objects; earlier versions are converted on load;
 - typed HTTP-client injection into feature panels; backend services never enter the Kivy widget
   tree, and one controller coordinates each FastAPI feature area.
 - contextual To-Dos surfaced from Overview, individual phases, and Links; Diagram and Workspace
@@ -99,9 +107,9 @@ Last refreshed: 2026-09-23
   cascades the matching To-Dos.
 - `project_links` stores project relationships; `resource_links` stores web/file targets.
 - Projects, phases, links, and artifacts cascade from project deletion as defined by SQLite.
-- Diagram JSON version: `1`.
-- Workspace JSON version: `5`.
-- Workspace JSON stores colored strokes and shapes plus images, position, size, and rotation;
+- Diagram JSON version: `2`.
+- Workspace JSON version: `6`.
+- Workspace JSON stores colored strokes, shapes, text, and images with logical position and size;
   managed images use portable `managed://images/<filename>` references.
 - Migration head: `0013`; database export format: `7`.
 - Phase rows persist dates, description, normalized lifecycle status, optional Custom section,

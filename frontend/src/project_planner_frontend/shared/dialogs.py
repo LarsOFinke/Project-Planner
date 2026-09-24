@@ -1,4 +1,5 @@
 from collections.abc import Callable, Sequence
+from math import isfinite
 from pathlib import Path
 
 from kivy.clock import Clock
@@ -155,6 +156,8 @@ def open_text_dialog(
     hint: str,
     on_submit: Callable[[str], None],
     initial: str = "",
+    *,
+    multiline: bool = False,
 ) -> Popup:
     content = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
     paint_background(content, NAVY_800)
@@ -162,9 +165,9 @@ def open_text_dialog(
         TextInput(
             text=initial,
             hint_text=hint,
-            multiline=False,
+            multiline=multiline,
             size_hint_y=None,
-            height=dp(48),
+            height=dp(130 if multiline else 48),
         )
     )
     actions = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
@@ -183,7 +186,7 @@ def open_text_dialog(
         content=content,
         size_hint=(None, None),
         width=min(Window.width * 0.86, dp(560)),
-        height=min(Window.height * 0.9, dp(190)),
+        height=min(Window.height * 0.9, dp(270 if multiline else 190)),
     )
 
     def accept(*_: object) -> None:
@@ -206,6 +209,62 @@ def open_text_dialog(
         Clock.schedule_once(apply_focus, 0)
 
     popup.bind(on_open=focus_value)
+    popup.open()
+    return popup
+
+
+def open_geometry_dialog(
+    title: str,
+    initial: tuple[float, float, float, float],
+    on_submit: Callable[[float, float, float, float], None],
+) -> Popup:
+    content = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+    paint_background(content, NAVY_800)
+    fields: list[TextInput] = []
+    for name, number in zip(("X", "Y", "Width", "Height"), initial, strict=True):
+        row = BoxLayout(size_hint_y=None, height=dp(45), spacing=dp(8))
+        row.add_widget(Label(text=name, size_hint_x=None, width=dp(90), color=PEARL_GREY))
+        field = style_input(TextInput(text=f"{number:.2f}", multiline=False, input_filter="float"))
+        fields.append(field)
+        row.add_widget(field)
+        content.add_widget(row)
+    message = Label(
+        text="Logical canvas units; width and height must be positive.",
+        size_hint_y=None,
+        height=dp(32),
+        color=PEARL_GREY,
+    )
+    content.add_widget(message)
+    actions = BoxLayout(size_hint_y=None, height=dp(46), spacing=dp(8))
+    save = style_button(Button(text="Apply"), "primary")
+    cancel = style_button(Button(text="Cancel"), "secondary")
+    actions.add_widget(save)
+    actions.add_widget(cancel)
+    content.add_widget(actions)
+    popup = Popup(
+        title=title,
+        title_color=PEARL_GREY,
+        separator_color=GOLD,
+        background_color=NAVY_800,
+        content=content,
+        size_hint=(None, None),
+        width=min(Window.width * 0.86, dp(560)),
+        height=min(Window.height * 0.9, dp(360)),
+    )
+
+    def accept(*_: object) -> None:
+        try:
+            values = tuple(float(field.text) for field in fields)
+            if not all(isfinite(number) for number in values) or values[2] <= 0 or values[3] <= 0:
+                raise ValueError
+        except ValueError:
+            message.text = "Enter finite numbers and positive width/height."
+            return
+        on_submit(*values)
+        popup.dismiss()
+
+    save.bind(on_release=accept)
+    cancel.bind(on_release=lambda *_: popup.dismiss())
     popup.open()
     return popup
 

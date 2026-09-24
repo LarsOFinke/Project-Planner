@@ -16,8 +16,16 @@ class WorkspaceToolbox(CategorizedToolbox):
         self,
         add_shape: Callable[[str], None],
         choose_image: Callable[..., None],
+        add_text: Callable[..., None],
+        edit_text: Callable[..., None],
+        edit_geometry: Callable[..., None],
         rotate: Callable[[float], None],
         scale: Callable[[float], None],
+        zoom: Callable[[float], None],
+        pan: Callable[[float, float], None],
+        toggle_snap: Callable[..., None],
+        undo: Callable[..., None],
+        redo: Callable[..., None],
         set_color: Callable[[str], None],
         set_mode: Callable[[WorkspaceMode], None],
         delete_selected: Callable[..., None],
@@ -38,7 +46,7 @@ class WorkspaceToolbox(CategorizedToolbox):
         }
         super().__init__(
             groups={
-                "Mode": [
+                "Quick edit": [
                     (
                         "Select",
                         lambda *_: self._choose_mode(WorkspaceMode.SELECT),
@@ -49,14 +57,26 @@ class WorkspaceToolbox(CategorizedToolbox):
                         lambda *_: self._choose_mode(WorkspaceMode.DRAW),
                         "secondary",
                     ),
+                    ("Size -", lambda *_: scale(0.85), "secondary"),
+                    ("Size +", lambda *_: scale(1.15), "secondary"),
+                    ("Rectangle", lambda *_: add_shape("rectangle"), "secondary"),
+                    ("Add text", add_text, "secondary"),
                 ],
-                "Shapes": [
+                "Add to canvas": [
                     ("Rectangle", lambda *_: add_shape("rectangle"), "secondary"),
                     ("Ellipse", lambda *_: add_shape("ellipse"), "secondary"),
                     ("Line", lambda *_: add_shape("line"), "secondary"),
                     ("Arrow", lambda *_: add_shape("arrow"), "secondary"),
+                    ("Add text", add_text, "secondary"),
+                    ("Image", choose_image, "secondary"),
                 ],
-                "Media": [("Insert image", choose_image, "primary")],
+                "Object details": [
+                    ("Geometry", edit_geometry, "primary"),
+                    ("Edit text", edit_text, "secondary"),
+                    ("Rotate -", lambda *_: rotate(-15), "secondary"),
+                    ("Rotate +", lambda *_: rotate(15), "secondary"),
+                    ("Delete", delete_selected, "danger"),
+                ],
                 "Colors": [
                     (
                         name,
@@ -65,47 +85,57 @@ class WorkspaceToolbox(CategorizedToolbox):
                     )
                     for name, value in self._palette_colors.items()
                 ],
-                "Transform": [
-                    ("Rotate left", lambda *_: rotate(-15), "secondary"),
-                    ("Rotate right", lambda *_: rotate(15), "secondary"),
-                    ("Scale down", lambda *_: scale(0.85), "secondary"),
-                    ("Scale up", lambda *_: scale(1.15), "secondary"),
+                "Canvas view": [
+                    ("Zoom -", lambda *_: zoom(0.8), "secondary"),
+                    ("Zoom +", lambda *_: zoom(1.25), "secondary"),
+                    ("Pan left", lambda *_: pan(-40, 0), "secondary"),
+                    ("Pan right", lambda *_: pan(40, 0), "secondary"),
+                    ("Pan up", lambda *_: pan(0, 40), "secondary"),
+                    ("Pan down", lambda *_: pan(0, -40), "secondary"),
+                    ("Snap grid", toggle_snap, "secondary"),
                 ],
-                "Manage": [
-                    ("Delete selected", delete_selected, "danger"),
-                    ("Clear all", clear_all, "danger"),
+                "History & file": [
+                    ("Undo", undo, "secondary"),
+                    ("Redo", redo, "secondary"),
                     ("Save now", save, "primary"),
+                    ("Clear all", clear_all, "danger"),
                 ],
             },
-            initial_group="Mode",
             **kwargs,
         )
+        self._refresh_mode()
+        self._refresh_colors()
+        self.set_selection(None)
 
-    def show_group(self, name: str, *_: object) -> None:
-        super().show_group(name)
-        if name == "Mode":
-            for button in self._actions.children:
-                mode = WorkspaceMode(button.text.lower())
-                style_button(
-                    button,
-                    "selected" if mode is self._selected_mode else "secondary",
-                )
-            return
-        if name != "Colors":
-            return
-        for button in self._actions.children:
-            color = self._palette_colors[button.text]
+    def set_selection(self, kind: str | None) -> None:
+        self.set_group_label("Quick edit", f"Selected: {kind or 'none'}")
+        for label in ("Size -", "Size +"):
+            self.button("Quick edit", label).disabled = kind is None
+        for label in ("Rotate -", "Rotate +"):
+            self.button("Object details", label).disabled = kind is None or kind == "text"
+        self.button("Object details", "Geometry").disabled = kind is None
+        self.button("Object details", "Edit text").disabled = kind != "text"
+        self.button("Object details", "Delete").disabled = kind is None
+
+    def _refresh_mode(self) -> None:
+        for mode in WorkspaceMode:
+            button = self.button("Quick edit", mode.value.capitalize())
+            style_button(button, "selected" if mode is self._selected_mode else "secondary")
+
+    def _refresh_colors(self) -> None:
+        for name, color in self._palette_colors.items():
+            button = self.button("Colors", name)
             red, green, blue, _alpha = hex_color(color)
             opacity = 1.0 if color == self._selected_color else 0.62
             set_button_background(button, (red, green, blue, opacity))
-            button.color = NAVY_950 if button.text in {"Pearl", "Gold"} else PEARL_GREY
+            button.color = NAVY_950 if name in {"Pearl", "Gold"} else PEARL_GREY
 
     def _choose_color(self, color: str) -> None:
         self._selected_color = color
         self._set_color(color)
-        self.show_group("Colors")
+        self._refresh_colors()
 
     def _choose_mode(self, mode: WorkspaceMode) -> None:
         self._selected_mode = mode
         self._set_mode(mode)
-        self.show_group("Mode")
+        self._refresh_mode()

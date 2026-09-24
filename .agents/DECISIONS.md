@@ -247,3 +247,23 @@ Project-directory, feature-tab, and Admin initial reads run in bounded backgroun
 results are applied on Kivy's event loop, with generation checks to discard stale responses after
 selection changes. Backup transfers use the same mechanism. HTTP timeouts become a clear retry
 message, so a slow remote API does not freeze the primary navigation flow.
+
+## AD-037 — Logical editor coordinates and serialized background saves
+
+Diagram v2 and workspace v6 store positions and dimensions in logical canvas units, rather than
+window pixels. Viewport pan/zoom and UI scale change only the screen transform; editing geometry
+or strokes changes the document. Earlier artifacts are accepted and converted on load, with
+best-effort placement for legacy absolute coordinates because their original viewport was never
+stored. Workspace v6 adds editable text objects; diagram v2 adds node dimensions. Clear-all is
+confirmed and undoable in a bounded in-memory history. Editor saves are serialized off the Kivy
+event loop; a failed save leaves the revision dirty and blocks project replacement so it can be
+retried. Image upload and materialization also run in a worker, with navigation deferred until
+the import completes. This does not claim crash-durable unsaved revision recovery.
+
+## AD-038 — Side-docked visual editor tools
+
+Visual editor actions use one scrollable, task-sectioned dock beside the canvas instead of a
+category switcher above it. The most frequent controls stay first: workspace mode, size, rectangle
+and text creation; diagram node creation, connection and geometry. Selection-dependent actions are disabled
+when inapplicable. The root feature tab already names the editor, so redundant editor headings
+are removed to preserve canvas height at 200% UI scale.

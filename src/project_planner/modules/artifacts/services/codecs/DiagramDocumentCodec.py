@@ -8,7 +8,7 @@ from project_planner.modules.artifacts.documents.DiagramNode import DiagramNode
 
 
 class DiagramDocumentCodec:
-    CURRENT_VERSION = 1
+    CURRENT_VERSION = 2
 
     def decode(self, data: object) -> DiagramDocument:
         if not isinstance(data, dict):
@@ -30,6 +30,8 @@ class DiagramDocumentCodec:
                         label=str(entry.get("label", "Node")),
                         x=self._finite_float(entry.get("x", 40)),
                         y=self._finite_float(entry.get("y", 40)),
+                        width=self._positive_float(entry.get("width", 150)),
+                        height=self._positive_float(entry.get("height", 64)),
                     )
                 except (TypeError, ValueError):
                     continue
@@ -53,7 +55,7 @@ class DiagramDocumentCodec:
                 ):
                     edges.append(edge)
                     seen_edges.add(identity)
-        return DiagramDocument(tuple(nodes), tuple(edges), version)
+        return DiagramDocument(nodes=tuple(nodes), edges=tuple(edges), version=version)
 
     def encode(self, document: DiagramDocument) -> dict[str, object]:
         return {
@@ -64,6 +66,8 @@ class DiagramDocumentCodec:
                     "label": node.label,
                     "x": node.x,
                     "y": node.y,
+                    "width": node.width,
+                    "height": node.height,
                 }
                 for node in document.nodes
             ],
@@ -84,4 +88,11 @@ class DiagramDocumentCodec:
         parsed = float(value)
         if not isfinite(parsed):
             raise ValueError("A diagram coordinate must be finite")
+        return parsed
+
+    @classmethod
+    def _positive_float(cls, value: object) -> float:
+        parsed = cls._finite_float(value)
+        if parsed <= 0:
+            raise ValueError("Diagram dimensions must be positive")
         return parsed

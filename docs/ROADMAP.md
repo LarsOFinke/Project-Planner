@@ -23,13 +23,15 @@ implemented. Milestones and task dependencies remain follow-up work.
 
 ### M3 — Structured diagrams (basic editor in prototype 0.1)
 
-A persistent draggable node/edge editor is implemented. Pan, zoom, richer UML shapes,
-undo/redo, import/export, and SVG/PNG export remain follow-up work.
+A persistent draggable node/edge editor has logical coordinates, boundary-anchored connectors,
+zoom/pan controls, snapping, exact geometry editing, undo/redo, and background autosave. Richer UML
+shapes, direct-manipulation resize handles, import/export, and SVG/PNG export remain follow-up work.
 
 ### M4 — Free workspace (basic editor in prototype 0.1)
 
-Persistent freehand strokes, shapes, managed images, transforms, color selection, and autosave are
-implemented. Text objects, grouping, infinite pan/zoom, and undo remain follow-up work.
+Persistent freehand strokes, shapes, managed images, editable multiline text objects, transforms,
+exact geometry editing, bounded zoom/pan, snapping, undo/redo, and background autosave are
+implemented. Grouping, direct-manipulation resize handles, infinite canvas, and export remain.
 
 ### M5 — Connections and polish
 

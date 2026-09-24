@@ -39,12 +39,12 @@ deferred until the first clock tick, so reproduce with a real event loop.
 
 ### Controls clip at 200% scaling
 
-Do not shrink fonts locally. Use responsive widths, ScrollView, or a toolbox switcher. Validate
+Do not shrink fonts locally. Use responsive widths and scrollable tool docks. Validate
 at both 1280×800 and 960×620 where practical.
 
 ### Workspace object appears outside the canvas
 
-Check local-to-canvas coordinate conversion and `_sync_background` in `FreehandCanvas.py`.
+Check the logical-to-screen `CanvasTransform` and `_sync_view` in `FreehandCanvas.py`.
 The canvas uses `StencilView` to clip children to its bounds.
 
 ### Imported image disappears after restart
