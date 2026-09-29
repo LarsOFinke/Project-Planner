@@ -38,8 +38,9 @@ implemented. Grouping, direct-manipulation resize handles, infinite canvas, and 
 Linked projects, backlinks, transactional database export/import, recoverable UI errors, local
 health diagnostics, project archiving, portable managed-image references, bounded image uploads,
 authenticated remote API access, and managed-image tarball backups are implemented.
-Search/filtering, recent projects, keyboard navigation, accessibility, crash-consistent
-cross-resource restore, and recovery from autosaved revisions remain.
+Project-directory search, basic keyboard search navigation, crash-recoverable backup imports,
+and recovery from the 20 most recent earlier saved editor versions are implemented. Recent
+projects, broader keyboard navigation, and accessibility remain.
 
 ## Explicit non-goals for the first release
 

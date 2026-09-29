@@ -18,6 +18,7 @@ from project_planner_frontend.collaboration.clients.TodoClient import TodoClient
 from project_planner_frontend.collaboration.views.todos.TodoPanel import TodoPanel
 from project_planner_frontend.shared.background import run_background
 from project_planner_frontend.shared.dialogs import (
+    open_choice_dialog,
     open_confirmation_dialog,
     open_geometry_dialog,
     open_text_dialog,
@@ -64,6 +65,7 @@ class DiagramPanel(BoxLayout):
             delete_selected=self._delete,
             clear_all=self._clear,
             save=self._save_now,
+            revisions=self._show_revisions,
         )
         self.canvas_editor = DiagramCanvas(self._mark_dirty, self.toolbox.set_selection)
         self._save_session = EditorSaveSession(
@@ -199,6 +201,72 @@ class DiagramPanel(BoxLayout):
             self._save_session.save(after=lambda: show_confirmation("Diagram saved locally."))
         else:
             show_confirmation("Diagram is already up to date.")
+
+    def _show_revisions(self, *_: object) -> None:
+        generation = self._load_generation
+
+        def fetch() -> None:
+            artifact = self._save_session.artifact
+            if artifact is None or generation != self._load_generation:
+                return
+
+            def display(revisions: object) -> None:
+                if generation != self._load_generation:
+                    return
+                if not revisions:
+                    show_confirmation("No earlier saved versions are available.")
+                    return
+                choices = tuple(
+                    (revision.id, revision.created_at.astimezone().strftime("%Y-%m-%d %H:%M:%S"))
+                    for revision in revisions
+                )
+                open_choice_dialog("Restore diagram version", choices, self._restore_revision)
+
+            run_background(lambda: self._artifacts.list_revisions(artifact), display)
+
+        self._save_session.save(after=fetch)
+
+    def _restore_revision(self, revision_id: str) -> None:
+        artifact = self._save_session.artifact
+        if artifact is None:
+            return
+        generation = self._load_generation
+        if self._save_session.dirty:
+
+            def continue_restore() -> None:
+                current = self._save_session.artifact
+                if (
+                    generation == self._load_generation
+                    and current is not None
+                    and current.id == artifact.id
+                ):
+                    self._restore_revision(revision_id)
+
+            self._save_session.save(after=continue_restore)
+            return
+        self.disabled = True
+
+        def restore() -> tuple[Artifact, object]:
+            saved = self._artifacts.restore_revision(artifact, revision_id)
+            return saved, self._documents.decode(self._artifacts.read_json(saved))
+
+        def display(result: tuple[Artifact, object]) -> None:
+            if generation != self._load_generation:
+                return
+            saved, document = result
+            self._artifact = saved
+            self._save_session.bind_artifact(saved)
+            self.canvas_editor.load_document(document)
+            self.disabled = False
+            show_confirmation("Diagram version restored.")
+
+        def failed(error: Exception) -> None:
+            if generation != self._load_generation:
+                return
+            self.disabled = False
+            show_error(f"Could not restore diagram: {error}")
+
+        run_background(restore, display, failed)
 
     def _autosave(self, _elapsed: float) -> None:
         self._save()

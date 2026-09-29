@@ -3,10 +3,12 @@ from datetime import date
 from functools import partial
 from typing import Any
 
+from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.textinput import TextInput
 
 from project_planner.modules.planning.entities.SectionType import SectionType
 from project_planner.modules.projects.entities.PlanningMethod import PlanningMethod
@@ -38,6 +40,7 @@ from project_planner_frontend.shared.theme import (
     paint_background,
     section_label,
     style_button,
+    style_input,
 )
 
 
@@ -77,6 +80,7 @@ class ProjectBrowser(BoxLayout):
         self._drop_target_widget: ProjectCategoryRow | ProjectTreeRow | None = None
         self._drop_target_placement: str | None = None
         self._refresh_generation = 0
+        self._search_cursor_id: str | None = None
         paint_background(self, NAVY_800, 10, BORDER)
         self._list = BoxLayout(
             orientation="vertical",
@@ -110,10 +114,67 @@ class ProjectBrowser(BoxLayout):
             )
         )
         category_controls = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(7))
-        add_category = style_button(Button(text="+ Category"), "secondary")
+        add_category = style_button(Button(text="+", size_hint_x=None, width=dp(42)), "secondary")
         add_category.bind(on_release=lambda *_: self._create_category())
         category_controls.add_widget(add_category)
+        self.search_input = style_input(
+            TextInput(
+                hint_text="Search projects",
+                multiline=False,
+            )
+        )
+        self.search_input.bind(text=self._search_changed)
+        self.search_input.bind(on_text_validate=lambda *_: self._select_first_search_result())
+        category_controls.add_widget(self.search_input)
         self.add_widget(category_controls)
+        Window.bind(on_key_down=self._on_key_down)
+
+    def _on_key_down(
+        self, _window: object, key: int, _scan: int, _text: str, modifiers: list[str]
+    ) -> bool:
+        if key == 102 and ("ctrl" in modifiers or "meta" in modifiers):
+            self.search_input.focus = True
+            return True
+        if key == 27 and self.search_input.focus:
+            self.search_input.text = ""
+            self.search_input.focus = False
+            return True
+        if self.search_input.focus and key in {273, 274}:
+            self._move_search_cursor(-1 if key == 273 else 1)
+            return True
+        return False
+
+    def _search_changed(self, *_: object) -> None:
+        self._search_cursor_id = None
+        self.refresh(reload=False)
+
+    def _search_result_ids(self) -> list[str]:
+        return [
+            widget.project_id
+            for widget in reversed(self._list.children)
+            if isinstance(widget, ProjectTreeRow)
+        ]
+
+    def _move_search_cursor(self, direction: int) -> None:
+        results = self._search_result_ids()
+        if not results:
+            return
+        if self._search_cursor_id in results:
+            current = results.index(self._search_cursor_id)
+            next_index = (current + direction) % len(results)
+        else:
+            next_index = 0 if direction > 0 else len(results) - 1
+        self._search_cursor_id = results[next_index]
+        self.refresh(reload=False)
+
+    def _select_first_search_result(self) -> None:
+        results = self._search_result_ids()
+        if results:
+            self.select(self._search_cursor_id or results[0])
+            self.search_input.focus = False
+
+    def dispose(self) -> None:
+        Window.unbind(on_key_down=self._on_key_down)
 
     def _create(self, parent_id: str | None, category_id: str | None) -> None:
         def submit(
@@ -290,12 +351,18 @@ class ProjectBrowser(BoxLayout):
         for section in self._directory:
             category = section.category
             category_id = category.id if category is not None else None
-            category_expanded = category_id not in self._collapsed_category_ids
+            search = self.search_input.text.strip().casefold()
+            category_name = category.name if category is not None else "Uncategorized"
+            category_matches = bool(search and search in category_name.casefold())
+            project_items = self._search_project_items(section.projects, search, category_matches)
+            if search and not project_items and not category_matches:
+                continue
+            category_expanded = bool(search) or category_id not in self._collapsed_category_ids
             self._list.add_widget(
                 ProjectCategoryRow(
                     category_id,
-                    category.name if category is not None else "Uncategorized",
-                    len(section.projects),
+                    category_name,
+                    len(project_items),
                     category_id is not None and category_id == self.selected_category_id,
                     category_expanded,
                     partial(self._select_category, category_id),
@@ -311,9 +378,13 @@ class ProjectBrowser(BoxLayout):
             )
             if not category_expanded:
                 continue
-            for item, has_children in self._visible_project_items(section.projects):
+            for item, has_children in self._visible_project_items(
+                project_items, search=bool(search)
+            ):
                 project = item.project
-                selected = project.id == self.selected_id
+                selected = project.id == self.selected_id or (
+                    self.search_input.focus and project.id == self._search_cursor_id
+                )
                 self._list.add_widget(
                     ProjectTreeRow(
                         project.id,
@@ -454,6 +525,8 @@ class ProjectBrowser(BoxLayout):
     def _visible_project_items(
         self,
         items: tuple[Any, ...],
+        *,
+        search: bool = False,
     ) -> tuple[tuple[Any, bool], ...]:
         visible: list[tuple[Any, bool]] = []
         hidden_below_depth: int | None = None
@@ -464,9 +537,24 @@ class ProjectBrowser(BoxLayout):
                 hidden_below_depth = None
             has_children = index + 1 < len(items) and items[index + 1].depth > item.depth
             visible.append((item, has_children))
-            if has_children and item.project.id in self._collapsed_project_ids:
+            if not search and has_children and item.project.id in self._collapsed_project_ids:
                 hidden_below_depth = item.depth
         return tuple(visible)
+
+    def _search_project_items(
+        self, items: tuple[Any, ...], query: str, category_matches: bool
+    ) -> tuple[Any, ...]:
+        if not query or category_matches:
+            return items
+        included: set[str] = set()
+        for item in items:
+            if query not in item.project.title.casefold():
+                continue
+            current_id: str | None = item.project.id
+            while current_id is not None and current_id not in included:
+                included.add(current_id)
+                current_id = self._parent_by_project_id.get(current_id)
+        return tuple(item for item in items if item.project.id in included)
 
     def _toggle_category(self, category_id: str | None) -> None:
         if category_id in self._collapsed_category_ids:

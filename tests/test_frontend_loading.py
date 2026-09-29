@@ -86,6 +86,30 @@ def test_project_directory_always_exposes_uncategorized_creation_target() -> Non
     assert directory[0].projects == ()
 
 
+def test_project_search_keeps_matching_project_ancestors() -> None:
+    root = Project("Root")
+    child = Project("Child", parent_id=root.id)
+    target = Project("Target", parent_id=child.id)
+    unrelated = Project("Unrelated")
+    items = tuple(
+        ProjectTreeItem(project, depth)
+        for project, depth in ((root, 0), (child, 1), (target, 2), (unrelated, 0))
+    )
+    browser = SimpleNamespace(
+        _parent_by_project_id={
+            root.id: None,
+            child.id: root.id,
+            target.id: child.id,
+            unrelated.id: None,
+        }
+    )
+
+    filtered = ProjectBrowser._search_project_items(browser, items, "target", False)
+
+    assert [item.project for item in filtered] == [root, child, target]
+    assert ProjectBrowser._search_project_items(browser, items, "category", True) == items
+
+
 def test_directory_rows_keep_actions_on_the_relevant_item() -> None:
     actions: list[str] = []
     category = ProjectCategoryRow(

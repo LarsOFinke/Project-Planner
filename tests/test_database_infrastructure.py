@@ -32,6 +32,8 @@ def test_migrations_create_versioned_normalized_schema(tmp_path: Path) -> None:
         "project_links",
         "todos",
         "artifacts",
+        "artifact_revisions",
+        "backup_imports",
         "seed_history",
         "resource_links",
         "planning_sections",
@@ -43,7 +45,7 @@ def test_migrations_create_versioned_normalized_schema(tmp_path: Path) -> None:
         "project_categories",
     } <= set(inspector.get_table_names())
     with database.engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0013"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0015"
     assert "category_id" in {column["name"] for column in inspector.get_columns("projects")}
     assert "position" in {column["name"] for column in inspector.get_columns("projects")}
     assert "parallel_group" in {column["name"] for column in inspector.get_columns("phases")}
@@ -109,7 +111,7 @@ def test_migration_repairs_legacy_sprint_status_constraint(tmp_path: Path) -> No
                 "'2026-09-14', '', 'planned', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
             )
         )
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0013"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0015"
         assert connection.scalar(text("SELECT status FROM sprints")) == "planned"
 
 
@@ -215,6 +217,32 @@ def test_phase_todos_survive_reordering_and_follow_phase_deletion(tmp_path: Path
     assert planner.todos.list_for_context(project.id, TodoModule.PHASES, discovery.id) == []
 
 
+def test_artifact_saved_versions_can_be_restored_after_reopening_database(tmp_path: Path) -> None:
+    path = tmp_path / "revisions.sqlite3"
+    planner = build_test_services(Settings(path, 1280, 800, 20))
+    project = planner.projects.create("Draft")
+    artifact = planner.artifacts.get_or_create(project.id, ArtifactKind.DIAGRAM)
+    first = planner.artifacts.save_json(artifact, {"version": 2, "nodes": ["first"]})
+    planner.artifacts.save_json(first, {"version": 2, "nodes": ["second"]})
+
+    reopened = build_test_services(Settings(path, 1280, 800, 20))
+    current = reopened.artifacts.get_or_create(project.id, ArtifactKind.DIAGRAM)
+    revisions = reopened.artifacts.list_revisions(current)
+
+    assert len(revisions) == 1
+    assert json.loads(revisions[0].content)["nodes"] == ["first"]
+    restored = reopened.artifacts.restore_revision(current, revisions[0].id)
+    assert reopened.artifacts.read_json(restored)["nodes"] == ["first"]
+    assert json.loads(reopened.artifacts.list_revisions(restored)[0].content)["nodes"] == ["second"]
+
+    exported = DatabaseTransferGateway(Database(path)).export_document()
+    copy_path = tmp_path / "revisions-copy.sqlite3"
+    DatabaseTransferGateway(Database(copy_path)).import_document(exported)
+    copied = build_test_services(Settings(copy_path, 1280, 800, 20))
+    copied_artifact = copied.artifacts.get_or_create(project.id, ArtifactKind.DIAGRAM)
+    assert len(copied.artifacts.list_revisions(copied_artifact)) == 2
+
+
 def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     source_path = tmp_path / "source.sqlite3"
     source = build_test_services(Settings(source_path, 1280, 800, 20))
@@ -238,7 +266,7 @@ def test_database_export_import_dry_run_and_apply(tmp_path: Path) -> None:
     DatabaseTransferGateway(Database(source_path)).export_to(export_path)
     document = json.loads(export_path.read_text(encoding="utf-8"))
     assert document["format"] == "project-planner-database-export"
-    assert document["version"] == 7
+    assert document["version"] == 8
 
     target_path = tmp_path / "target.sqlite3"
     target_database = Database(target_path)
@@ -353,7 +381,7 @@ def test_backup_import_rolls_back_new_files_if_database_merge_fails(
     transfer = DatabaseTransferGateway(Database(tmp_path / "target.sqlite3"))
     gateway = BackupArchiveGateway(transfer, target_data)
 
-    def fail_merge(_document: object) -> None:
+    def fail_merge(_document: object, *, import_id: str | None = None) -> None:
         raise RuntimeError("simulated database failure")
 
     monkeypatch.setattr(transfer, "import_document", fail_merge)
@@ -404,6 +432,71 @@ def test_backup_import_rolls_back_files_after_a_restore_failure(
     with pytest.raises(OSError, match="simulated restore failure"):
         gateway.import_from(archive)
     assert not list(image_dir.iterdir())
+
+
+def test_backup_recovery_removes_files_from_interrupted_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = Database(tmp_path / "planner.sqlite3")
+    data = tmp_path / "data"
+    image_dir = data / "projects" / "sample" / "images"
+    image_dir.mkdir(parents=True)
+    for name in ("first.png", "second.png"):
+        (image_dir / name).write_bytes(name.encode())
+    archive = io.BytesIO()
+    gateway = BackupArchiveGateway(DatabaseTransferGateway(database), data)
+    gateway.export_to(archive)
+    for path in image_dir.iterdir():
+        path.unlink()
+
+    link = os.link
+
+    def interrupt_second(source: str | Path, target: str | Path) -> None:
+        if Path(target).name == "second.png":
+            raise KeyboardInterrupt("simulated process termination")
+        link(source, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "link", interrupt_second)
+        archive.seek(0)
+        with pytest.raises(KeyboardInterrupt):
+            gateway.import_from(archive)
+    assert (image_dir / "first.png").exists()
+
+    BackupArchiveGateway(DatabaseTransferGateway(database), data)
+
+    assert not list(image_dir.iterdir())
+    assert not list(data.glob(".backup-import-*.json"))
+
+
+def test_backup_recovery_keeps_files_after_database_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = Database(tmp_path / "planner.sqlite3")
+    data = tmp_path / "data"
+    image = data / "projects" / "sample" / "images" / "example.png"
+    image.parent.mkdir(parents=True)
+    image.write_bytes(b"image")
+    archive = io.BytesIO()
+    transfer = DatabaseTransferGateway(database)
+    gateway = BackupArchiveGateway(transfer, data)
+    gateway.export_to(archive)
+    image.unlink()
+
+    def interrupt_cleanup(_journal: Path) -> None:
+        raise KeyboardInterrupt("simulated process termination")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(gateway, "_remove_journal", interrupt_cleanup)
+        archive.seek(0)
+        with pytest.raises(KeyboardInterrupt):
+            gateway.import_from(archive)
+    assert image.read_bytes() == b"image"
+
+    BackupArchiveGateway(DatabaseTransferGateway(database), data)
+
+    assert image.read_bytes() == b"image"
+    assert not list(data.glob(".backup-import-*.json"))
 
 
 def test_import_rejects_unknown_export_version_without_changes(tmp_path: Path) -> None:

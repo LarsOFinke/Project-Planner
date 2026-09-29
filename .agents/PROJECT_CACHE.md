@@ -1,6 +1,6 @@
 # Project cache
 
-Last refreshed: 2026-09-24
+Last refreshed: 2026-09-29
 
 ## Hot context
 
@@ -8,7 +8,8 @@ Last refreshed: 2026-09-24
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 109 tests plus automated Kivy event-loop smoke runs at 200% and 100%.
+- Current suite: 113 tests plus Kivy event-loop smoke runs at 200% and 100%; smoke stages
+  follow asynchronous readiness and have a 15-second deadline.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -77,6 +78,8 @@ Last refreshed: 2026-09-24
   connection and geometry immediately available. Other actions remain in labeled dock sections.
 - background artifact autosave and image upload, with serialized saves and retained dirty state
   after a failed save; clear-all requires confirmation and is undoable within the open editor.
+- editor saves retain the 20 most recent earlier saved versions per artifact, with restore controls
+  in Diagram and Workspace; revisions are included in database and tarball backups;
 - project workflow orchestration for project/phase lifecycle operations;
 - query projections for project trees, parent choices, and duplicate-title-safe selectors;
 - resolved link projections with incoming/outgoing direction;
@@ -88,6 +91,8 @@ Last refreshed: 2026-09-24
 - contextual To-Dos surfaced from Overview, individual phases, and Links; Diagram and Workspace
   each expose a dedicated nested To-Dos tab beside their Canvas tab;
 - project relationships managed from Overview, with Links reserved for web URLs and local files;
+- project directory search preserves matching projects' ancestor chains; Ctrl+F focuses search,
+  Up/Down moves through results, Enter opens one, and Escape clears the query;
 - Links separates Web URLs, Local Files, and contextual To-Dos into dedicated nested tabs while
   retaining one normalized resource-link persistence model;
 - save confirmations and direct navigation from real project links;
@@ -111,7 +116,9 @@ Last refreshed: 2026-09-24
 - Workspace JSON version: `6`.
 - Workspace JSON stores colored strokes, shapes, text, and images with logical position and size;
   managed images use portable `managed://images/<filename>` references.
-- Migration head: `0013`; database export format: `7`.
+- Migration head: `0015`; database export format: `8`.
+- Backup imports use a durable file journal and a database commit marker. On the next API startup,
+  recovery removes unchanged files from uncommitted imports and retains committed files.
 - Phase rows persist dates, description, normalized lifecycle status, optional Custom section,
   optional named parallel-work group, created timestamp, and updated timestamp; older phase rows
   are preserved and mapped forward.
@@ -126,8 +133,7 @@ Last refreshed: 2026-09-24
 - Backup archive: `.tar.gz` with `database.json` and `data/projects/<project-id>/images/*`;
   legacy JSON-only database endpoints remain for compatibility. External linked files are not copied.
 - Backup import stages files under a configurable 8 GiB unpacked-data cap, publishes new files
-  atomically, and removes those files on a database-merge exception. Cross-resource rollback is
-  not crash-consistent after sudden process or machine termination.
+  atomically, and recovers interrupted publication using a journal and transaction marker.
 - Remote clients materialize managed images below `~/.cache/project_planner/images/<project-id>/`.
 - Image uploads default to a 20 MiB limit and validate supported file signatures.
 

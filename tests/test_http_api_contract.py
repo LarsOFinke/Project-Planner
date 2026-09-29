@@ -151,6 +151,28 @@ def test_asgi_project_and_managed_image_round_trip(tmp_path: Path) -> None:
             created = await client.post("/api/v1/projects", json={"title": "Integrated"})
             assert created.status_code == 201
             project_id = created.json()["id"]
+            first = await client.put(
+                f"/api/v1/projects/{project_id}/artifacts/diagram",
+                json={"content": {"version": 2, "nodes": ["first"]}},
+            )
+            assert first.status_code == 200
+            second = await client.put(
+                f"/api/v1/projects/{project_id}/artifacts/diagram",
+                json={"content": {"version": 2, "nodes": ["second"]}},
+            )
+            assert second.status_code == 200
+            revisions = await client.get(
+                f"/api/v1/projects/{project_id}/artifacts/diagram/revisions"
+            )
+            assert revisions.status_code == 200
+            assert len(revisions.json()) == 1
+            restored = await client.post(
+                f"/api/v1/projects/{project_id}/artifacts/diagram/"
+                f"revisions/{revisions.json()[0]['id']}/restore"
+            )
+            assert restored.status_code == 200
+            content = await client.get(f"/api/v1/projects/{project_id}/artifacts/diagram/content")
+            assert content.json()["nodes"] == ["first"]
             parent = await client.post("/api/v1/projects", json={"title": "Parent"})
             moved = await client.put(
                 f"/api/v1/projects/{project_id}/move",

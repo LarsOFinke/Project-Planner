@@ -31,6 +31,7 @@ class WorkspaceToolbox(CategorizedToolbox):
         delete_selected: Callable[..., None],
         clear_all: Callable[..., None],
         save: Callable[..., None],
+        revisions: Callable[..., None] | None = None,
         **kwargs: object,
     ) -> None:
         self._set_color = set_color
@@ -98,6 +99,7 @@ class WorkspaceToolbox(CategorizedToolbox):
                     ("Undo", undo, "secondary"),
                     ("Redo", redo, "secondary"),
                     ("Save now", save, "primary"),
+                    ("Restore version", revisions or (lambda *_: None), "secondary"),
                     ("Clear all", clear_all, "danger"),
                 ],
             },
@@ -106,6 +108,7 @@ class WorkspaceToolbox(CategorizedToolbox):
         self._refresh_mode()
         self._refresh_colors()
         self.set_selection(None)
+        self.button("History & file", "Restore version").disabled = revisions is None
 
     def set_selection(self, kind: str | None) -> None:
         self.set_group_label("Quick edit", f"Selected: {kind or 'none'}")

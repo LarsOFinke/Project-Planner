@@ -267,3 +267,18 @@ category switcher above it. The most frequent controls stay first: workspace mod
 and text creation; diagram node creation, connection and geometry. Selection-dependent actions are disabled
 when inapplicable. The root feature tab already names the editor, so redundant editor headings
 are removed to preserve canvas height at 200% UI scale.
+
+## AD-039 — Bounded durable editor recovery
+
+Each successful diagram or workspace save stores the previous nonempty document as an artifact
+revision in the same database transaction. The 20 newest earlier versions remain available in
+the editor and travel with database backups. Restoring a version saves the current document as a
+new revision, so recovery is reversible. Unsaved changes still require a successful save before
+the restore control proceeds.
+
+## AD-040 — Journaled backup file publication
+
+Before publishing managed files, backup import writes and syncs a journal of paths and checksums.
+The database merge commits an import marker in its transaction. Startup recovery retains files
+when that marker exists, or removes unchanged files when the marker is absent. Changed local
+files stop recovery so they are not silently deleted.

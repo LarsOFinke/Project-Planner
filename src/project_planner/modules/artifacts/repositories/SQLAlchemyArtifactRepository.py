@@ -1,9 +1,14 @@
+from uuid import uuid4
+
 from sqlalchemy import select
 
 from project_planner.modules.artifacts.entities.Artifact import Artifact
 from project_planner.modules.artifacts.entities.ArtifactKind import ArtifactKind
+from project_planner.modules.artifacts.entities.ArtifactRevision import ArtifactRevision
 from project_planner.shared.database.Database import Database
 from project_planner.shared.database.models.ArtifactModel import ArtifactModel
+from project_planner.shared.database.models.ArtifactRevisionModel import ArtifactRevisionModel
+from project_planner.shared.utils.clock import utc_now
 
 
 class SQLAlchemyArtifactRepository:
@@ -12,6 +17,20 @@ class SQLAlchemyArtifactRepository:
 
     def save(self, artifact: Artifact) -> None:
         with self._database.session() as session:
+            existing = session.get(ArtifactModel, artifact.id)
+            if (
+                existing is not None
+                and existing.content != artifact.content
+                and existing.content != "{}"
+            ):
+                session.add(
+                    ArtifactRevisionModel(
+                        id=str(uuid4()),
+                        artifact_id=artifact.id,
+                        content=existing.content,
+                        created_at=utc_now(),
+                    )
+                )
             session.merge(
                 ArtifactModel(
                     id=artifact.id,
@@ -23,6 +42,34 @@ class SQLAlchemyArtifactRepository:
                     updated_at=artifact.updated_at,
                 )
             )
+            session.flush()
+            revisions = session.scalars(
+                select(ArtifactRevisionModel)
+                .where(ArtifactRevisionModel.artifact_id == artifact.id)
+                .order_by(ArtifactRevisionModel.created_at.desc(), ArtifactRevisionModel.id.desc())
+            ).all()
+            for old_revision in revisions[20:]:
+                session.delete(old_revision)
+
+    def list_revisions(self, artifact_id: str) -> tuple[ArtifactRevision, ...]:
+        with self._database.session() as session:
+            models = session.scalars(
+                select(ArtifactRevisionModel)
+                .where(ArtifactRevisionModel.artifact_id == artifact_id)
+                .order_by(ArtifactRevisionModel.created_at.desc(), ArtifactRevisionModel.id.desc())
+            ).all()
+            return tuple(self._revision(model) for model in models)
+
+    def get_revision(self, artifact_id: str, revision_id: str) -> ArtifactRevision | None:
+        with self._database.session() as session:
+            model = session.get(ArtifactRevisionModel, revision_id)
+            if model is None or model.artifact_id != artifact_id:
+                return None
+            return self._revision(model)
+
+    @staticmethod
+    def _revision(model: ArtifactRevisionModel) -> ArtifactRevision:
+        return ArtifactRevision(model.id, model.artifact_id, model.content, model.created_at)
 
     def get_for_project(self, project_id: str, kind: ArtifactKind) -> Artifact | None:
         statement = select(ArtifactModel).where(

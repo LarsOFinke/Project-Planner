@@ -1,5 +1,6 @@
 from project_planner.modules.artifacts.entities.Artifact import Artifact
 from project_planner.modules.artifacts.entities.ArtifactKind import ArtifactKind
+from project_planner.modules.artifacts.entities.ArtifactRevision import ArtifactRevision
 from project_planner_frontend.api.ApiTransport import ApiTransport
 
 
@@ -23,4 +24,19 @@ class ArtifactClient:
     def read_json(self, artifact: Artifact) -> object:
         return self._transport.request(
             "GET", f"/projects/{artifact.project_id}/artifacts/{artifact.kind.value}/content"
+        )
+
+    def list_revisions(self, artifact: Artifact) -> tuple[ArtifactRevision, ...]:
+        return self._transport.model(
+            tuple[ArtifactRevision, ...],
+            "GET",
+            f"/projects/{artifact.project_id}/artifacts/{artifact.kind.value}/revisions",
+        )
+
+    def restore_revision(self, artifact: Artifact, revision_id: str) -> Artifact:
+        return self._transport.model(
+            Artifact,
+            "POST",
+            f"/projects/{artifact.project_id}/artifacts/{artifact.kind.value}/"
+            f"revisions/{revision_id}/restore",
         )

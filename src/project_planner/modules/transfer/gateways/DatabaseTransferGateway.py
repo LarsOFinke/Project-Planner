@@ -13,7 +13,9 @@ from sqlalchemy.orm import Session
 from project_planner.modules.transfer.models.ImportReport import ImportReport
 from project_planner.shared.database.Database import Database
 from project_planner.shared.database.models.ArtifactModel import ArtifactModel
+from project_planner.shared.database.models.ArtifactRevisionModel import ArtifactRevisionModel
 from project_planner.shared.database.models.BacklogItemModel import BacklogItemModel
+from project_planner.shared.database.models.BackupImportModel import BackupImportModel
 from project_planner.shared.database.models.PhaseModel import PhaseModel
 from project_planner.shared.database.models.PlanningSectionModel import (
     PlanningSectionModel,
@@ -31,7 +33,7 @@ from project_planner.shared.database.models.WaterfallTaskModel import (
 )
 
 _FORMAT = "project-planner-database-export"
-_VERSION = 7
+_VERSION = 8
 _TABLES = (
     "project_categories",
     "projects",
@@ -39,6 +41,7 @@ _TABLES = (
     "project_links",
     "todos",
     "artifacts",
+    "artifact_revisions",
     "resource_links",
     "planning_sections",
     "sprints",
@@ -82,6 +85,7 @@ class DatabaseTransferGateway:
                     "project_links": self._rows(session, ProjectLinkModel),
                     "todos": self._rows(session, TodoModel),
                     "artifacts": self._rows(session, ArtifactModel),
+                    "artifact_revisions": self._rows(session, ArtifactRevisionModel),
                     "resource_links": self._rows(session, ResourceLinkModel),
                     "planning_sections": self._rows(session, PlanningSectionModel),
                     "sprints": self._rows(session, SprintModel),
@@ -99,13 +103,15 @@ class DatabaseTransferGateway:
         payload = json.loads(Path(source).expanduser().read_text(encoding="utf-8"))
         return self.validate_document(payload)
 
-    def import_document(self, payload: object) -> ImportReport:
-        return self._merge_document(payload, dry_run=False)
+    def import_document(self, payload: object, *, import_id: str | None = None) -> ImportReport:
+        return self._merge_document(payload, dry_run=False, import_id=import_id)
 
     def validate_document(self, payload: object) -> ImportReport:
         return self._merge_document(payload, dry_run=True)
 
-    def _merge_document(self, payload: object, *, dry_run: bool) -> ImportReport:
+    def _merge_document(
+        self, payload: object, *, dry_run: bool, import_id: str | None = None
+    ) -> ImportReport:
         tables = self._validated_tables(payload)
         session = self._database.new_session()
         try:
@@ -114,6 +120,8 @@ class DatabaseTransferGateway:
             if dry_run:
                 session.rollback()
             else:
+                if import_id is not None:
+                    session.add(BackupImportModel(id=import_id))
                 session.commit()
             return ImportReport(
                 created=created, updated=updated, unchanged=unchanged, dry_run=dry_run
@@ -123,6 +131,16 @@ class DatabaseTransferGateway:
             raise
         finally:
             session.close()
+
+    def import_committed(self, import_id: str) -> bool:
+        with self._database.session() as session:
+            return session.get(BackupImportModel, import_id) is not None
+
+    def clear_import_marker(self, import_id: str) -> None:
+        with self._database.session() as session:
+            marker = session.get(BackupImportModel, import_id)
+            if marker is not None:
+                session.delete(marker)
 
     @staticmethod
     def _rows(session: Session, model_type: type[Any]) -> list[dict[str, Any]]:
@@ -145,7 +163,7 @@ class DatabaseTransferGateway:
         if not isinstance(payload, dict):
             raise ValueError("Import document must be a JSON object")
         version = payload.get("version")
-        if payload.get("format") != _FORMAT or version not in {1, 2, 3, 4, 5, 6, _VERSION}:
+        if payload.get("format") != _FORMAT or version not in range(1, _VERSION + 1):
             raise ValueError("Unsupported database export format or version")
         raw_tables = payload.get("tables")
         if not isinstance(raw_tables, dict):
@@ -166,6 +184,8 @@ class DatabaseTransferGateway:
             }
         if version in {1, 2, 3, 4}:
             missing_tables.discard("project_categories")
+        if version < 8:
+            missing_tables.discard("artifact_revisions")
         if missing_tables:
             raise ValueError(f"Import document is missing tables: {sorted(missing_tables)}")
         result: dict[str, list[dict[str, Any]]] = {}
@@ -204,6 +224,7 @@ class DatabaseTransferGateway:
             (ProjectLinkModel, tables["project_links"]),
             (TodoModel, tables["todos"]),
             (ArtifactModel, tables["artifacts"]),
+            (ArtifactRevisionModel, tables["artifact_revisions"]),
             (ResourceLinkModel, tables["resource_links"]),
         )
         for model_type, rows in model_rows:

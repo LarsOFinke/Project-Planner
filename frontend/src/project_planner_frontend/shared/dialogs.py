@@ -10,6 +10,7 @@ from kivy.uix.button import Button
 from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 
 from project_planner_frontend.shared.theme import (
@@ -77,6 +78,42 @@ def open_details_dialog(title: str, details: str) -> None:
         height=min(Window.height * 0.9, dp(680)),
     )
     close.bind(on_release=lambda *_: popup.dismiss())
+    popup.open()
+
+
+def open_choice_dialog(
+    title: str, choices: Sequence[tuple[str, str]], on_choose: Callable[[str], None]
+) -> None:
+    content = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+    paint_background(content, NAVY_800)
+    scroll = ScrollView(do_scroll_x=False)
+    rows = BoxLayout(orientation="vertical", spacing=dp(6), size_hint_y=None)
+    rows.bind(minimum_height=rows.setter("height"))
+    popup = Popup(
+        title=title,
+        title_color=PEARL_GREY,
+        title_size="18sp",
+        separator_color=GOLD,
+        background_color=NAVY_800,
+        content=content,
+        size_hint=(None, None),
+        width=min(Window.width * 0.88, dp(600)),
+        height=min(Window.height * 0.8, dp(500)),
+    )
+    for value, label in choices:
+        button = style_button(Button(text=label, size_hint_y=None, height=dp(48)), "secondary")
+
+        def choose(*_: object, selected: str = value) -> None:
+            popup.dismiss()
+            on_choose(selected)
+
+        button.bind(on_release=choose)
+        rows.add_widget(button)
+    scroll.add_widget(rows)
+    close = style_button(Button(text="Close", size_hint_y=None, height=dp(46)), "secondary")
+    close.bind(on_release=lambda *_: popup.dismiss())
+    content.add_widget(scroll)
+    content.add_widget(close)
     popup.open()
 
 

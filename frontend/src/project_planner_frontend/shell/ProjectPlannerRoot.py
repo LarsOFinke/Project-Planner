@@ -289,6 +289,7 @@ class ProjectPlannerRoot(BoxLayout):
     def dispose(self) -> None:
         if self._admin_popup.parent is not None:
             self._admin_popup.dismiss()
+        self.browser.dispose()
         self.diagram.dispose()
         self.workspace.dispose()
 

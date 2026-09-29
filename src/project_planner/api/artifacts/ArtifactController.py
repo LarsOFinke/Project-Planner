@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from project_planner.api.artifacts.dtos.ImageUploadResult import ImageUploadResult
 from project_planner.modules.artifacts.entities.Artifact import Artifact
 from project_planner.modules.artifacts.entities.ArtifactKind import ArtifactKind
+from project_planner.modules.artifacts.entities.ArtifactRevision import ArtifactRevision
 from project_planner.modules.artifacts.services.ArtifactService import ArtifactService
 from project_planner.modules.assets.services.ImageAssetService import ImageAssetService
 from project_planner.modules.projects.services.ProjectService import ProjectService
@@ -51,6 +52,18 @@ class ArtifactController:
             self.read_artifact,
             methods=["GET"],
         )
+        routes.add_api_route(
+            "/projects/{project_id}/artifacts/{kind}/revisions",
+            self.list_revisions,
+            methods=["GET"],
+            response_model=tuple[ArtifactRevision, ...],
+        )
+        routes.add_api_route(
+            "/projects/{project_id}/artifacts/{kind}/revisions/{revision_id}/restore",
+            self.restore_revision,
+            methods=["POST"],
+            response_model=Artifact,
+        )
 
     def _register_image_routes(self) -> None:
         routes = self.router
@@ -87,6 +100,16 @@ class ArtifactController:
         self._projects.require(project_id)
         artifact = self._artifacts.get_or_create(project_id, kind)
         return self._artifacts.read_json(artifact)
+
+    def list_revisions(self, project_id: str, kind: ArtifactKind):
+        self._projects.require(project_id)
+        artifact = self._artifacts.get_or_create(project_id, kind)
+        return self._artifacts.list_revisions(artifact)
+
+    def restore_revision(self, project_id: str, kind: ArtifactKind, revision_id: str):
+        self._projects.require(project_id)
+        artifact = self._artifacts.get_or_create(project_id, kind)
+        return self._artifacts.restore_revision(artifact, revision_id)
 
     def import_image(
         self,

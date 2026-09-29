@@ -22,6 +22,8 @@ migrations. SQLite remains the zero-configuration default, while `[database] url
   inferred from it.
 - Revision `0013` adds a sibling `position` to projects so directory ordering is persistent and
   independent of project titles.
+- Revision `0014` adds bounded diagram and workspace version history. Revision `0015` adds
+  transactional backup-import markers used with a durable file journal during crash recovery.
 - `shared/database/seeds/` contains the idempotent seed contract and runner. Each seed
   has its own class/file and is recorded in `seed_history` only after it succeeds.
 - Prototype 0.1 has no demo-data seed. Opening the application must never add sample projects to a
@@ -47,6 +49,7 @@ The relational metadata schema conforms to third normal form:
 | `project_links` | `(source_id, target_id, relation)` | `note` depends on the whole relationship key |
 | `todos` | `id` | title, description, module, optional phase and timestamps depend only on `id`; project/phase data is referenced, not copied |
 | `artifacts` | `id`; `(project_id, kind)` | title, content and timestamps depend on the artifact key |
+| `artifact_revisions` | `id` | prior content and save time depend on the revision; the artifact is referenced |
 | `resource_links` | `id` | title, target, kind and timestamps depend only on `id`; project data is referenced, not copied |
 | `application_issues` | `id` | source, exception details and occurrence time depend only on the issue |
 | `seed_history` | `key` | `applied_at` depends only on the seed key |
@@ -86,9 +89,12 @@ records as created, changed, or identical, plus managed files as restored or alr
 Identical records are not rewritten. A conflicting local file stops import before changes are made.
 Unpacked archive data is limited to 8 GiB by default (configurable with
 `PROJECT_PLANNER_MAX_BACKUP_UNCOMPRESSED_BYTES`), and files are staged before import. New files
-are published atomically and removed if the database merge raises an error. SQLite changes are
-transactional. A power loss or process crash between file publication and database commit is
-not recoverable as one atomic transaction, so retain the archive until the restored data is checked.
+are published atomically and removed if the database merge raises an error. Before publication,
+the importer records paths and checksums in a durable journal. A marker committed with the
+database merge lets the next startup distinguish a committed import from an interrupted one:
+committed files remain, while unchanged files from an uncommitted import are removed. If a file
+has changed since interruption, recovery stops rather than deleting that local change. Retain
+the archive until the restored data is checked.
 The FastAPI multipart layer receives an upload before archive validation; remote deployments
 should enforce an HTTP request-size limit at their proxy or gateway as well.
 

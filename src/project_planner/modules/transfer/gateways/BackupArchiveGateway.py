@@ -1,4 +1,5 @@
 import filecmp
+import hashlib
 import json
 import os
 import shutil
@@ -7,6 +8,7 @@ import tempfile
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
+from uuid import uuid4
 
 from project_planner.modules.transfer.gateways.DatabaseTransferGateway import (
     DatabaseTransferGateway,
@@ -30,6 +32,89 @@ class BackupArchiveGateway:
         if max_uncompressed_bytes <= 0:
             raise ValueError("Maximum backup size must be positive")
         self._max_uncompressed_bytes = max_uncompressed_bytes
+        self.recover_incomplete_imports()
+
+    @staticmethod
+    def _digest(path: Path) -> str:
+        result = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                result.update(chunk)
+        return result.hexdigest()
+
+    def _journal_path(self, import_id: str) -> Path:
+        return self._data_directory / f".backup-import-{import_id}.json"
+
+    def _write_journal(self, import_id: str, assets: list[tuple[Path, Path]]) -> Path:
+        self._data_directory.mkdir(parents=True, exist_ok=True)
+        journal = self._journal_path(import_id)
+        entries = [
+            {
+                "path": target.relative_to(self._data_directory).as_posix(),
+                "sha256": self._digest(staged),
+            }
+            for staged, target in assets
+        ]
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=self._data_directory, delete=False
+        ) as output:
+            temporary = Path(output.name)
+            try:
+                json.dump({"id": import_id, "files": entries}, output)
+                output.flush()
+                os.fsync(output.fileno())
+            except Exception:
+                temporary.unlink(missing_ok=True)
+                raise
+        os.replace(temporary, journal)
+        self._sync_directory(self._data_directory)
+        return journal
+
+    @staticmethod
+    def _sync_directory(directory: Path) -> None:
+        descriptor = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+    def _remove_journal(self, journal: Path) -> None:
+        journal.unlink(missing_ok=True)
+        self._sync_directory(self._data_directory)
+
+    def recover_incomplete_imports(self) -> None:
+        if not self._data_directory.is_dir():
+            return
+        for journal in sorted(self._data_directory.glob(".backup-import-*.json")):
+            document = json.loads(journal.read_text(encoding="utf-8"))
+            import_id = document.get("id")
+            if not isinstance(import_id, str) or journal != self._journal_path(import_id):
+                raise ValueError("Backup import journal has an invalid identifier")
+            committed = self._database.import_committed(import_id)
+            if not committed:
+                for entry in document.get("files", []):
+                    relative = Path(entry["path"])
+                    parts = relative.parts
+                    if (
+                        len(parts) != 4
+                        or parts[0] != "projects"
+                        or parts[2] != "images"
+                        or any(part in {".", ".."} for part in parts)
+                    ):
+                        raise ValueError("Backup import journal contains an unsafe path")
+                    target = self._data_directory / relative
+                    if any(
+                        parent.is_symlink() for parent in (target, *target.parents)
+                    ) or not target.resolve().is_relative_to(self._data_directory.resolve()):
+                        raise ValueError("Backup import journal conflicts with a symbolic link")
+                    if target.exists():
+                        if self._digest(target) != entry["sha256"]:
+                            raise ValueError("Interrupted backup file changed after import")
+                        target.unlink()
+                        self._sync_directory(target.parent)
+            self._remove_journal(journal)
+            if committed:
+                self._database.clear_import_marker(import_id)
 
     def _check_size(self, total: int, entries: int) -> None:
         if total > self._max_uncompressed_bytes:
@@ -133,6 +218,12 @@ class BackupArchiveGateway:
                     files_created += 1
             if dry_run:
                 return replace(report, files_created=files_created, files_unchanged=files_unchanged)
+            import_id = str(uuid4())
+            new_assets = []
+            for staged_file, target in asset_paths:
+                if not target.exists():
+                    new_assets.append((staged_file, target))
+            journal = self._write_journal(import_id, new_assets)
             created: list[Path] = []
             try:
                 for staged_file, target in asset_paths:
@@ -143,6 +234,11 @@ class BackupArchiveGateway:
                             raise ValueError(f"Backup file conflicts with local data: {target}")
                         continue
                     target.parent.mkdir(parents=True, exist_ok=True)
+                    directory = target.parent
+                    while directory != self._data_directory:
+                        self._sync_directory(directory)
+                        directory = directory.parent
+                    self._sync_directory(self._data_directory)
                     with tempfile.NamedTemporaryFile(
                         dir=target.parent, prefix=f".{target.name}.", delete=False
                     ) as output:
@@ -161,12 +257,20 @@ class BackupArchiveGateway:
                         created.append(target)
                     finally:
                         temporary.unlink(missing_ok=True)
-                return replace(
-                    self._database.import_document(document),
+                    self._sync_directory(target.parent)
+                imported = self._database.import_document(document, import_id=import_id)
+                result = replace(
+                    imported,
                     files_created=len(created),
                     files_unchanged=len(asset_paths) - len(created),
                 )
+                self._remove_journal(journal)
+                self._database.clear_import_marker(import_id)
+                return result
             except Exception:
-                for path in created:
-                    path.unlink(missing_ok=True)
+                if not self._database.import_committed(import_id):
+                    for path in created:
+                        path.unlink(missing_ok=True)
+                        self._sync_directory(path.parent)
+                    self._remove_journal(journal)
                 raise

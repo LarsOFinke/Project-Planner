@@ -18,6 +18,7 @@ class DiagramToolbox(CategorizedToolbox):
         delete_selected: Callable[..., None],
         clear_all: Callable[..., None],
         save: Callable[..., None],
+        revisions: Callable[..., None] | None = None,
         **kwargs: object,
     ) -> None:
         super().__init__(
@@ -44,12 +45,14 @@ class DiagramToolbox(CategorizedToolbox):
                     ("Undo", undo, "secondary"),
                     ("Redo", redo, "secondary"),
                     ("Save now", save, "primary"),
+                    ("Restore version", revisions or (lambda *_: None), "secondary"),
                     ("Clear all", clear_all, "danger"),
                 ],
             },
             **kwargs,
         )
         self.set_selection(0)
+        self.button("History & file", "Restore version").disabled = revisions is None
 
     def set_selection(self, count: int) -> None:
         label = "none" if count == 0 else f"{count} node{'s' if count != 1 else ''}"

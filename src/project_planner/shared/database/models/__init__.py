@@ -2,7 +2,9 @@ from project_planner.shared.database.models.ApplicationIssueModel import (
     ApplicationIssueModel,
 )
 from project_planner.shared.database.models.ArtifactModel import ArtifactModel
+from project_planner.shared.database.models.ArtifactRevisionModel import ArtifactRevisionModel
 from project_planner.shared.database.models.BacklogItemModel import BacklogItemModel
+from project_planner.shared.database.models.BackupImportModel import BackupImportModel
 from project_planner.shared.database.models.Base import Base
 from project_planner.shared.database.models.PhaseModel import PhaseModel
 from project_planner.shared.database.models.PlanningSectionModel import (
@@ -23,6 +25,8 @@ from project_planner.shared.database.models.WaterfallTaskModel import (
 
 __all__ = [
     "ArtifactModel",
+    "ArtifactRevisionModel",
+    "BackupImportModel",
     "ApplicationIssueModel",
     "BacklogItemModel",
     "Base",

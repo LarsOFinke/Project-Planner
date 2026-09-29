@@ -19,12 +19,15 @@ structured diagrams, and a free-form workspace without splitting knowledge acros
 - shared calendar date picker backed by framework-independent calendar-module logic
 - SQLAlchemy persistence with SQLite as the local default and ordered Alembic migrations
 - top-right Admin management panel with complete tarball backup, dry run/import, and local diagnostics
+- project-directory search with Ctrl+F, Up/Down to move through results, Enter to open, and
+  Escape to clear the query
 - modular Kivy desktop UI with project browser and tabbed planning levels
 - shared low-glare visual system with structural tree indentation, rounded controls, and clear
   section hierarchy
 - persistent node/edge diagram editor with draggable nodes
 - persistent freehand workspace with explicit Select/Draw modes, selectable stroke/shape colors,
   local autosave, and movable, rotatable, scalable shapes and images
+- restore controls for the 20 most recent earlier saved versions of each diagram and workspace
 - categorized diagram and workspace toolboxes that keep dense actions readable across scale profiles
 
 The backend is deliberately independent from Kivy, while services are independent from SQLite
@@ -144,10 +147,11 @@ different content, preserving that local file. Both actions report new, changed,
 records and separately count files to restore or already present.
 
 Import merges records by primary key and does not delete unrelated local records or managed files.
-The import validates before writing, creates files atomically, and removes newly restored files
-if the database merge fails. A sudden power loss or process crash between file restoration and
-database commit is not covered by that rollback; keep the original archive until verifying the
-restored project. The archive does not include external files referenced by local-file links.
+The import validates before writing and creates files atomically. A durable import journal
+removes newly restored files after an interrupted import if its database transaction did not
+commit; a committed import retains its files. Recovery runs when the API starts again. Keep the
+original archive until verifying the restored project. The archive does not include external
+files referenced by local-file links.
 The older JSON-only HTTP endpoints remain available for compatibility. See
 [docs/DATABASE.md](docs/DATABASE.md) for migrations, seeds, and normalization.
 

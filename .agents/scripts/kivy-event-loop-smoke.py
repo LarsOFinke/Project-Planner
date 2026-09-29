@@ -91,6 +91,7 @@ def main() -> None:
             nonlocal drag_diagnostic, drag_target_verified, rows_ready_at
             planner = application._host._planner_root
             if planner is None:
+                Clock.schedule_once(exercise_drag_target, 0.1)
                 return
             rows = {
                 row.project_id: row
@@ -98,6 +99,12 @@ def main() -> None:
                 if isinstance(row, ProjectTreeRow)
             }
             if project.id not in rows or drop_target.id not in rows:
+                drag_diagnostic = (
+                    f"waiting for rows: loaded={tuple(rows)}, "
+                    f"directory_sections={len(planner.browser._directory)}, "
+                    f"list_children={len(planner.browser._list.children)}, "
+                    f"browser_size={planner.browser.size!r}"
+                )
                 Clock.schedule_once(exercise_drag_target, 0.1)
                 return
             if rows_ready_at is None:
@@ -109,6 +116,13 @@ def main() -> None:
             source = rows[project.id]
             target = rows[drop_target.id]
             scroll = planner.browser._scroll
+            if scroll.height <= 0 or source.height <= 0 or target.height <= 0:
+                drag_diagnostic = (
+                    f"waiting for row geometry: scroll={scroll.size!r}, "
+                    f"source={source.size!r}, target={target.size!r}"
+                )
+                Clock.schedule_once(exercise_drag_target, 0.1)
+                return
 
             def visible_center(widget: object) -> tuple[float, float]:
                 translate_x, translate_y = scroll.g_translate.xy
@@ -196,12 +210,15 @@ def main() -> None:
                 f"translate={scroll.g_translate.xy!r}, scroll_pos={scroll.pos!r}, "
                 f"scroll_size={scroll.size!r}, scroll_y={scroll.scroll_y}"
             )
+            if drag_target_verified:
+                Clock.schedule_once(show_admin, 0.1)
 
         def show_admin(_elapsed: float) -> None:
             planner = application._host._planner_root
             if planner is None:
                 raise AssertionError("Project Planner root was not built")
             planner.admin_button.dispatch("on_release")
+            Clock.schedule_once(show_planning_examples, 0.5)
 
         def show_planning_examples(_elapsed: float) -> None:
             planner = application._host._planner_root
@@ -263,6 +280,7 @@ def main() -> None:
                         raise AssertionError("Planning metadata columns do not align")
                 planning_layout_verified = True
                 popup.dismiss()
+                Clock.schedule_once(exercise_editors, 0.1)
 
             Clock.schedule_once(verify, 0.4)
 
@@ -319,6 +337,7 @@ def main() -> None:
                 assert diagram.undo() and diagram.to_document() == before_diagram
                 editor_verified = True
                 popup.dismiss()
+                Clock.schedule_once(show_tool_docks, 0.1)
 
             Clock.schedule_once(verify, 0.3)
 
@@ -329,6 +348,9 @@ def main() -> None:
             def verify_workspace(_elapsed: float) -> None:
                 layout_widgets(application.root)
                 panel = planner.workspace
+                if panel.toolbox._scroll.height <= 0 or panel.canvas_editor.width <= 0:
+                    Clock.schedule_once(verify_workspace, 0.1)
+                    return
                 panel.toolbox._scroll.update_from_scroll()
                 size_button = panel.toolbox.button("Quick edit", "Size +")
                 shape_button = panel.toolbox.button("Quick edit", "Rectangle")
@@ -363,17 +385,17 @@ def main() -> None:
                 if not panel.toolbox._scroll.y <= visible_y <= panel.toolbox._scroll.top:
                     raise AssertionError("Diagram geometry control is not initially visible")
                 tool_dock_verified = True
+                application.stop()
 
             Clock.schedule_once(verify_workspace, 0.2)
 
-        Clock.schedule_once(lambda _elapsed: layout_widgets(application.root), 0.1)
-        Clock.schedule_once(lambda _elapsed: layout_widgets(application.root), 0.35)
-        Clock.schedule_once(exercise_drag_target, 0.75)
-        Clock.schedule_once(show_admin, 1.0)
-        Clock.schedule_once(show_planning_examples, 2.0)
-        Clock.schedule_once(exercise_editors, 3.0)
-        Clock.schedule_once(show_tool_docks, 3.7)
-        Clock.schedule_once(lambda _elapsed: application.stop(), 5.0)
+        def start_checks(*_: object) -> None:
+            Clock.schedule_once(lambda _elapsed: layout_widgets(application.root), 0.1)
+            Clock.schedule_once(lambda _elapsed: layout_widgets(application.root), 0.35)
+            Clock.schedule_once(exercise_drag_target, 0.75)
+            Clock.schedule_once(lambda _elapsed: application.stop(), 15.0)
+
+        application.bind(on_start=lambda *_: Clock.schedule_once(start_checks, 0))
         application.run()
         if not drag_target_verified:
             raise AssertionError(f"Rendered project drag failed: {drag_diagnostic}")
