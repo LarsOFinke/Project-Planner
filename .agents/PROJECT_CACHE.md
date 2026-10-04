@@ -1,6 +1,6 @@
 # Project cache
 
-Last refreshed: 2026-09-29
+Last refreshed: 2026-10-04
 
 ## Hot context
 
@@ -8,8 +8,10 @@ Last refreshed: 2026-09-29
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
 - Quality: `make test`, `make lint`, or `make validate`.
-- Current suite: 113 tests plus Kivy event-loop smoke runs at 200% and 100%; smoke stages
-  follow asynchronous readiness and have a 15-second deadline.
+- Current suite includes regression tests for transactional project workflows, shutdown saves,
+  and background Overview saves, plus Kivy event-loop smoke runs at 200% and 100%. Smoke stages
+  follow asynchronous readiness, exercise a live scale change and pending-save shutdown, and
+  have a 15-second deadline.
 - Entry point: `project_planner_frontend.main:main`.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
@@ -20,7 +22,8 @@ Last refreshed: 2026-09-29
 - UI scale: persistent top-right dropdown from 5%–500%; cfg/env accepts `auto` or `0.05`–`5.00`.
   A scale rebuild waits for pending editor saves and keeps the current UI if a save fails.
 - Window: native fullscreen by default; cfg/env can opt into windowed mode.
-- Fullscreen exit: persistent bottom-left Exit button; shutdown requests any dirty editor save.
+- Exit and native window-close requests wait for editor saves, pending image imports, and an
+  active Overview save before closing HTTP resources. Failed writes keep the application open.
 - Window mode: persistent top-right Windowed/Fullscreen toggle beside the scale selector.
 - General management: the top-right Admin button opens database transfer, runtime health, and
   recorded issue tools in a responsive overlay rather than a project workspace tab.
@@ -41,6 +44,8 @@ Last refreshed: 2026-09-29
   each tab is fetched once per selected project until its data is invalidated.
 - Initial project-directory and feature-tab fetches, Admin refresh, and backup transfers run in
   background workers; results are applied on Kivy's event loop. HTTP timeouts show a retry message.
+- Overview saves also run in a worker with a captured form snapshot and duplicate-submit guard.
+  Completion refreshes the directory asynchronously without changing a newer project selection.
 
 ## Implemented workflows
 
@@ -80,7 +85,8 @@ Last refreshed: 2026-09-29
   after a failed save; clear-all requires confirmation and is undoable within the open editor.
 - editor saves retain the 20 most recent earlier saved versions per artifact, with restore controls
   in Diagram and Workspace; revisions are included in database and tarball backups;
-- project workflow orchestration for project/phase lifecycle operations;
+- project creation, metadata/planning-method updates, and phase-plan resets share one transaction
+  across repositories; failed phase writes roll back project changes and phase-owned deletions;
 - query projections for project trees, parent choices, and duplicate-title-safe selectors;
 - resolved link projections with incoming/outgoing direction;
 - typed diagram/workspace documents with version-aware codecs: diagram v2 and workspace v6
@@ -103,6 +109,9 @@ Last refreshed: 2026-09-29
 
 ## Persistence facts
 
+- `Database.transaction()` shares a context-local session across synchronous repository calls;
+  the outer workflow owns commit/rollback. `ProjectWorkflowService` receives the transaction
+  factory through composition and remains independent from SQLAlchemy.
 - ORM models: `shared/database/models/`.
 - Unexpected UI-event failures are stored in `application_issues`; Admin shows the latest 50.
 - Ordered schema revisions: `shared/database/migrations/versions/`.
@@ -185,6 +194,8 @@ Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environmen
 
 ## Known environment behavior
 
+- After moving the checkout, existing venv interpreter links may point to the old project path.
+  Recreate or repair the environment with the bundled compatible Python before running checks.
 - System `python3` is 3.14.4. Running `python3 -m venv .venv` recreates an incompatible venv.
   Use `make setup`; it locates Python 3.11–3.13 and replaces incompatible environments.
 - Setup prefers a system-installed Python 3.11–3.13 and standard-library `venv` + `pip`. On

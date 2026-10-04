@@ -282,3 +282,24 @@ Before publishing managed files, backup import writes and syncs a journal of pat
 The database merge commits an import marker in its transaction. Startup recovery retains files
 when that marker exists, or removes unchanged files when the marker is absent. Changed local
 files stop recovery so they are not silently deleted.
+
+## AD-041 — Project workflow transactions
+
+Project creation, project updates that initialize phases, and phase-plan resets use one transaction.
+Composition injects a context-manager factory into the workflow; business code remains unaware of
+SQLAlchemy. Repositories share a context-local session and flush their changes, while the outer
+workflow commits or rolls back. Concurrent synchronous requests use separate session contexts.
+
+## AD-042 — Save completion precedes normal shutdown
+
+Exit, application stop, and native window-close requests keep Kivy and the HTTP connection alive
+until pending editor revisions, image imports, and active Overview saves complete. Duplicate close
+requests are coalesced. Failure restores interaction and permits retry instead of closing with
+unsaved changes. This does not provide recovery from process termination or power loss.
+
+## AD-043 — Background Overview mutations
+
+Overview captures and validates a form snapshot on the UI thread, then sends its update through
+the existing worker pool. Pending saves prevent duplicate submission and participate in shutdown
+and scale-rebuild waits. Completion refreshes the directory asynchronously; a stale completion
+cannot replace the project selected since the save started. Failed saves retain the current form.

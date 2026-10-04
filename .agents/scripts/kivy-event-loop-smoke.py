@@ -17,15 +17,18 @@ def main() -> None:
     ):
         os.environ["KIVY_NO_ARGS"] = "1"
         os.environ["KIVY_HOME"] = kivy_home
+        from kivy.app import App
         from kivy.clock import Clock
         from kivy.core.window import Window
         from kivy.input.providers.mouse import MouseMotionEvent
         from kivy.uix.boxlayout import BoxLayout
         from kivy.uix.popup import Popup
+        from kivy.uix.spinner import Spinner
         from project_planner_frontend.bootstrap.clipboard_bootstrap import configure_clipboard
         from project_planner_frontend.bootstrap.input_bootstrap import configure_mouse_input
 
         from project_planner.api.controller_builder import build_controllers
+        from project_planner.modules.artifacts.entities.ArtifactKind import ArtifactKind
         from project_planner.modules.planning.entities.BacklogItem import BacklogItem
         from project_planner.modules.planning.entities.PlanningSection import PlanningSection
         from project_planner.modules.planning.entities.SectionType import SectionType
@@ -34,6 +37,7 @@ def main() -> None:
         configure_clipboard()
         configure_mouse_input()
 
+        from project_planner_frontend.application import ProjectPlannerApp as app_module
         from project_planner_frontend.application.ProjectPlannerApp import ProjectPlannerApp
         from project_planner_frontend.planning.views.agile.AgilePlanningPanel import (
             AgilePlanningPanel,
@@ -78,6 +82,8 @@ def main() -> None:
         planning_layout_verified = False
         editor_verified = False
         tool_dock_verified = False
+        save_flow_verified = False
+        overview_tick_verified = False
         rows_ready_at: float | None = None
 
         def layout_widgets(widget: object) -> None:
@@ -385,15 +391,105 @@ def main() -> None:
                 if not panel.toolbox._scroll.y <= visible_y <= panel.toolbox._scroll.top:
                     raise AssertionError("Diagram geometry control is not initially visible")
                 tool_dock_verified = True
-                application.stop()
+                planner.tabs.switch_to(planner._tab_headers[0])
+                planner.browser.select(project.id)
+                planner.diagram.show_project_async(project.id)
+                planner.workspace.show_project_async(project.id)
+                Clock.schedule_once(exercise_overview_save, 0.1)
 
             Clock.schedule_once(verify_workspace, 0.2)
+
+        def exercise_overview_save(_elapsed: float) -> None:
+            planner = application._host._planner_root
+            overview = planner.overview
+            if (
+                overview.disabled
+                or overview._project is None
+                or planner.diagram.project_id != project.id
+                or planner.workspace.project_id != project.id
+            ):
+                Clock.schedule_once(exercise_overview_save, 0.1)
+                return
+            original_update = overview._workflows.update_project
+
+            def slow_update(*args, **kwargs):
+                time.sleep(0.3)
+                return original_update(*args, **kwargs)
+
+            overview._workflows.update_project = slow_update
+            overview.title_input.text = "Saved without blocking"
+            overview._save_button.dispatch("on_release")
+            assert overview._saving
+
+            def verify_clock(_elapsed: float) -> None:
+                nonlocal overview_tick_verified
+                assert overview._saving, "Overview save blocked Kivy's event loop"
+                overview_tick_verified = True
+
+            def change_scale(_elapsed: float) -> None:
+                if overview._saving:
+                    Clock.schedule_once(change_scale, 0.1)
+                    return
+                assert overview._project.title == "Saved without blocking"
+                planner.diagram.canvas_editor.add_node("Before scale")
+                planner.workspace.canvas_editor.add_shape("rectangle")
+                # Smoke tests must never write the user's scale preference.
+                app_module.save_ui_scale = lambda _scale: None
+                dropdown = next(
+                    widget
+                    for widget in application.root.walk()
+                    if isinstance(widget, Spinner) and widget.text.startswith("Scale ")
+                )
+                dropdown.text = "Scale 150%"
+                Clock.schedule_once(wait_for_rebuild, 0.1)
+
+            def wait_for_rebuild(_elapsed: float) -> None:
+                current = application._host._planner_root
+                if current is planner:
+                    Clock.schedule_once(wait_for_rebuild, 0.1)
+                    return
+                current.diagram.show_project_async(overview._project.id)
+                current.workspace.show_project_async(overview._project.id)
+                Clock.schedule_once(close_with_pending_saves, 0.1)
+
+            Clock.schedule_once(verify_clock, 0.05)
+            Clock.schedule_once(change_scale, 0.1)
+
+        def close_with_pending_saves(_elapsed: float) -> None:
+            nonlocal save_flow_verified
+            planner = application._host._planner_root
+            if (
+                planner.diagram.project_id is None
+                or planner.workspace.project_id is None
+                or planner.diagram._loading_project_id is not None
+                or planner.workspace._loading_project_id is not None
+            ):
+                Clock.schedule_once(close_with_pending_saves, 0.1)
+                return
+            assert any(
+                node.label == "Before scale"
+                for node in planner.diagram.canvas_editor.to_document().nodes
+            )
+            original_save = planner.diagram._artifacts.save_json
+
+            def slow_save(*args, **kwargs):
+                time.sleep(0.2)
+                return original_save(*args, **kwargs)
+
+            planner.diagram._artifacts.save_json = slow_save
+            planner.diagram.canvas_editor.add_node("First shutdown revision")
+            planner.diagram._save()
+            planner.diagram.canvas_editor.add_node("Latest shutdown revision")
+            planner.workspace.canvas_editor.add_shape("ellipse")
+            assert Window.dispatch("on_request_close")
+            assert application._close_requested and not application._resources_closed
+            save_flow_verified = True
 
         def start_checks(*_: object) -> None:
             Clock.schedule_once(lambda _elapsed: layout_widgets(application.root), 0.1)
             Clock.schedule_once(lambda _elapsed: layout_widgets(application.root), 0.35)
             Clock.schedule_once(exercise_drag_target, 0.75)
-            Clock.schedule_once(lambda _elapsed: application.stop(), 15.0)
+            Clock.schedule_once(lambda _elapsed: App.stop(application), 15.0)
 
         application.bind(on_start=lambda *_: Clock.schedule_once(start_checks, 0))
         application.run()
@@ -405,6 +501,18 @@ def main() -> None:
             raise AssertionError("Editor geometry was not verified in the event loop")
         if not tool_dock_verified:
             raise AssertionError("Editor tool docks were not verified in the event loop")
+        if not save_flow_verified or not overview_tick_verified:
+            raise AssertionError(
+                "Background save, live scale change, and shutdown were not verified"
+            )
+        assert application._shutdown_complete
+        planner = application._host._planner_root
+        document = _artifacts.read_artifact(planner.diagram.project_id, ArtifactKind.DIAGRAM)
+        assert {"First shutdown revision", "Latest shutdown revision"} <= {
+            node["label"] for node in document["nodes"]
+        }
+        workspace = _artifacts.read_artifact(planner.workspace.project_id, ArtifactKind.WORKSPACE)
+        assert {"rectangle", "ellipse"} <= {shape["kind"] for shape in workspace["shapes"]}
 
 
 if __name__ == "__main__":

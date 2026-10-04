@@ -90,7 +90,7 @@ def build_controllers(
             project_service,
             category_service,
             ProjectQueryService(project_service, category_service),
-            ProjectWorkflowService(project_service, phase_service),
+            ProjectWorkflowService(project_service, phase_service, database.transaction),
         ),
         PlanningController(
             AgilePlanningService(SQLAlchemyAgileRepository(database)),

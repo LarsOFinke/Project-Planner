@@ -28,6 +28,9 @@ class ProjectPlannerApp(App):
         self._settings = settings
         self._pending_ui_scale = settings.ui_scale
         self._scale_rebuild_event = None
+        self._close_requested = False
+        self._shutdown_complete = False
+        self._resources_closed = False
 
     def build(self) -> ProjectPlannerHost:
         Metrics.density = _BASE_DENSITY * self._settings.ui_scale
@@ -62,6 +65,7 @@ class ProjectPlannerApp(App):
             self._change_ui_scale,
             self._change_fullscreen,
         )
+        Window.bind(on_request_close=self._request_window_close)
         return self._host
 
     def _change_ui_scale(self, ui_scale: float) -> None:
@@ -92,7 +96,38 @@ class ProjectPlannerApp(App):
         self._scale_rebuild_event = None
         self._host.rebuild(self._pending_ui_scale)
 
+    def _request_window_close(self, *_: object, **_kwargs: object) -> bool:
+        self.stop()
+        return True
+
+    def stop(self, *args: object) -> None:
+        """Keep Kivy and HTTP alive until pending writes have finished."""
+        if self._shutdown_complete:
+            return
+        if not hasattr(self, "_host"):
+            super().stop(*args)
+            return
+        if self._close_requested:
+            return
+        self._close_requested = True
+        if self._scale_rebuild_event is not None:
+            self._scale_rebuild_event.cancel()
+            self._scale_rebuild_event = None
+
+        def completed() -> None:
+            self._shutdown_complete = True
+            super(ProjectPlannerApp, self).stop(*args)
+
+        def failed() -> None:
+            self._close_requested = False
+
+        self._host.prepare_shutdown(completed, failed)
+
     def on_stop(self) -> None:
+        if self._resources_closed:
+            return
+        self._resources_closed = True
+        Window.unbind(on_request_close=self._request_window_close)
         try:
             if hasattr(self, "_host"):
                 self._host.dispose()

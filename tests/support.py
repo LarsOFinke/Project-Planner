@@ -79,7 +79,9 @@ def build_test_services(settings: Settings) -> SimpleNamespace:
         projects=project_service,
         project_categories=category_service,
         project_queries=ProjectQueryService(project_service, category_service),
-        project_workflows=ProjectWorkflowService(project_service, phase_service),
+        project_workflows=ProjectWorkflowService(
+            project_service, phase_service, database.transaction
+        ),
         phases=phase_service,
         sections=SectionService(SQLAlchemySectionRepository(database), phase_service),
         waterfall_tasks=WaterfallTaskService(SQLAlchemyWaterfallTaskRepository(database)),

@@ -57,6 +57,7 @@ class WorkspacePanel(BoxLayout):
         self._loading_project_id: str | None = None
         self._load_generation = 0
         self._pending_image_import = False
+        self._import_waiters: list[tuple[Callable[[], None], Callable[[], None]]] = []
         self._deferred_navigation: Callable[[], None] | None = None
         paint_background(self, NAVY_900)
         self.toolbox = WorkspaceToolbox(
@@ -232,20 +233,27 @@ class WorkspacePanel(BoxLayout):
                 self.canvas_editor.add_image(result[0], render_source=result[1])
             except Exception as error:
                 show_error(f"Could not display imported image: {error}")
-            finally:
-                self._finish_image_import()
+                self._finish_image_import(success=False)
+            else:
+                self._finish_image_import(success=True)
 
         def failed(error: Exception) -> None:
             show_error(f"Could not import image: {error}")
-            self._finish_image_import()
+            self._finish_image_import(success=False)
 
         run_background(upload, display, failed)
 
-    def _finish_image_import(self) -> None:
+    def _finish_image_import(self, *, success: bool) -> None:
         self._pending_image_import = False
         navigation, self._deferred_navigation = self._deferred_navigation, None
-        if navigation is not None:
+        waiters, self._import_waiters = self._import_waiters, []
+        if navigation is not None and (success or not waiters):
             navigation()
+        for after, on_failure in waiters:
+            if success:
+                self.save_before_rebuild(after, on_failure)
+            else:
+                on_failure()
 
     def _delete_selected(self, *_: object) -> None:
         self.canvas_editor.delete_selected()
@@ -364,13 +372,6 @@ class WorkspacePanel(BoxLayout):
         self, after: Callable[[], None], on_failure: Callable[[], None]
     ) -> None:
         if self._pending_image_import:
-            previous = self._deferred_navigation
-
-            def continue_after_import() -> None:
-                if previous is not None:
-                    previous()
-                self.save_before_rebuild(after, on_failure)
-
-            self._deferred_navigation = continue_after_import
+            self._import_waiters.append((after, on_failure))
             return
         self._save_session.save(after=after, on_failure=on_failure)

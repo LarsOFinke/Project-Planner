@@ -274,10 +274,9 @@ class ProjectPlannerRoot(BoxLayout):
         self._loaded_project_by_tab[title] = project_id
 
     def _project_saved(self, project_id: str) -> None:
-        self.browser.selected_id = project_id
-        self.browser.refresh()
-        self._selected_project_id = project_id
-        self._loaded_project_by_tab = {"Overview": project_id}
+        self.browser.refresh_async()
+        if self._selected_project_id == project_id:
+            self._loaded_project_by_tab = {"Overview": project_id}
 
     def _navigate_to_project(self, project_id: str) -> None:
         self.browser.select(project_id)
@@ -304,8 +303,11 @@ class ProjectPlannerRoot(BoxLayout):
             self.workspace.disabled = self.workspace.project_id is None
             on_failure()
 
-        self.diagram.save_before_rebuild(
-            lambda: self.workspace.save_before_rebuild(after, failed), failed
+        self.overview.wait_for_save(
+            lambda: self.diagram.save_before_rebuild(
+                lambda: self.workspace.save_before_rebuild(after, failed), failed
+            ),
+            failed,
         )
 
     @staticmethod

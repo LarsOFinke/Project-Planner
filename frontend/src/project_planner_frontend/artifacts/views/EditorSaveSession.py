@@ -55,8 +55,6 @@ class EditorSaveSession:
             return False
         artifact = self.artifact
         revision = self._revision
-        payload = self._snapshot()
-        self._saving = True
 
         def completed(saved: Artifact) -> None:
             self.artifact = saved
@@ -72,5 +70,10 @@ class EditorSaveSession:
                 callback()
             show_error(f"Could not save editor changes; they remain open for retry: {error}")
 
-        run_background(lambda: self._artifacts.save_json(artifact, payload), completed, failed)
+        try:
+            payload = self._snapshot()
+            self._saving = True
+            run_background(lambda: self._artifacts.save_json(artifact, payload), completed, failed)
+        except Exception as error:
+            failed(error)
         return True

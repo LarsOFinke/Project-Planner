@@ -27,7 +27,7 @@ from project_planner_frontend.shared.date_parser import (
     format_optional_date,
     parse_optional_date,
 )
-from project_planner_frontend.shared.dialogs import show_confirmation
+from project_planner_frontend.shared.dialogs import show_confirmation, show_error
 from project_planner_frontend.shared.theme import (
     NAVY_900,
     SLATE_400,
@@ -62,6 +62,8 @@ class OverviewPanel(BoxLayout):
         self._on_saved = on_saved
         self._project: Project | None = None
         self._load_generation = 0
+        self._saving = False
+        self._save_waiters: list[tuple[Callable[[], None], Callable[[], None]]] = []
         self._parent_ids: dict[str, str | None] = {"No parent": None}
         paint_background(self, NAVY_900)
         scroll = ScrollView(do_scroll_x=False, bar_width=dp(5))
@@ -165,6 +167,7 @@ class OverviewPanel(BoxLayout):
         todos = style_button(Button(text="General To-Dos"), "secondary")
         relationships = style_button(Button(text="Linked projects"), "secondary")
         save.bind(on_release=self._save)
+        self._save_button = save
         todos.bind(on_release=self._open_todos)
         relationships.bind(on_release=self._open_project_links)
         actions.add_widget(save)
@@ -176,6 +179,7 @@ class OverviewPanel(BoxLayout):
         self.disabled = True
 
     def show_project(self, project_id: str) -> None:
+        self._load_generation += 1
         overview = self._queries.get_overview(project_id)
         self._display_overview(overview)
 
@@ -234,11 +238,10 @@ class OverviewPanel(BoxLayout):
         self.disabled = True
 
     def _save(self, *_: object) -> None:
-        if self._project is None:
+        if self._project is None or self._saving:
             return
         try:
-            project = self._workflows.update_project(
-                self._project.id,
+            changes = dict(
                 title=self.title_input.text,
                 description=self.description_input.text,
                 status=ProjectStatus(self.status.text.lower()),
@@ -253,9 +256,48 @@ class OverviewPanel(BoxLayout):
         except ValueError as error:
             show_confirmation(str(error), duration=2.5)
             return
-        self.show_project(project.id)
-        self._on_saved(project.id)
-        show_confirmation("Project changes saved locally.")
+        project_id = self._project.id
+        generation = self._load_generation
+        self._saving = True
+        self._save_button.disabled = True
+        self.disabled = True
+
+        def completed(project: Project) -> None:
+            self._saving = False
+            self._save_button.disabled = False
+            if generation == self._load_generation:
+                self._project = project
+                self.disabled = False
+                self.metadata.text = (
+                    f"Created {project.created_at:%Y-%m-%d %H:%M}   ·   "
+                    f"Updated {project.updated_at:%Y-%m-%d %H:%M}"
+                )
+                show_confirmation("Project changes saved.")
+            self._on_saved(project.id)
+            self._finish_save_waiters(success=True)
+
+        def failed(error: Exception) -> None:
+            self._saving = False
+            self._save_button.disabled = False
+            if generation == self._load_generation:
+                self.disabled = False
+            self._finish_save_waiters(success=False)
+            show_error(f"Could not save project changes: {error}")
+
+        run_background(
+            lambda: self._workflows.update_project(project_id, **changes), completed, failed
+        )
+
+    def wait_for_save(self, after: Callable[[], None], on_failure: Callable[[], None]) -> None:
+        if self._saving:
+            self._save_waiters.append((after, on_failure))
+        else:
+            after()
+
+    def _finish_save_waiters(self, *, success: bool) -> None:
+        waiters, self._save_waiters = self._save_waiters, []
+        for after, on_failure in waiters:
+            (after if success else on_failure)()
 
     def _open_todos(self, *_: object) -> None:
         if self._project is not None:

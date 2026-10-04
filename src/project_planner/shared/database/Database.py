@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 from sqlalchemy import URL, Engine, create_engine, event, text
@@ -28,11 +29,19 @@ class Database:
         self._session_factory = sessionmaker(
             bind=self.engine, expire_on_commit=False, class_=Session
         )
+        self._active_session: ContextVar[Session | None] = ContextVar(
+            "planner_transaction", default=None
+        )
         with self.engine.begin() as connection:
             MigrationManager(str(self.engine.url)).upgrade(connection)
 
     @contextmanager
     def session(self) -> Iterator[Session]:
+        active = self._active_session.get()
+        if active is not None:
+            yield active
+            active.flush()
+            return
         session = self.new_session()
         try:
             yield session
@@ -42,6 +51,16 @@ class Database:
             raise
         finally:
             session.close()
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        """Let repositories share one session for a synchronous workflow."""
+        with self.session() as session:
+            token = self._active_session.set(session)
+            try:
+                yield
+            finally:
+                self._active_session.reset(token)
 
     def new_session(self) -> Session:
         return self._session_factory()

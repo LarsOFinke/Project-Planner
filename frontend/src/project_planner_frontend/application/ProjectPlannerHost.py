@@ -31,7 +31,7 @@ class ProjectPlannerHost(BoxLayout):
 
     def rebuild(self, ui_scale: float) -> None:
         self._pending_scale = ui_scale
-        if self._rebuild_pending:
+        if self._rebuild_pending or self._stopping:
             return
         if self._planner_root is not None:
             self._rebuild_pending = True
@@ -72,6 +72,21 @@ class ProjectPlannerHost(BoxLayout):
         self._stopping = True
         if self._planner_root is not None:
             self._planner_root.dispose()
+
+    def prepare_shutdown(self, after: Callable[[], None], on_failure: Callable[[], None]) -> None:
+        self._stopping = True
+        self.disabled = True
+
+        def failed() -> None:
+            self._stopping = False
+            self._rebuild_pending = False
+            self.disabled = False
+            on_failure()
+
+        if self._planner_root is None:
+            after()
+        else:
+            self._planner_root.save_editors_before_rebuild(after, failed)
 
     def _change_fullscreen(self, fullscreen: bool) -> None:
         self._fullscreen = fullscreen

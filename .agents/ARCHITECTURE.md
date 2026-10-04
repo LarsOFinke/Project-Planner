@@ -47,7 +47,9 @@ entities <- services -> protocols <- repositories -> SQLAlchemy models
 
 `src/project_planner/shared/database/`
 : SQLAlchemy session boundary, shared ORM schema models, ordered Alembic migrations, and isolated
-  seeds. Feature services never import this directory.
+  seeds. `Database.transaction()` shares a context-local session across synchronous repository
+  calls. Composition injects its context-manager factory into project workflows so project and
+  phase writes commit together. Feature services never import this directory.
 
 `src/project_planner/shared/settings/`
 : Typed cfg/environment settings and persistence of user UI preferences.
