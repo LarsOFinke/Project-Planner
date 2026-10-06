@@ -14,8 +14,8 @@
   unsaved revision recovery remain future work. Image assets uploaded but never referenced by a
   saved workspace can still remain in managed storage.
 - Managed image garbage collection is intentionally not implemented in prototype 0.1.
-- Backup import rolls back on ordinary errors, but a process or machine crash between publishing
-  new managed files and committing database rows can leave those files behind. Retain the archive
-  until the imported project has been verified; cross-resource crash recovery is future work.
-- The unpacked-backup limit runs after FastAPI has received the multipart upload. Remote servers
-  should also enforce a compressed/request-body size limit at their HTTP ingress.
+- Backup import journals newly published managed files and reconciles them against a committed
+  database marker on the next API startup. If a local file changed after an interrupted import,
+  recovery stops for manual review rather than deleting it.
+- The unpacked-backup limit runs after FastAPI has received the multipart upload. The bundled
+  VPS-Gateway site caps request bodies at 25 MiB; other HTTP ingress paths need their own cap.

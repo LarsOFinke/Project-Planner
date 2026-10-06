@@ -67,13 +67,15 @@ import cycles, and class/file rules across both source roots.
 
 ```bash
 bash .agents/scripts/doctor.sh
+npm --prefix web ci
 make validate
 .venv/bin/python -m pip check
 git diff --check
 ```
 
-`check-all.sh` runs Ruff linting/formatting, the test suite, compilation across backend and
-frontend roots, shell syntax checks, and the strict Python line-length guard.
+`check-all.sh` runs Ruff linting/formatting, Python and Vue tests, the Vue build,
+compilation across backend and Kivy roots, shell syntax checks, Kivy event-loop
+smokes, and the strict Python line-length guard.
 
 ## Safe generated-data cleanup
 
@@ -112,3 +114,14 @@ remove `.venv`, configured databases, managed assets, migrations, or user diagno
   Remote HTTP ingress also needs an upload-body limit before multipart buffering.
 - Updated the roadmap, database guide, architecture map, cache, and known-issues note to match
   current behavior.
+
+## 2026-10-06 follow-up audit
+
+- Confirmed that tracked files contain no generated caches, build products, private deployment
+  profiles, machine-specific server addresses, or empty source directories.
+- Added Vue tests/build and deployment shell syntax to the full local validation gate; CI now
+  provisions its own Python virtual environment and Node dependencies for that gate.
+- Made first artifact creation safe when concurrent requests both read an absent artifact, with a
+  regression test using separate SQLite sessions.
+- Reformatted the Vue stylesheet for review without changing its compiled CSS, and corrected
+  backup-recovery notes that predated the durable import journal.

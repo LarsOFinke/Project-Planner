@@ -7,7 +7,9 @@ Last refreshed: 2026-10-06
 - Product: local-first desktop project planner, prototype `0.1.0`.
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
-- Quality: `make test`, `make lint`, or `make validate`.
+- Quality: `make test`, `make lint`, or `make validate`. Full validation requires
+  `npm --prefix web ci` once, then runs Vue tests/build and deployment shell syntax
+  alongside Python/Kivy checks. CI provisions Python 3.13 in `.venv` and Node 22.
 - Current suite includes regression tests for transactional project workflows, shutdown saves,
   and background Overview saves, plus Kivy event-loop smoke runs at 200% and 100%. Smoke stages
   follow asynchronous readiness, exercise a live scale change and pending-save shutdown, and
@@ -16,8 +18,9 @@ Last refreshed: 2026-10-06
 - Vue 3/Vite client: `web/`; `npm ci`, `npm run dev`, `npm test`, and `npm run build`.
 - Vue mirrors Kivy's project directory, Overview, Plan Roadmap, Diagram,
   Workspace, Links, and Admin screens. Editing uses Vue-controlled HTML forms;
-  the visual artifacts use SVG editors and versioned saves. Opening a new artifact
-  fetches content before revisions to avoid a first-create race in the API.
+  the visual artifacts use SVG editors and versioned saves. Artifact creation
+  handles concurrent first requests at the repository boundary; Vue also fetches
+  content before revisions.
 - Remote deployment: `./deployment.sh` packages the Vue build and Python backend;
   `deploy/activate.sh` starts Compose, preserves SQLite/images in `shared/data`, takes
   an API backup before updates, and registers the loopback web port with VPS-Gateway.

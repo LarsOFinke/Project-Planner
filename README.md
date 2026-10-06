@@ -164,16 +164,19 @@ The older JSON-only HTTP endpoints remain available for compatibility. See
 Run the complete automated test suite:
 
 ```bash
-python -m pytest
+.venv/bin/python -m pytest
 ```
 
 Run the repository-wide lint, formatting, test, compilation, and script checks before committing:
 
 ```bash
+npm --prefix web ci
 make validate
 ```
 
-This includes real one-second Kivy event loops at the 200% laptop and 100% Full-HD profiles.
+This includes Vue tests/build, deployment shell syntax checks, and real one-second Kivy
+event loops at the 200% laptop and 100% Full-HD profiles. The npm install is needed once
+per clean checkout.
 Dependencies are exactly pinned in `pyproject.toml`; `pylock.toml` pins and hashes the transitive
 Python 3.13 Linux x86-64 graph used by CI and matching setup environments. Other supported
 platforms retain the exact direct pins. Refresh the lock intentionally with `make lock` after

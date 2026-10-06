@@ -24,9 +24,9 @@ npm run dev
 ```
 
 Vite proxies `/api` to the localhost API. `VITE_API_PROXY_TARGET` can override
-the proxy target (default `http://127.0.0.1:8000`). Leave `PROJECT_PLANNER_API_TOKEN` unset
-for this local development arrangement. The web build and test commands are
-`npm run build` and `npm test` from `web/`.
+the proxy target (default `http://127.0.0.1:8000`). Leave
+`PROJECT_PLANNER_API_TOKEN` unset for this local development arrangement. The
+web build and test commands are `npm run build` and `npm test` from `web/`.
 
 ## VPS preparation
 
@@ -44,9 +44,9 @@ loopback port, then run `chmod 600 .env.deploy`. Use a unique port for this
 project. The example uses `DEPLOY_WEB_AUTH=none`, so the browser needs no
 login. Production also requires `DEPLOY_TLS_EMAIL` for HTTPS. To require a
 login, use `DEPLOY_WEB_AUTH=basic` with a username and a strong password; only
-its salted hash is transferred. The API bearer token is generated on the server, stays in
-`shared/runtime.env` and `shared/api.env`, and is injected by the internal web
-proxy. It is never built into browser JavaScript.
+its salted hash is transferred. The API bearer token is generated on the server,
+stays in `shared/runtime.env` and `shared/api.env`, and is injected by the
+internal web proxy. It is never built into browser JavaScript.
 
 ```bash
 ./deployment.sh
@@ -77,11 +77,11 @@ DEPLOY_ROOT/
 
 The web container binds only `127.0.0.1:DEPLOY_WEB_PORT`; the API has no host
 port. VPS-Gateway routes the public hostname to this loopback port. Gateway
-HTTP Basic Auth can be enabled for the app and API. New installations create a private API
-bearer token. Updates reuse it and the persistent data directory. A failed
-health gate restores the previous Compose release. Database migrations may
-change the shared database, so inspect compatibility before deploying a schema
-change; the pre-update archive is retained for recovery.
+HTTP Basic Auth can be enabled for the app and API. New installations create a
+private API bearer token. Updates reuse it and the persistent data directory.
+A failed health gate restores the previous Compose release. Database migrations
+may change the shared database, so inspect compatibility before deploying a
+schema change; the pre-update archive is retained for recovery.
 
 The public site exposes backup import/export endpoints. With
 `DEPLOY_WEB_AUTH=none`, anyone who can reach the hostname can use them. Keep

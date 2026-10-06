@@ -16,8 +16,7 @@ class ArtifactService:
             return artifact
         title = "Project diagram" if kind is ArtifactKind.DIAGRAM else "Free workspace"
         artifact = Artifact(project_id=project_id, title=title, kind=kind)
-        self._artifacts.save(artifact)
-        return artifact
+        return self._artifacts.create_if_absent(artifact)
 
     def save_json(self, artifact: Artifact, content: object) -> Artifact:
         serialized = json.dumps(content, separators=(",", ":"), sort_keys=True)

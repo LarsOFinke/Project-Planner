@@ -303,3 +303,11 @@ Overview captures and validates a form snapshot on the UI thread, then sends its
 the existing worker pool. Pending saves prevent duplicate submission and participate in shutdown
 and scale-rebuild waits. Completion refreshes the directory asynchronously; a stale completion
 cannot replace the project selected since the save started. Failed saves retain the current form.
+
+## AD-044 — Idempotent first artifact creation
+
+Diagram and workspace requests can arrive concurrently for a project that has no artifact yet.
+The artifact service keeps the existing lookup, then asks its repository to create the initial
+row if absent. The repository uses a savepoint and the database's unique project/kind constraint;
+the losing request reloads the winning row. Other integrity failures still propagate. This
+keeps SQLAlchemy recovery inside the repository and avoids a first-open HTTP 500.
