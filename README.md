@@ -116,6 +116,12 @@ backup transfers default to 120 seconds. Set `PROJECT_PLANNER_API_TIMEOUT_SECOND
 
 ### HTTP API and alternate frontends
 
+A Vue 3 frontend now lives in [`web/`](web/). It uses the same `/api/v1` backend
+as Kivy and can be run locally with Vite or deployed beside the API on a VPS.
+Its project forms and visual editors cover the Kivy workspace in a browser.
+See [docs/WEB_DEPLOYMENT.md](docs/WEB_DEPLOYMENT.md) for local commands, server
+prerequisites, HTTPS, and VPS-Gateway integration.
+
 Desktop mode starts a private FastAPI/Uvicorn server on an ephemeral localhost port and connects
 the Kivy client through the same `/api/v1` contract an alternate frontend would use. Interactive
 OpenAPI documentation is available at `/docs` when the API is run separately:
@@ -125,7 +131,7 @@ project-planner-api --host 127.0.0.1 --port 8000
 ```
 
 Set `PROJECT_PLANNER_API_URL=http://127.0.0.1:8000/api/v1` (or `[api] url`) to connect Kivy to that
-server instead of starting the embedded host. Browser origins for a future Vue deployment can be
+server instead of starting the embedded host. Browser origins for a separate Vue deployment can be
 allowed explicitly with comma-separated `PROJECT_PLANNER_API_CORS_ORIGINS` values. Set
 `PROJECT_PLANNER_API_TOKEN` (or `[api] token`) on both the server and Kivy client to require a
 bearer token. The standalone command refuses a non-loopback bind unless a token is configured.

@@ -1,0 +1,24 @@
+name: project-planner
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+    env_file: ../../../shared/api.env
+    volumes:
+      - ../../../shared/data:/data
+    restart: unless-stopped
+    networks: [internal]
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    environment:
+      PROJECT_PLANNER_API_TOKEN: ${PROJECT_PLANNER_API_TOKEN:?Set token in shared/runtime.env}
+    ports:
+      - "127.0.0.1:${WEB_PORT:?Set WEB_PORT in shared/runtime.env}:8080"
+    depends_on: [api]
+    restart: unless-stopped
+    networks: [internal]
+networks:
+  internal: {}

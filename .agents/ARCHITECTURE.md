@@ -60,6 +60,13 @@ entities <- services -> protocols <- repositories -> SQLAlchemy models
 
 ## Frontend
 
+`web/`
+: Vue 3/Vite browser client using the same `/api/v1` resource contract. The browser
+  calls same-origin paths; the production web proxy injects the private API token.
+  Vue owns project forms and interactive SVG Diagram and Workspace editors. The
+  VPS-Gateway route forwards to a loopback web container. HTTP Basic Auth is
+  optional; production requires TLS.
+
 `frontend/src/project_planner_frontend/`
 : Independently discoverable Kivy client package. `api/` owns transport and the connection facade.
   Desktop mode starts an ephemeral localhost API; remote mode uses the configured API URL. The

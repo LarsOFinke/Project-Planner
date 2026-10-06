@@ -1,6 +1,6 @@
 # Project cache
 
-Last refreshed: 2026-10-04
+Last refreshed: 2026-10-06
 
 ## Hot context
 
@@ -13,6 +13,20 @@ Last refreshed: 2026-10-04
   follow asynchronous readiness, exercise a live scale change and pending-save shutdown, and
   have a 15-second deadline.
 - Entry point: `project_planner_frontend.main:main`.
+- Vue 3/Vite client: `web/`; `npm ci`, `npm run dev`, `npm test`, and `npm run build`.
+- Vue mirrors Kivy's project directory, Overview, Plan Roadmap, Diagram,
+  Workspace, Links, and Admin screens. Editing uses Vue-controlled HTML forms;
+  the visual artifacts use SVG editors and versioned saves. Opening a new artifact
+  fetches content before revisions to avoid a first-create race in the API.
+- Remote deployment: `./deployment.sh` packages the Vue build and Python backend;
+  `deploy/activate.sh` starts Compose, preserves SQLite/images in `shared/data`, takes
+  an API backup before updates, and registers the loopback web port with VPS-Gateway.
+- Gateway HTTP Basic Auth is optional via `DEPLOY_WEB_AUTH=basic`; the example
+  and isolated `.test` profile use `DEPLOY_WEB_AUTH=none`, so no browser login
+  is needed. Production requires Certbot TLS. Existing test gateway sites are
+  replaced on deploy to apply authentication changes.
+  The internal web proxy injects the server-side API bearer token, which is not
+  sent to the browser.
 - HTTP API entry point: `project-planner-api`; versioned resources live below `/api/v1`.
 - Desktop transport: embedded Uvicorn on an ephemeral localhost port; optional remote API URL.
 - Remote API: optional bearer token; standalone non-loopback binding requires one.
@@ -177,6 +191,8 @@ Dropdown choices are saved to `~/.config/project_planner/config.cfg`; environmen
 ## High-value paths
 
 - FastAPI/composition: `src/project_planner/api/`
+- Vue client: `web/src/`; remote deployment: `deployment.sh`, `deploy/`,
+  `docs/WEB_DEPLOYMENT.md`.
 - API feature contracts: `src/project_planner/api/<feature>/dtos/`
 - Kivy HTTP transport/facade: `frontend/src/project_planner_frontend/api/`
 - Kivy feature clients/views: `frontend/src/project_planner_frontend/{projects,planning,collaboration,artifacts,system}/`
