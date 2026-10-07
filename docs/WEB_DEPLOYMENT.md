@@ -41,10 +41,13 @@ and ports 80 and 443 must be reachable for Certbot.
 
 Copy `.env.deploy.example` to `.env.deploy`, set the target and a dedicated
 loopback port, then run `chmod 600 .env.deploy`. Use a unique port for this
-project. The example uses `DEPLOY_WEB_AUTH=none`, so the browser needs no
-login. Production also requires `DEPLOY_TLS_EMAIL` for HTTPS. To require a
-login, use `DEPLOY_WEB_AUTH=basic` with a username and a strong password; only
-its salted hash is transferred. The API bearer token is generated on the server,
+project. The production example targets `root@217.160.255.49` and
+`project-planner.portfolio-finke.de`; its DNS A record must resolve to
+`217.160.255.49` before the first TLS issuance. The example uses
+`DEPLOY_WEB_AUTH=none`, so the browser needs no login. Production also requires
+`DEPLOY_TLS_EMAIL` for HTTPS. To require a login, use `DEPLOY_WEB_AUTH=basic`
+with a username and a strong password; only its salted hash is transferred.
+The API bearer token is generated on the server,
 stays in `shared/runtime.env` and `shared/api.env`, and is injected by the
 internal web proxy. It is never built into browser JavaScript.
 
@@ -88,6 +91,23 @@ The public site exposes backup import/export endpoints. With
 network access scoped to your intended users. If Basic Auth is enabled, keep
 the profile password private and rotate it if exposed. Complete the first TLS
 issuance before using a public site.
+
+## Portfolio demo data
+
+The production database can be populated with fictional examples after saving a
+backup. `deploy/seed_demo.py` creates three categories and five projects that
+show Agile, Waterfall, and Custom planning, a child project, tasks, sprints,
+cross-project links, a diagram, and a workspace. It reuses matching records
+when rerun and does not overwrite edited demo content. The data lives in the
+persistent `shared/data` directory and survives application releases.
+
+```bash
+.venv/bin/python deploy/seed_demo.py \
+  --base-url https://project-planner.portfolio-finke.de --apply
+```
+
+This command uses the deployment's HTTP API. Run it only against a deployment
+intended to display the fictional examples. The `--apply` flag is required.
 
 For an isolated `.test` hostname on a trusted network, set `DEPLOY_TARGET=test`,
 `DEPLOY_WEB_AUTH=none`, and leave `DEPLOY_TLS_EMAIL` empty. No login or password

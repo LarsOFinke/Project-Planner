@@ -1,6 +1,6 @@
 # Project cache
 
-Last refreshed: 2026-10-06
+Last refreshed: 2026-10-07
 
 ## Hot context
 
@@ -24,6 +24,11 @@ Last refreshed: 2026-10-06
 - Remote deployment: `./deployment.sh` packages the Vue build and Python backend;
   `deploy/activate.sh` starts Compose, preserves SQLite/images in `shared/data`, takes
   an API backup before updates, and registers the loopback web port with VPS-Gateway.
+- The production profile example targets `project-planner.portfolio-finke.de` on
+  `root@217.160.255.49`, with app files under `/root/project-planner`. Public DNS must
+  resolve to that VPS before Certbot can issue its first certificate.
+- `deploy/seed_demo.py --base-url URL --apply` adds a repeatable fictional portfolio
+  dataset through the HTTP API. Production demo records persist in `shared/data`.
 - Gateway HTTP Basic Auth is optional via `DEPLOY_WEB_AUTH=basic`; the example
   and isolated `.test` profile use `DEPLOY_WEB_AUTH=none`, so no browser login
   is needed. Production requires Certbot TLS. Existing test gateway sites are
