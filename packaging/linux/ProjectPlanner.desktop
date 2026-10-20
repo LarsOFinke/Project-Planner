@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Project Planner
+Exec=ProjectPlanner
+Icon=ProjectPlanner
+Categories=Office;ProjectManagement;
+Terminal=false

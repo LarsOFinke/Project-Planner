@@ -182,6 +182,26 @@ Python 3.13 Linux x86-64 graph used by CI and matching setup environments. Other
 platforms retain the exact direct pins. Refresh the lock intentionally with `make lock` after
 dependency updates.
 
+## Linux desktop download
+
+On a push to `main`, or when started manually from the GitHub Actions **Linux AppImage**
+workflow, CI builds `ProjectPlanner-x86_64.AppImage`. Download it from that workflow run's
+**Artifacts** section and make it executable with `chmod +x ProjectPlanner-x86_64.AppImage`.
+Run it on an x86-64 Linux desktop. The AppImage bundles Python and the application; user
+settings, SQLite data, and imported images stay in their normal home-directory locations.
+
+To build the same artifacts locally with Python 3.11–3.13:
+
+```bash
+make wheel
+make compile
+```
+
+The wheel is written to `dist/wheels/`, and the AppImage to `dist/linux/`. `make compile`
+uses an isolated `.build-venv`, installs the wheel, freezes the desktop app, and checks its
+bundled imports, database migrations, and 200% UI event loop using temporary data. A Linux
+display or Xvfb is needed to run the frozen smoke checks.
+
 ## Architectural shape
 
 ```text

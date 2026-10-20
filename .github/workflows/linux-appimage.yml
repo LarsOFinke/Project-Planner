@@ -1,0 +1,33 @@
+name: Linux AppImage
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install display libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1 libmtdev1t64
+      - name: Build AppImage
+        run: xvfb-run -a make compile PYTHON_BIN=python
+        env:
+          KIVY_NO_FILELOG: '1'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-planner-linux-x86_64
+          path: dist/linux/ProjectPlanner-x86_64.AppImage
+          if-no-files-found: error
+          compression-level: 0

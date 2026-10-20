@@ -1,4 +1,4 @@
-.PHONY: setup run test lint lock validate
+.PHONY: setup run test lint lock validate wheel compile
 
 setup:
 	./scripts/bootstrap.sh
@@ -22,3 +22,9 @@ lock:
 
 validate:
 	bash .agents/scripts/check-all.sh
+
+wheel:
+	bash scripts/build-wheel.sh
+
+compile:
+	bash scripts/build-linux.sh

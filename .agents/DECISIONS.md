@@ -311,3 +311,13 @@ The artifact service keeps the existing lookup, then asks its repository to crea
 row if absent. The repository uses a savepoint and the database's unique project/kind constraint;
 the losing request reloads the winning row. Other integrity failures still propagate. This
 keeps SQLAlchemy recovery inside the repository and avoids a first-open HTTP 500.
+
+## AD-045 — Linux desktop artifacts from a wheel
+
+The Linux packaging job builds the existing setuptools wheel, installs it into an isolated build
+environment, freezes the desktop entry point with PyInstaller, then wraps it in an AppImage.
+The freeze explicitly includes packaged defaults and Alembic migration scripts. A smoke command
+uses temporary data to verify imports, migrations, and the 200% UI loop before CI uploads the
+AppImage artifact.
+Packaging does not change the application's home-directory data paths or migrate user databases
+as part of the build.

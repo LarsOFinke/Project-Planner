@@ -1,12 +1,17 @@
 # Project cache
 
-Last refreshed: 2026-10-07
+Last refreshed: 2026-10-20
 
 ## Hot context
 
 - Product: local-first desktop project planner, prototype `0.1.0`.
 - Runtime: Python `>=3.11,<3.14`; tested with Python 3.13.15 and Kivy 2.3.1.
 - Setup: `make setup`; run: `.venv/bin/project-planner` or `make run`.
+- Linux x86-64 distribution: `make wheel` writes `dist/wheels/`; `make compile` builds
+  `dist/linux/ProjectPlanner-x86_64.AppImage` through an isolated `.build-venv`.
+  `.github/workflows/linux-appimage.yml` uploads the AppImage as a GitHub Actions artifact
+  after pushes to `main` or a manual workflow run. Frozen smoke checks create a temporary
+  SQLite database, apply all bundled Alembic migrations, and run the 200% UI event loop.
 - Quality: `make test`, `make lint`, or `make validate`. Full validation requires
   `npm --prefix web ci` once, then runs Vue tests/build and deployment shell syntax
   alongside Python/Kivy checks. CI provisions Python 3.13 in `.venv` and Node 22.

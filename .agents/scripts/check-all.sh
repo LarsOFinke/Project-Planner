@@ -11,9 +11,15 @@ fi
 
 .venv/bin/ruff check src frontend/src tests .agents/scripts/kivy-event-loop-smoke.py
 .venv/bin/ruff format --check src frontend/src tests .agents/scripts/kivy-event-loop-smoke.py
+.venv/bin/ruff check scripts/frozen_entry.py scripts/wheel_path.py
+.venv/bin/ruff format --check scripts/frozen_entry.py scripts/wheel_path.py
 .venv/bin/python -m pytest -q
 .venv/bin/python -m compileall -q src frontend/src tests .agents/scripts/kivy-event-loop-smoke.py
+.venv/bin/python -m compileall -q scripts/wheel_path.py scripts/frozen_entry.py
 bash -n scripts/bootstrap.sh
+bash -n scripts/build-wheel.sh
+bash -n scripts/build-linux.sh
+bash -n packaging/linux/AppRun
 bash -n .agents/scripts/doctor.sh
 bash -n .agents/scripts/check-all.sh
 bash -n .agents/scripts/collect-diagnostics.sh
